@@ -9,7 +9,7 @@ import {
   SideNavItem,
   SideNavSection,
 } from '@astryxdesign/core/SideNav'
-import { Cog6ToothIcon, FolderIcon } from '@heroicons/react/24/outline'
+import { FolderIcon } from '@heroicons/react/24/outline'
 import { FolderIcon as FolderSolid } from '@heroicons/react/24/solid'
 
 import { WORKSPACE_GAP } from '@/shared/spacing'
@@ -68,12 +68,6 @@ export function AppChrome({ children, section, accountName, onSignOut }: AppChro
               selectedIcon={FolderSolid}
               isSelected={section === 'projects'}
               href={WORKSPACE_PATHS.home}
-            />
-            <SideNavItem
-              label="Settings"
-              icon={Cog6ToothIcon}
-              isSelected={section === 'settings'}
-              href={WORKSPACE_PATHS.settings}
             />
           </SideNavSection>
         </SideNav>

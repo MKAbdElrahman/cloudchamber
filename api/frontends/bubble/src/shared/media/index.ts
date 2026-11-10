@@ -1,4 +1,3 @@
-export { InlineMediaPlayer } from './InlineMediaPlayer'
 export {
   fileNameFromSourceRef,
   objectKeyFromSourceRef,

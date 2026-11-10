@@ -25,19 +25,6 @@ export type ProjectFile = {
   dateUpdated?: string
 }
 
-export function projectFileLabel(kind: ProjectFileKind): string {
-  switch (kind) {
-    case 'markdown':
-      return 'Markdown'
-    case 'pdf':
-      return 'PDF'
-  }
-}
-
-export function isProjectFileKind(value: string | undefined): value is ProjectFileKind {
-  return value === 'markdown' || value === 'pdf'
-}
-
 export function documentFormat(ref: string): ProjectFileKind {
   return fileNameFromSourceRef(ref).toLowerCase().endsWith('.pdf') ? 'pdf' : 'markdown'
 }

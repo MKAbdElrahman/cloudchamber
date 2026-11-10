@@ -10,6 +10,9 @@ doc/architecture/c4/.structurizr/
 .envrc
 .misc
 
+# pnpm content-addressable store (local cache)
+.pnpm-store/
+
 # Project
 app/services/cloudchamber-api/cloudchamber-api
 app/services/metrics/metrics

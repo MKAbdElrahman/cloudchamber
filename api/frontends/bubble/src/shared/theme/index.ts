@@ -1,5 +1,6 @@
-export { applyAppearanceToDocument, readAppearance } from './appearanceStorage'
+export { applyAppearanceToDocument, readAppearance, type ColorMode } from './appearanceStorage'
 export { META_TOKEN_COLOR, MUTED_ICON_COLOR, SHELL_ICON_COLOR } from './presentation'
 export { ensureThemePackAssets } from './themeAssets'
 export { APP_THEMES, type AppThemeId } from './themes'
-export { ThemePreferenceProvider, useThemePreference, type ColorMode } from './ThemePreference'
+export { ThemePreferenceProvider } from './ThemePreference'
+export { useThemePreference } from './useThemePreference'

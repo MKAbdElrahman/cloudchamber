@@ -1,5 +1,5 @@
-import { ApiError } from '@/shared/api/client'
-import { env } from '@/shared/config/env'
+import { ApiError } from '@/shared/api'
+import { env } from '@/shared/config'
 
 type TokenResponse = { token: string }
 

@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import {
-  Layout,
-  LayoutContent,
-  LayoutHeader,
-  VStack,
-} from '@astryxdesign/core/Layout'
+import { VStack } from '@astryxdesign/core/Layout'
 import { Tab, TabList } from '@astryxdesign/core/TabList'
 import { Icon } from '@astryxdesign/core/Icon'
 import {
@@ -27,8 +22,8 @@ import {
   usePipelineRun,
 } from '@/features/pipeline'
 import { UploadPanel } from '@/features/upload'
-import { PageHeader } from '@/shared/layout/PageHeader'
-import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
+import { PageHeader, WorkspacePage } from '@/shared/layout'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 
 type PipelineWorkspaceProps = {
   token: string
@@ -66,12 +61,8 @@ export function PipelineWorkspace({ token }: PipelineWorkspaceProps) {
   }
 
   return (
-    <Layout
-      height="fill"
-      contentWidth={WORKSPACE_CONTENT_WIDTH}
-      padding={WORKSPACE_CONTENT_PADDING}
+    <WorkspacePage
       header={
-        <LayoutHeader hasDivider>
           <VStack gap={WORKSPACE_GAP.group} width="100%">
             <PageHeader
               title="Pipeline"
@@ -102,10 +93,8 @@ export function PipelineWorkspace({ token }: PipelineWorkspaceProps) {
               />
             </TabList>
           </VStack>
-        </LayoutHeader>
       }
-      content={
-        <LayoutContent>
+    >
           {tab === 'upload' ? (
             <UploadPanel token={token} embedded onSourceRef={handleSourceRef} />
           ) : null}
@@ -126,8 +115,6 @@ export function PipelineWorkspace({ token }: PipelineWorkspaceProps) {
               onGoToJob={() => setTab('job')}
             />
           ) : null}
-        </LayoutContent>
-      }
-    />
+    </WorkspacePage>
   )
 }

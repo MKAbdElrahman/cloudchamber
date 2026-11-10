@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 
-import { Layout, LayoutContent, LayoutHeader } from '@astryxdesign/core/Layout'
 import { Text } from '@astryxdesign/core/Text'
 import { Button } from '@astryxdesign/core/Button'
 import { List, ListItem } from '@astryxdesign/core/List'
@@ -9,18 +8,17 @@ import { Token } from '@astryxdesign/core/Token'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { DocumentIcon, DocumentTextIcon, PlayCircleIcon } from '@heroicons/react/24/outline'
 
-import { PageHeader } from '@/shared/layout/PageHeader'
-import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH } from '@/shared/layout/contentSurface'
-import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
+import type { OutputFile } from '@/features/outputs'
+import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { META_TOKEN_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
-import { MOCK_OUTPUT_FILES, type MockOutputFile } from '@/features/outputs'
+import { MOCK_OUTPUT_FILES } from '../fixtures/mockOutputs'
 
-function outputIcon(file: MockOutputFile) {
+function outputIcon(file: OutputFile) {
   return file.kind === 'pdf' ? DocumentIcon : DocumentTextIcon
 }
 
-function kindLabel(kind: MockOutputFile['kind']) {
+function kindLabel(kind: OutputFile['kind']) {
   return kind === 'pdf' ? 'PDF' : 'Markdown'
 }
 
@@ -29,12 +27,8 @@ export function OverviewPanel() {
   const navigate = useNavigate()
 
   return (
-    <Layout
-      height="fill"
-      contentWidth={WORKSPACE_CONTENT_WIDTH}
-      padding={WORKSPACE_CONTENT_PADDING}
-    >
-      <LayoutHeader hasDivider>
+    <WorkspacePage
+      header={
         <PageHeader
           title="Previous output"
           description="Open the pipeline to upload, run jobs, and monitor status."
@@ -47,8 +41,8 @@ export function OverviewPanel() {
             />
           }
         />
-      </LayoutHeader>
-      <LayoutContent>
+      }
+    >
         <List density="spacious" edge="flush" hasDividers aria-label="Previous outputs">
           {MOCK_OUTPUT_FILES.map((file) => (
             <ListItem
@@ -64,7 +58,6 @@ export function OverviewPanel() {
             />
           ))}
         </List>
-      </LayoutContent>
-    </Layout>
+    </WorkspacePage>
   )
 }

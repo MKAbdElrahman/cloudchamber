@@ -3,16 +3,15 @@ import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList'
 import { Token } from '@astryxdesign/core/Token'
 import { VStack } from '@astryxdesign/core/Layout'
 
-import { WORKSPACE_GAP } from '@/shared/layout/contentSurface'
-import { META_TOKEN_COLOR } from '@/shared/theme'
-
-import { InlineMediaPlayer } from './inlineMediaPlayer'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 import {
   fileNameFromSourceRef,
+  InlineMediaPlayer,
   playbackUrlFromSourceRef,
   sourceMediaKind,
   type SourceMediaKind,
-} from './sourceMedia'
+} from '@/shared/media'
+import { META_TOKEN_COLOR } from '@/shared/theme'
 
 function kindLabel(kind: SourceMediaKind): string {
   switch (kind) {

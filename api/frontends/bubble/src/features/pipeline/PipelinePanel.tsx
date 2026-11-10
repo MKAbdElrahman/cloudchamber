@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { VStack } from '@astryxdesign/core/Layout'
 import { Heading, Text } from '@astryxdesign/core/Text'
@@ -7,8 +7,8 @@ import { Button } from '@astryxdesign/core/Button'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { Banner } from '@astryxdesign/core/Banner'
 import { FormLayout } from '@astryxdesign/core/FormLayout'
-import { WORKSPACE_GAP } from '@/shared/layout/contentSurface'
-import { ApiError } from '@/shared/api/client'
+import { ApiError } from '@/shared/api'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 import { createJob } from './api'
 import type { PipelineJob } from './types'
 
@@ -25,10 +25,11 @@ export function CreateJobForm({
 }) {
   const qc = useQueryClient()
   const [sourceRef, setSourceRef] = useState(initialSourceRef ?? '')
-
-  useEffect(() => {
+  const [seenSourceRef, setSeenSourceRef] = useState(initialSourceRef)
+  if (initialSourceRef !== seenSourceRef) {
+    setSeenSourceRef(initialSourceRef)
     if (initialSourceRef) setSourceRef(initialSourceRef)
-  }, [initialSourceRef])
+  }
 
   const create = useMutation({
     mutationFn: (sr: string) => createJob(token, sr, `ui-${crypto.randomUUID()}`),
@@ -76,8 +77,6 @@ export function CreateJobForm({
       />
     </VStack>
   )
-
-  if (embedded) return body
 
   return body
 }

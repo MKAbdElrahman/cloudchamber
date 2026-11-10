@@ -1,25 +1,11 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+
+import { SessionContext } from './useSession'
 
 const STORAGE_KEY = 'bubble.token'
 const LEGACY_STORAGE_KEY = 'cloudchamber.token'
 const DISPLAY_NAME_KEY = 'bubble.displayName'
 const LEGACY_DISPLAY_NAME_KEY = 'cloudchamber.displayName'
-
-type SessionState = {
-  token: string | null
-  displayName: string | null
-  setToken: (token: string | null, displayName?: string | null) => void
-  signOut: () => void
-}
-
-const SessionContext = createContext<SessionState | null>(null)
 
 function readMigrated(key: string, legacyKey: string): string | null {
   try {
@@ -75,10 +61,4 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
-}
-
-export function useSession(): SessionState {
-  const ctx = useContext(SessionContext)
-  if (!ctx) throw new Error('useSession must be used within SessionProvider')
-  return ctx
 }

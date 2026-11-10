@@ -2,16 +2,9 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { SignInExperience } from '@/features/auth'
-import { PipelineRunProvider } from '@/features/pipeline'
 import { AuthenticatedRoutes } from '@/app/AuthenticatedRoutes'
-import { useSession } from '@/shared/auth/session'
-import { accountDisplayLabel, parseServiceJwt } from '@/shared/auth/tokenClaims'
-import { AppChrome } from '@/shared/layout/AppChrome'
-import {
-  WORKSPACE_PATHS,
-  pathForWorkspaceSection,
-  workspaceSectionFromPath,
-} from '@/shared/layout/workspacePaths'
+import { accountDisplayLabel, parseServiceJwt, useSession } from '@/shared/auth'
+import { AppChrome, pathForWorkspaceSection, WORKSPACE_PATHS, workspaceSectionFromPath } from '@/shared/layout'
 
 function AuthenticatedApp() {
   const navigate = useNavigate()
@@ -25,18 +18,16 @@ function AuthenticatedApp() {
   const accountName = accountDisplayLabel(claims, displayName)
 
   return (
-    <PipelineRunProvider>
-      <AppChrome
-        section={section}
-        accountName={accountName}
-        onSectionChange={(next) => navigate(pathForWorkspaceSection(next))}
-        onOpenProfile={() => navigate(WORKSPACE_PATHS.settingsSection('account'))}
-        onOpenSettings={() => navigate(WORKSPACE_PATHS.settingsSection('appearance'))}
-        onSignOut={signOut}
-      >
-        <AuthenticatedRoutes />
-      </AppChrome>
-    </PipelineRunProvider>
+    <AppChrome
+      section={section}
+      accountName={accountName}
+      onSectionChange={(next) => navigate(pathForWorkspaceSection(next))}
+      onOpenProfile={() => navigate(WORKSPACE_PATHS.settingsSection('account'))}
+      onOpenSettings={() => navigate(WORKSPACE_PATHS.settingsSection('appearance'))}
+      onSignOut={signOut}
+    >
+      <AuthenticatedRoutes />
+    </AppChrome>
   )
 }
 

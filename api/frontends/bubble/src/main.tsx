@@ -7,7 +7,7 @@ import { LinkProvider } from '@astryxdesign/core/Link'
 import { applyAppearanceToDocument, ensureThemePackAssets, readAppearance } from '@/shared/theme'
 import { AstryxProviders } from '@/app/AstryxProviders'
 import { RouterLink } from '@/app/RouterLink'
-import { SessionProvider } from '@/shared/auth/session'
+import { SessionProvider } from '@/shared/auth'
 import App from './App'
 import './index.css'
 

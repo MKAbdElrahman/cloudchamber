@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ClockIcon, QueueListIcon } from '@heroicons/react/24/outline'
 
-import { Layout, LayoutContent, LayoutHeader, VStack } from '@astryxdesign/core/Layout'
+import { VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Icon } from '@astryxdesign/core/Icon'
@@ -11,9 +11,8 @@ import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 
 import { JobStatusLabel, listJobs, normalizeJobs } from '@/features/pipeline'
-import { PageHeader } from '@/shared/layout/PageHeader'
-import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
-import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
+import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
 type HistoryPanelProps = {
@@ -34,18 +33,14 @@ export function HistoryPanel({ token }: HistoryPanelProps) {
   const jobs = jobsQuery.data ?? []
 
   return (
-    <Layout
-      height="fill"
-      contentWidth={WORKSPACE_CONTENT_WIDTH}
-      padding={WORKSPACE_CONTENT_PADDING}
-    >
-      <LayoutHeader hasDivider>
+    <WorkspacePage
+      header={
         <PageHeader
           title="History"
           description="Pipeline jobs you have run, newest first."
         />
-      </LayoutHeader>
-      <LayoutContent>
+      }
+    >
         <VStack gap={WORKSPACE_GAP.group}>
           {jobsQuery.isError ? (
             <Banner
@@ -93,7 +88,6 @@ export function HistoryPanel({ token }: HistoryPanelProps) {
             </List>
           ) : null}
         </VStack>
-      </LayoutContent>
-    </Layout>
+    </WorkspacePage>
   )
 }

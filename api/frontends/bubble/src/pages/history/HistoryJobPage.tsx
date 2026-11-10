@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { InboxArrowDownIcon, QueueListIcon } from '@heroicons/react/24/outline'
 
-import { Layout, LayoutContent, LayoutHeader, VStack } from '@astryxdesign/core/Layout'
+import { VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
@@ -13,18 +13,15 @@ import { Step, Stepper } from '@astryxdesign/core/Stepper'
 import { Tab, TabList } from '@astryxdesign/core/TabList'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
+import { JobOutputsPanel } from '@/features/outputs'
 import { JobStatusLabel, usePipelineJob } from '@/features/pipeline'
-import { JobOutputsPanel, outputsForJob } from '@/features/outputs'
-import { fileNameFromSourceRef, JobInputMedia } from '@/features/upload'
-import { PageHeader } from '@/shared/layout/PageHeader'
-import {
-  WORKSPACE_CONTENT_PADDING,
-  WORKSPACE_CONTENT_WIDTH,
-  WORKSPACE_GAP,
-} from '@/shared/layout/contentSurface'
-import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
+import { JobInputMedia } from '@/features/upload'
+import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { WORKSPACE_GAP } from '@/shared/spacing'
+import { fileNameFromSourceRef } from '@/shared/media'
 import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
+import { outputsForJob } from '../fixtures/mockOutputs'
 import { JobRunBreadcrumbs } from './JobRunBreadcrumbs'
 import {
   mockJobRunEvents,
@@ -58,29 +55,19 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
 
   if (!jobId) {
     return (
-      <Layout
-        height="fill"
-        contentWidth={WORKSPACE_CONTENT_WIDTH}
-        padding={WORKSPACE_CONTENT_PADDING}
-      >
-        <LayoutContent>
+      <WorkspacePage>
           <Breadcrumbs variant="supporting" aria-label="Job run navigation">
             <BreadcrumbItem href={WORKSPACE_PATHS.history}>History</BreadcrumbItem>
             <BreadcrumbItem isCurrent>Missing job</BreadcrumbItem>
           </Breadcrumbs>
           <Banner status="error" title="Missing job" description="No job id in the URL." />
-        </LayoutContent>
-      </Layout>
+      </WorkspacePage>
     )
   }
 
   return (
-    <Layout
-      height="fill"
-      contentWidth={WORKSPACE_CONTENT_WIDTH}
-      padding={WORKSPACE_CONTENT_PADDING}
-    >
-      <LayoutHeader hasDivider>
+    <WorkspacePage
+      header={
         <VStack gap={WORKSPACE_GAP.group} width="100%">
           <JobRunBreadcrumbs
             currentLabel={
@@ -110,8 +97,8 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
             <Tab value="history" label="History" />
           </TabList>
         </VStack>
-      </LayoutHeader>
-      <LayoutContent>
+      }
+    >
         <VStack gap={WORKSPACE_GAP.group}>
           {jobQuery.isError ? (
             <Banner
@@ -211,7 +198,6 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
             </List>
           ) : null}
         </VStack>
-      </LayoutContent>
-    </Layout>
+    </WorkspacePage>
   )
 }

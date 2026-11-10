@@ -1,4 +1,4 @@
-import { apiFetch } from '@/shared/api/client'
+import { apiFetch } from '@/shared/api'
 import type { JobsQuery, PipelineJob } from './types'
 
 export function createJob(token: string, sourceRef: string, idempotencyKey?: string) {

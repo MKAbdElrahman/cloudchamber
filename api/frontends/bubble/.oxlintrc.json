@@ -3,6 +3,47 @@
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/features/*/*"],
+            "message": "Import a feature through its public index (@/features/<name>)."
+          },
+          {
+            "group": ["@/shared/*/*"],
+            "message": "Import shared code through its public index (@/shared/<name>)."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/features/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/features/*", "@/features/*/*"],
+                "message": "Features do not import other features. Compose them in a page."
+              },
+              {
+                "group": ["@/app/*", "@/pages/*"],
+                "message": "Features depend downward on shared only."
+              },
+              {
+                "group": ["@/shared/*/*"],
+                "message": "Import shared code through its public index (@/shared/<name>)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

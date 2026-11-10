@@ -1,4 +1,4 @@
-import { env } from '@/shared/config/env'
+import { env } from '@/shared/config'
 
 export class ApiError extends Error {
   status: number

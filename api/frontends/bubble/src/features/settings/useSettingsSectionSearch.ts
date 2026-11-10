@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import type { SettingsSectionId } from '@/shared/layout/workspace'
+import type { SettingsSectionId } from '@/shared/layout'
 
 export type SettingsSearchHit = {
   id: SettingsSectionId

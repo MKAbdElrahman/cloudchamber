@@ -1,4 +1,4 @@
-import { env } from '@/shared/config/env'
+import { env } from '@/shared/config'
 
 /**
  * Derive the canonical sourceRef recorded by the backend from a tus upload URL.

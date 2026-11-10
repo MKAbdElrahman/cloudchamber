@@ -2,14 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useMediaQuery } from '@astryxdesign/core/hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import {
-  Layout,
-  LayoutContent,
-  LayoutHeader,
-  LayoutPanel,
-  HStack,
-  VStack,
-} from '@astryxdesign/core/Layout'
+import { LayoutPanel, HStack, VStack } from '@astryxdesign/core/Layout'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Button } from '@astryxdesign/core/Button'
@@ -27,18 +20,18 @@ import {
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
 
-import { env } from '@/shared/config/env'
-import { AppearancePanel } from './AppearancePanel'
-import { SettingsSectionSearch } from './SettingsSectionSearch'
-import { useSettingsSectionSearch } from './useSettingsSectionSearch'
-import { useSession } from '@/shared/auth/session'
-import { accountDisplayLabel, parseServiceJwt } from '@/shared/auth/tokenClaims'
-import { PageHeader } from '@/shared/layout/PageHeader'
-import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
-import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
+import { AppearancePanel, SettingsSectionSearch, useSettingsSectionSearch } from '@/features/settings'
+import { accountDisplayLabel, parseServiceJwt, useSession } from '@/shared/auth'
+import { env } from '@/shared/config'
+import {
+  isSettingsSectionId,
+  PageHeader,
+  WorkspacePage,
+  WORKSPACE_PATHS,
+  type SettingsSectionId,
+} from '@/shared/layout'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 import { META_TOKEN_COLOR, SHELL_ICON_COLOR, useThemePreference } from '@/shared/theme'
-
-import { isSettingsSectionId, type SettingsSectionId } from '@/shared/layout/workspace'
 
 const fillViewport: CSSProperties = { minHeight: '100dvh' }
 
@@ -60,7 +53,8 @@ export function SettingsPanel() {
   const navigate = useNavigate()
   const { section: sectionParam } = useParams<{ section: string }>()
   const section: SettingsSectionId = isSettingsSectionId(sectionParam) ? sectionParam : 'appearance'
-  const [mobileShowContent, setMobileShowContent] = useState(false)
+  const [openOnNarrow, setOpenOnNarrow] = useState<SettingsSectionId | null>(null)
+  const mobileShowContent = isNarrow && openOnNarrow === section
   const { query, setQuery, results, isFiltering } = useSettingsSectionSearch()
   const { themeId, setThemeId, colorMode, setColorMode } = useThemePreference()
   const { token, displayName } = useSession()
@@ -71,17 +65,13 @@ export function SettingsPanel() {
     }
   }, [sectionParam, navigate])
 
-  useEffect(() => {
-    setMobileShowContent(false)
-  }, [section])
-
   const claims = useMemo(() => (token ? parseServiceJwt(token) : null), [token])
   const accountLabel = accountDisplayLabel(claims, displayName)
   const activeNav = NAV.find((n) => n.id === section)
 
   function selectSection(id: SettingsSectionId) {
     navigate(WORKSPACE_PATHS.settingsSection(id))
-    if (isNarrow) setMobileShowContent(true)
+    if (isNarrow) setOpenOnNarrow(id)
   }
 
   const sectionBody = (
@@ -181,13 +171,7 @@ export function SettingsPanel() {
 
   if (isNarrow && !mobileShowContent) {
     return (
-      <Layout
-        height="fill"
-        contentWidth={WORKSPACE_CONTENT_WIDTH}
-        padding={WORKSPACE_CONTENT_PADDING}
-        style={fillViewport}
-      >
-        <LayoutContent>
+      <WorkspacePage style={fillViewport}>
           <VStack gap={WORKSPACE_GAP.group}>
             <Heading level={2}>Settings</Heading>
             <SettingsSectionSearch query={query} onQueryChange={setQuery} />
@@ -196,16 +180,12 @@ export function SettingsPanel() {
             ) : null}
             {mobileNavList}
           </VStack>
-        </LayoutContent>
-      </Layout>
+      </WorkspacePage>
     )
   }
 
   return (
-    <Layout
-      height="fill"
-      contentWidth={WORKSPACE_CONTENT_WIDTH}
-      padding={WORKSPACE_CONTENT_PADDING}
+    <WorkspacePage
       style={fillViewport}
       start={
         isNarrow ? undefined : (
@@ -221,15 +201,8 @@ export function SettingsPanel() {
           </LayoutPanel>
         )
       }
-      header={
-        isNarrow ? undefined : (
-          <LayoutHeader hasDivider>
-            <PageHeader title={activeNav?.label ?? 'Settings'} />
-          </LayoutHeader>
-        )
-      }
-      content={
-        <LayoutContent>
+      header={isNarrow ? undefined : <PageHeader title={activeNav?.label ?? 'Settings'} />}
+    >
           <VStack gap={WORKSPACE_GAP.group}>
             {isNarrow ? (
               <Toolbar
@@ -241,15 +214,13 @@ export function SettingsPanel() {
                     size="sm"
                     isIconOnly
                     icon={<ArrowLeftIcon />}
-                    onClick={() => setMobileShowContent(false)}
+                    onClick={() => setOpenOnNarrow(null)}
                   />
                 }
               />
             ) : null}
             {sectionBody}
           </VStack>
-        </LayoutContent>
-      }
-    />
+    </WorkspacePage>
   )
 }

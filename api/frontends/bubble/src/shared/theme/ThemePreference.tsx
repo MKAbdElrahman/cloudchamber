@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
   applyAppearanceToDocument,
@@ -15,19 +7,8 @@ import {
   type ColorMode,
 } from './appearanceStorage'
 import { ensureThemePackAssets } from './themeAssets'
-import { APP_THEMES, type AppThemeId, type AppThemeOption } from './themes'
-
-export type { ColorMode }
-
-type ThemePreferenceContextValue = {
-  themeId: AppThemeId
-  option: AppThemeOption
-  colorMode: ColorMode
-  setThemeId: (id: AppThemeId) => void
-  setColorMode: (mode: ColorMode) => void
-}
-
-const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null)
+import { APP_THEMES, type AppThemeId } from './themes'
+import { ThemePreferenceContext } from './useThemePreference'
 
 function persist(themeId: AppThemeId, colorMode: ColorMode) {
   const snapshot = { v: 1 as const, themeId, colorMode }
@@ -60,10 +41,4 @@ export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
   )
 
   return <ThemePreferenceContext.Provider value={value}>{children}</ThemePreferenceContext.Provider>
-}
-
-export function useThemePreference() {
-  const ctx = useContext(ThemePreferenceContext)
-  if (!ctx) throw new Error('useThemePreference must be used within ThemePreferenceProvider')
-  return ctx
 }

@@ -11,7 +11,7 @@ import { Switch } from '@astryxdesign/core/Switch'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { CheckCircleIcon } from '@heroicons/react/24/outline'
 
-import { authHandoffDelayMs } from '@/shared/auth/authHandoffMs'
+import { authHandoffDelayMs } from '@/shared/auth'
 
 import { authDefaults, fetchToken } from './api'
 

@@ -2,7 +2,7 @@ import { ChevronRightIcon, ClockIcon } from '@heroicons/react/24/outline'
 
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
 import { Icon } from '@astryxdesign/core/Icon'
-import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
+import { WORKSPACE_PATHS } from '@/shared/layout'
 
 type JobRunBreadcrumbsProps = {
   currentLabel: string

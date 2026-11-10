@@ -48,6 +48,7 @@ zarf/build/
 .vscode
 CLAUDE.md
 .claude/
+.superpowers/
 
 # Architecture specific extensions/prefixes
 *.[568vq]

@@ -1,10 +1,6 @@
-import { ChevronRightIcon } from '@heroicons/react/24/outline'
-
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
-import { Icon } from '@astryxdesign/core/Icon'
 import { useProject } from '@/features/projects'
 import { WORKSPACE_PATHS } from '@/shared/layout'
-import { MUTED_ICON_COLOR } from '@/shared/theme'
 
 type ProjectTrailProps = {
   projectId: string
@@ -20,11 +16,7 @@ export function ProjectTrail({ projectId, current, parent }: ProjectTrailProps) 
   const name = project?.name ?? 'Project'
 
   return (
-    <Breadcrumbs
-      variant="supporting"
-      separator={<Icon icon={ChevronRightIcon} size="sm" color={MUTED_ICON_COLOR} />}
-      aria-label="Project"
-    >
+    <Breadcrumbs variant="supporting" aria-label="Project">
       <BreadcrumbItem href={WORKSPACE_PATHS.home}>Projects</BreadcrumbItem>
       {current ? (
         <BreadcrumbItem href={WORKSPACE_PATHS.project(projectId)}>{name}</BreadcrumbItem>

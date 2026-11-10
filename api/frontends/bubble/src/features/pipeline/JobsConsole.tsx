@@ -17,6 +17,7 @@ import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
 import { JobStatusLabel } from './JobStatusLabel'
+import { jobOutcomeBanner } from './jobStatus'
 import type { PipelineJob } from './types'
 import { usePipelineJob } from './usePipelineJob'
 
@@ -56,11 +57,12 @@ export function JobsConsole({
   const fallbackQuery = usePipelineJob(token, jobQueryProp ? null : jobId)
   const jobQuery = jobQueryProp ?? fallbackQuery
   const job = jobQuery.data
+  const outcome = job ? jobOutcomeBanner(job.status) : null
 
   const shell = (body: ReactNode) => {
     if (embedded) return body
     return (
-      <Card padding={4} {...WORKSPACE_CARD}>
+      <Card {...WORKSPACE_CARD}>
         {body}
       </Card>
     )
@@ -97,7 +99,7 @@ export function JobsConsole({
 
       {job ? (
         <VStack gap={WORKSPACE_GAP.group}>
-          <HStack vAlign="center" justify="between" gap={2}>
+          <HStack vAlign="center" justify="between" gap={WORKSPACE_GAP.group}>
             <JobStatusLabel status={job.status} />
             {embedded ? (
               <Button
@@ -127,7 +129,9 @@ export function JobsConsole({
               </MetadataListItem>
             ) : null}
           </MetadataList>
-          {job.errorMessage ? <Banner status="error" title="Error" description={job.errorMessage} /> : null}
+          {job?.errorMessage && outcome ? (
+            <Banner status={outcome.status} title={outcome.title} description={job.errorMessage} />
+          ) : null}
         </VStack>
       ) : null}
     </VStack>

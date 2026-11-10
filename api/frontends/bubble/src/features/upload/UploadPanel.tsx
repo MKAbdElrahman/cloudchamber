@@ -89,7 +89,7 @@ export function UploadPanel({
       {embedded ? null : (
         <VStack gap={WORKSPACE_GAP.local}>
           <Heading level={2}>Upload recording</Heading>
-          <Text color="secondary">
+          <Text type="supporting">
             Drop video or audio — resumable tus transfer with server-side verification.
           </Text>
         </VStack>
@@ -150,7 +150,7 @@ export function UploadPanel({
   if (embedded) return content
 
   return (
-    <Card padding={4} {...WORKSPACE_CARD}>
+    <Card {...WORKSPACE_CARD}>
       {content}
     </Card>
   )

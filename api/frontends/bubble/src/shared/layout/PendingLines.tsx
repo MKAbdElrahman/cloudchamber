@@ -7,9 +7,9 @@ import { WORKSPACE_GAP } from '@/shared/spacing'
 export function PendingLines() {
   return (
     <VStack gap={WORKSPACE_GAP.group} width="100%" aria-busy="true" aria-label="Loading">
-      <Skeleton height={16} width="36%" index={0} />
-      <Skeleton height={12} index={1} />
-      <Skeleton height={12} width="72%" index={2} />
+      <Skeleton height="1rem" width="36%" index={0} />
+      <Skeleton height="0.75rem" index={1} />
+      <Skeleton height="0.75rem" width="72%" index={2} />
     </VStack>
   )
 }

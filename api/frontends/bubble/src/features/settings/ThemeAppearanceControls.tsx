@@ -14,10 +14,11 @@ import {
   SunIcon,
 } from '@heroicons/react/24/outline'
 
-import type { ColorMode } from '@/shared/theme'
+import { WORKSPACE_GAP } from '@/shared/spacing'
+import { MUTED_ICON_COLOR, type ColorMode } from '@/shared/theme'
 
 function PreviewBar({ wide }: { wide?: boolean }) {
-  return <Skeleton width={wide ? '66%' : '50%'} height={4} radius="rounded" />
+  return <Skeleton width={wide ? '66%' : '50%'} height="0.25rem" radius="rounded" />
 }
 
 /** Mini UI chrome inside a nested Theme (settings color-mode swatch). */
@@ -30,15 +31,15 @@ function ThemeModeCanvas({
 }) {
   return (
     <Theme theme={previewTheme} mode={mode}>
-      <Section variant="muted" padding={2} height="100%">
-        <VStack gap={1.5} height="100%">
-          <VStack gap={1} hAlign="center">
+      <Section variant="muted" padding={WORKSPACE_GAP.local} height="100%">
+        <VStack gap={WORKSPACE_GAP.local} height="100%">
+          <VStack gap={WORKSPACE_GAP.local} hAlign="center">
             <PreviewBar wide />
             <PreviewBar />
           </VStack>
           <StackItem size="fill">
-            <Section variant="section" padding={2} height="100%">
-              <VStack gap={1} vAlign="center" height="100%">
+            <Section variant="section" padding={WORKSPACE_GAP.local} height="100%">
+              <VStack gap={WORKSPACE_GAP.local} vAlign="center" height="100%">
                 <PreviewBar />
                 <PreviewBar />
                 <PreviewBar />
@@ -103,8 +104,8 @@ export function ColorModeChoiceCards({
       role="radiogroup"
       aria-label="Color mode"
       columns={{ minWidth: 96, max: 3 }}
-      gap={2}
-      maxWidth={480}
+      gap={WORKSPACE_GAP.group}
+      maxWidth="30rem"
     >
       {COLOR_MODE_CHOICES.map((choice) => {
         const selected = value === choice.value
@@ -113,15 +114,15 @@ export function ColorModeChoiceCards({
             key={choice.value}
             label={choice.label}
             isSelected={selected}
-            padding={2}
+            padding={WORKSPACE_GAP.local}
             onChange={() => {
               if (!selected) onChange(choice.value)
             }}
           >
-            <VStack gap={1.5}>
+            <VStack gap={WORKSPACE_GAP.local}>
               <ThemeModePreview scheme={choice.scheme} previewTheme={previewTheme} />
-              <HStack gap={1} vAlign="center" hAlign="center">
-                <Icon icon={choice.icon} size="sm" color="secondary" />
+              <HStack gap={WORKSPACE_GAP.local} vAlign="center" hAlign="center">
+                <Icon icon={choice.icon} size="sm" color={MUTED_ICON_COLOR} />
                 <Text type={selected ? 'label' : 'supporting'}>{choice.label}</Text>
               </HStack>
             </VStack>

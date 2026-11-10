@@ -7,7 +7,7 @@ import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList'
 import { Tab, TabList } from '@astryxdesign/core/TabList'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { JobStatusLabel, usePipelineJob } from '@/features/pipeline'
+import { JobStatusLabel, jobOutcomeBanner, usePipelineJob } from '@/features/pipeline'
 import { ForeignProjectNotice, useJobOwner } from '@/features/projects'
 import { JobInputMedia } from '@/features/upload'
 import { PageHeader, PendingLines, WorkspacePage } from '@/shared/layout'
@@ -33,6 +33,7 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
   const job = jobQuery.data
   const inProject = owner.data === projectId
   const visibleJob = inProject ? job : undefined
+  const outcome = visibleJob ? jobOutcomeBanner(visibleJob.status) : null
   const pending = owner.isPending || (inProject && jobQuery.isPending && !job)
 
   if (!jobId) {
@@ -124,8 +125,8 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
                 </MetadataListItem>
               ) : null}
             </MetadataList>
-            {visibleJob.errorMessage ? (
-              <Banner status="error" title="Error" description={visibleJob.errorMessage} />
+            {visibleJob?.errorMessage && outcome ? (
+              <Banner status={outcome.status} title={outcome.title} description={visibleJob.errorMessage} />
             ) : null}
           </VStack>
         ) : null}

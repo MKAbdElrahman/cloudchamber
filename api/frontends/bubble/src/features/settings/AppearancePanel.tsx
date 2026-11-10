@@ -6,7 +6,7 @@ import { APP_THEMES, type AppThemeId, type ColorMode } from '@/shared/theme'
 import { ColorModeChoiceCards } from './ThemeAppearanceControls'
 import { SettingsCard, SettingsRow } from './SettingsFormLayout'
 
-const CONTROL_WIDTH = 192
+const CONTROL_WIDTH = '12rem'
 
 const PACK_OPTIONS = Object.values(APP_THEMES).map((t) => ({ value: t.id, label: t.label }))
 

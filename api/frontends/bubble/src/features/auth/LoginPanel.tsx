@@ -12,6 +12,7 @@ import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { CheckCircleIcon } from '@heroicons/react/24/outline'
 
 import { authHandoffDelayMs } from '@/shared/auth'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { authDefaults, fetchToken } from './api'
 
@@ -57,7 +58,7 @@ export function LoginPanel({
 
   if (success) {
     return (
-      <VStack gap={4} height="100%" vAlign="center" hAlign="stretch" width="100%">
+      <VStack gap={WORKSPACE_GAP.section} height="100%" vAlign="center" hAlign="stretch" width="100%">
         <EmptyState
           icon={<Icon icon={CheckCircleIcon} size="lg" color="success" />}
           title="Signed in"
@@ -74,12 +75,10 @@ export function LoginPanel({
   }
 
   return (
-    <VStack gap={4} height="100%" vAlign="center" hAlign="stretch" width="100%">
-      <VStack gap={1} width="100%">
-        <Heading level={1}>Sign in</Heading>
-        <Text color="secondary">
-          Pipeline studio for your organization
-        </Text>
+    <VStack gap={WORKSPACE_GAP.section} height="100%" vAlign="center" hAlign="stretch" width="100%">
+      <VStack gap={WORKSPACE_GAP.local} width="100%">
+        <Heading level={2}>Sign in</Heading>
+        <Text type="supporting">Pipeline studio for your organization</Text>
       </VStack>
 
       <TabList value={tab} onChange={(v) => setTab(v as AuthTab)}>
@@ -89,7 +88,7 @@ export function LoginPanel({
 
       {tab === 'credentials' ? (
         <form onSubmit={onSubmit}>
-          <VStack gap={3}>
+          <VStack gap={WORKSPACE_GAP.group}>
             <TextInput
               label="Email or username"
               placeholder="name@company.com"
@@ -122,7 +121,7 @@ export function LoginPanel({
             <Switch label="Developer endpoints" value={showAdvanced} onChange={setShowAdvanced} />
 
             {showAdvanced ? (
-              <VStack gap={2}>
+              <VStack gap={WORKSPACE_GAP.group}>
                 <TextInput label="Auth service base URL" value={authBase} onChange={setAuthBase} />
                 <TextInput label="Key ID (kid)" value={kid} onChange={setKid} />
               </VStack>
@@ -139,7 +138,7 @@ export function LoginPanel({
           </VStack>
         </form>
       ) : (
-        <VStack gap={3}>
+        <VStack gap={WORKSPACE_GAP.group}>
           <TextArea
             label="Bearer token"
             value={manualToken}

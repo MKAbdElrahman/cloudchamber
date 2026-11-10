@@ -45,7 +45,7 @@ export function CreateJobForm({
       {embedded ? null : (
         <VStack gap={WORKSPACE_GAP.local}>
           <Heading level={3}>Create job</Heading>
-          <Text color="secondary">Uses your finalized source reference from upload.</Text>
+          <Text type="supporting">Uses your finalized source reference from upload.</Text>
         </VStack>
       )}
       {embedded && !initialSourceRef ? (

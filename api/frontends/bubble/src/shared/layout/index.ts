@@ -2,6 +2,7 @@ export { AccountMenu } from './AccountMenu'
 export { AppChrome } from './AppChrome'
 export { PageHeader } from './PageHeader'
 export { PendingLines } from './PendingLines'
+export { WORKSPACE_CONTENT_PADDING } from './contentSurface'
 export { SHELL_NARROW_QUERY } from './shellBreakpoint'
 export { WorkspacePage } from './WorkspacePage'
 export {

@@ -34,7 +34,7 @@ export function AccountMenu({ accountName, onSignOut }: AccountMenuProps) {
       hasChevron={false}
       placement="above"
       alignment={isCollapsed ? 'center' : 'start'}
-      menuWidth={260}
+      menuWidth="16.25rem"
       presentation="popover"
       header={
         <VStack gap={0}>

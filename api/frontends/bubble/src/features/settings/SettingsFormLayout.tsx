@@ -6,18 +6,17 @@ import { VStack } from '@astryxdesign/core/Layout'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Text } from '@astryxdesign/core/Text'
 
+import { WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
+import { SHELL_ICON_COLOR } from '@/shared/theme'
+
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>
 
 /** Muted card around a settings list (settings-sidebar rows). */
 export function SettingsCard({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <VStack gap={1.5} width="100%">
-      {title != null ? (
-        <Text type="label" color="secondary">
-          {title}
-        </Text>
-      ) : null}
-      <Card padding={0} width="100%" variant="muted">
+    <VStack gap={WORKSPACE_GAP.local} width="100%">
+      {title != null ? <Text type="label">{title}</Text> : null}
+      <Card width="100%" {...WORKSPACE_CARD_FLUSH}>
         <List density="spacious" edge="flush" hasDividers aria-label={title ?? 'Settings'}>
           {children}
         </List>
@@ -41,8 +40,8 @@ export function SettingsRow({
 }) {
   const supporting =
     description != null || detail != null ? (
-      <VStack gap={2}>
-        {description != null ? <Text color="secondary">{description}</Text> : null}
+      <VStack gap={WORKSPACE_GAP.group}>
+        {description != null ? <Text type="supporting">{description}</Text> : null}
         {detail}
       </VStack>
     ) : undefined
@@ -52,7 +51,7 @@ export function SettingsRow({
       label={title}
       description={supporting}
       align="first-line"
-      startContent={<Icon icon={icon} size="sm" color="secondary" />}
+      startContent={<Icon icon={icon} size="sm" color={SHELL_ICON_COLOR} />}
       endContent={control}
     />
   )

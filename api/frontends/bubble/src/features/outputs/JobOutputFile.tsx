@@ -12,7 +12,7 @@ import { Token } from '@astryxdesign/core/Token'
 
 import { InlineMediaPlayer } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
-import { META_TOKEN_COLOR } from '@/shared/theme'
+import { META_TOKEN_COLOR, MUTED_ICON_COLOR } from '@/shared/theme'
 
 import { outputFileKindLabel } from './outputFileKind'
 import { outputMediaKindForFile, playbackUrlForOutput } from './outputMedia'
@@ -20,7 +20,7 @@ import type { OutputFile } from './types'
 
 function MarkdownPreview({ source }: { source: string }) {
   return (
-    <VStack gap={0.5}>
+    <VStack gap={WORKSPACE_GAP.local}>
       {source.split('\n').map((line, index) => (
         <Text key={index} type="code" display="block">
           {line.length > 0 ? line : '\u00a0'}
@@ -41,7 +41,7 @@ export function JobOutputFile({ file }: JobOutputFileProps) {
   const mediaKind = outputMediaKindForFile(file)
 
   return (
-    <Card padding={4} {...WORKSPACE_CARD}>
+    <Card {...WORKSPACE_CARD}>
       <VStack gap={WORKSPACE_GAP.group}>
         <MetadataList>
           <MetadataListItem label="File">{file.name}</MetadataListItem>
@@ -69,9 +69,9 @@ export function JobOutputFile({ file }: JobOutputFileProps) {
               </AspectRatio>
             ) : (
               <AspectRatio ratio={4 / 3} fit="cover">
-                <VStack hAlign="center" vAlign="center" gap={2} width="100%" height="100%">
-                  <Icon icon={DocumentIcon} size="lg" color="secondary" />
-                  <Text color="secondary">
+                <VStack hAlign="center" vAlign="center" gap={WORKSPACE_GAP.local} width="100%" height="100%">
+                  <Icon icon={DocumentIcon} size="lg" color={MUTED_ICON_COLOR} />
+                  <Text type="supporting">
                     PDF preview will load when the file is available in storage.
                   </Text>
                 </VStack>

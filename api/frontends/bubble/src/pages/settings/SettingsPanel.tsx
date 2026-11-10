@@ -28,7 +28,7 @@ import {
   type SettingsSectionId,
 } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
-import { META_TOKEN_COLOR, useThemePreference } from '@/shared/theme'
+import { META_TOKEN_COLOR, SHELL_ICON_COLOR, useThemePreference } from '@/shared/theme'
 
 const NAV: { id: SettingsSectionId; label: string; icon: typeof PaintBrushIcon }[] = [
   { id: 'appearance', label: 'Appearance', icon: PaintBrushIcon },
@@ -62,8 +62,11 @@ export function SettingsPanel() {
   const accountLabel = accountDisplayLabel(claims, displayName)
   const activeNav = NAV.find((n) => n.id === section)
 
+  const sectionTitle = activeNav?.label ?? 'Settings'
+
   const sectionBody = (
     <VStack gap={WORKSPACE_GAP.section}>
+      <Heading level={2}>{sectionTitle}</Heading>
       {section === 'appearance' ? (
         <AppearancePanel
           themeId={themeId}
@@ -79,7 +82,7 @@ export function SettingsPanel() {
           <MetadataListItem label="User ID (sub)">{claims?.sub ?? '—'}</MetadataListItem>
           <MetadataListItem label="Roles">
             {claims && claims.roles.length > 0 ? (
-              <HStack gap={1} wrap="wrap">
+              <HStack gap={WORKSPACE_GAP.local} wrap="wrap">
                 {claims.roles.map((role) => (
                   <Token key={role} label={role} size="sm" color={META_TOKEN_COLOR} />
                 ))}
@@ -107,12 +110,12 @@ export function SettingsPanel() {
             <MetadataListItem label="tusd">{env.tusdEndpoint}</MetadataListItem>
             <MetadataListItem label="Artifacts bucket">{env.artifactsBucket}</MetadataListItem>
           </MetadataList>
-          <VStack gap={1}>
+          <VStack gap={WORKSPACE_GAP.local}>
             <Text type="label">Astryx references</Text>
             <Text type="supporting">
               Local checklist: <Text type="code">references/astryx/TEMPLATE_SYNC.md</Text>
             </Text>
-            <VStack gap={1} paddingBlockStart={1}>
+            <VStack gap={WORKSPACE_GAP.local} paddingBlockStart={WORKSPACE_GAP.local}>
               {DEVELOPER_LINKS.map((item) => (
                 <Link key={item.href} href={item.href} target="_blank" rel="noreferrer">
                   {item.label}
@@ -131,7 +134,6 @@ export function SettingsPanel() {
 
   const sectionList = (
     <VStack gap={WORKSPACE_GAP.group}>
-      <Heading level={2}>Settings</Heading>
       <SettingsSectionSearch query={query} onQueryChange={setQuery} />
       {isFiltering && navItems.length === 0 ? (
         <Text type="supporting">No matching sections.</Text>
@@ -143,7 +145,7 @@ export function SettingsPanel() {
             label={item.label}
             href={WORKSPACE_PATHS.settingsSection(item.id)}
             isSelected={section === item.id}
-            startContent={<Icon icon={item.icon} size="sm" color="secondary" />}
+            startContent={<Icon icon={item.icon} size="sm" color={SHELL_ICON_COLOR} />}
           />
         ))}
       </List>
@@ -154,6 +156,7 @@ export function SettingsPanel() {
     return (
       <WorkspacePage>
         <VStack gap={WORKSPACE_GAP.section}>
+          <Heading level={1}>Settings</Heading>
           {sectionList}
           {sectionBody}
         </VStack>
@@ -164,11 +167,11 @@ export function SettingsPanel() {
   return (
     <WorkspacePage
       start={
-        <LayoutPanel width={280} hasDivider>
+        <LayoutPanel width="17.5rem" hasDivider>
           {sectionList}
         </LayoutPanel>
       }
-      header={<PageHeader title={activeNav?.label ?? 'Settings'} />}
+      header={<PageHeader title="Settings" />}
     >
       {sectionBody}
     </WorkspacePage>

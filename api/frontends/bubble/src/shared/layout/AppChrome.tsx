@@ -12,9 +12,11 @@ import {
 import { Cog6ToothIcon, FolderIcon } from '@heroicons/react/24/outline'
 import { FolderIcon as FolderSolid } from '@heroicons/react/24/solid'
 
+import { WORKSPACE_GAP } from '@/shared/spacing'
+
+import { AccountMenu } from './AccountMenu'
 import type { WorkspaceSection } from './workspace'
 import { WORKSPACE_PATHS } from './workspacePaths'
-import { AccountMenu } from './AccountMenu'
 
 type AppChromeProps = {
   children: ReactNode
@@ -53,7 +55,7 @@ export function AppChrome({ children, section, accountName, onSignOut }: AppChro
             autoSaveId: 'bubble.shell-sidenav',
           }}
           header={
-            <HStack gap={1} vAlign="center" width="100%">
+            <HStack gap={WORKSPACE_GAP.local} vAlign="center" width="100%">
               <SideNavCollapseButton size="sm" />
             </HStack>
           }

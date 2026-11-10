@@ -29,7 +29,7 @@ import {
 } from '@/features/projects'
 import { listJobs, normalizeJobs } from '@/features/pipeline'
 import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
-import { WORKSPACE_GAP } from '@/shared/spacing'
+import { WORKSPACE_CARD, WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
 import { LibraryViewControl } from './LibraryViewControl'
@@ -80,14 +80,13 @@ function ProjectTile({ project, jobs, countsReady, onRename, onDelete }: Project
     <ClickableCard
       label={`Open ${project.name}`}
       href={WORKSPACE_PATHS.project(project.id)}
-      padding={0}
-      elevation="low"
+      {...WORKSPACE_CARD_FLUSH}
       height="100%"
     >
       <VStack gap={0} height="100%">
-        <HStack gap={3} padding={4} justify="between" vAlign="center">
-          <HStack gap={3} vAlign="center">
-            <Icon icon={FolderIcon} size="lg" color="secondary" />
+        <HStack gap={WORKSPACE_GAP.group} padding={WORKSPACE_CARD.padding} justify="between" vAlign="center">
+          <HStack gap={WORKSPACE_GAP.group} vAlign="center">
+            <Icon icon={FolderIcon} size="lg" color={MUTED_ICON_COLOR} />
             <Heading level={3} maxLines={1}>
               {project.name}
             </Heading>
@@ -104,8 +103,8 @@ function ProjectTile({ project, jobs, countsReady, onRename, onDelete }: Project
           />
         </HStack>
         <Divider />
-        <VStack padding={4}>
-          <Text type="body" color="secondary">
+        <VStack padding={WORKSPACE_CARD.padding}>
+          <Text type="supporting">
             {summary ?? ' '}
           </Text>
         </VStack>
@@ -204,7 +203,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
             <LibraryViewControl value={view} onChange={setView} />
           </HStack>
           {view === 'grid' ? (
-            <Grid columns={{ minWidth: 240, max: 4 }} gap={4} width="100%" aria-label="Projects">
+            <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Projects">
               {rows.map((project) => {
                 const jobs = projectJobCount(project.id, scope.data, scope.isPending)
                 return (
@@ -233,7 +232,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
                     href={WORKSPACE_PATHS.project(project.id)}
                     label={project.name}
                     description={summary ?? undefined}
-                    startContent={<Icon icon={FolderIcon} size="sm" color="secondary" />}
+                    startContent={<Icon icon={FolderIcon} size="sm" color={MUTED_ICON_COLOR} />}
                     endContent={
                       <MoreMenu
                         label={`Manage ${project.name}`}

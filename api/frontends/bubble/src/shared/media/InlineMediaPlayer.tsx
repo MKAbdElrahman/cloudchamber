@@ -6,6 +6,9 @@ import { AspectRatio } from '@astryxdesign/core/AspectRatio'
 import { Icon } from '@astryxdesign/core/Icon'
 import { Text } from '@astryxdesign/core/Text'
 
+import { WORKSPACE_GAP } from '@/shared/spacing'
+import { MUTED_ICON_COLOR } from '@/shared/theme'
+
 import type { SourceMediaKind } from './sourceMedia'
 
 type InlineMediaPlayerProps = {
@@ -45,9 +48,9 @@ export function InlineMediaPlayer({ playbackUrl, kind }: InlineMediaPlayerProps)
 
   return (
     <AspectRatio ratio={16 / 9} fit="cover">
-      <VStack hAlign="center" vAlign="center" gap={2} width="100%" height="100%">
-        <Icon icon={FilmIcon} size="lg" color="secondary" />
-        <Text color="secondary">
+      <VStack hAlign="center" vAlign="center" gap={WORKSPACE_GAP.local} width="100%" height="100%">
+        <Icon icon={FilmIcon} size="lg" color={MUTED_ICON_COLOR} />
+        <Text type="supporting">
           {playbackError
             ? 'Preview is not available from this environment.'
             : 'Preview will appear when the file URL can be resolved.'}

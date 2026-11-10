@@ -1,17 +1,20 @@
 import { Grid } from '@astryxdesign/core/Grid'
 import { VStack } from '@astryxdesign/core/Layout'
 import { Section } from '@astryxdesign/core/Section'
-import { Text } from '@astryxdesign/core/Text'
+import { Heading } from '@astryxdesign/core/Text'
+
+import { WORKSPACE_CONTENT_PADDING } from '@/shared/layout'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { LoginPanel } from './LoginPanel'
 
-// max lets the last column shrink under the floor, so a phone gets one
-// full-width column instead of a 320px track that overflows the viewport.
+// Grid's minWidth is a px floor. 320 keeps two columns from clipping a phone
+// once the form column is allowed to shrink under that floor.
 const COLUMN_MIN_WIDTH = 320
 
 /**
  * Sign-in fills the viewport. At two columns the hero covers its half;
- * below ~640px the grid drops to one column and the form stays on screen.
+ * below the two-column floor the grid drops to one column and the form stays on screen.
  */
 export function SignInExperience({
   onAuthenticated,
@@ -26,12 +29,10 @@ export function SignInExperience({
       width="100%"
       height="100%"
     >
-      <Section variant="transparent" padding={6} height="100%">
-        <VStack gap={4} height="100%" vAlign="center" hAlign="center" width="100%">
-          <VStack gap={4} width="100%" maxWidth={480}>
-            <Text type="body" weight="bold">
-              CloudChamber
-            </Text>
+      <Section variant="transparent" padding={WORKSPACE_CONTENT_PADDING} height="100%">
+        <VStack gap={WORKSPACE_GAP.section} height="100%" vAlign="center" hAlign="center" width="100%">
+          <VStack gap={WORKSPACE_GAP.section} width="100%" maxWidth="30rem">
+            <Heading level={1}>CloudChamber</Heading>
             <LoginPanel onAuthenticated={onAuthenticated} />
           </VStack>
         </VStack>

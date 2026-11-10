@@ -69,7 +69,7 @@ export function PipelineWorkspace({ token, projectId }: PipelineWorkspaceProps) 
         </VStack>
       }
     >
-      <VStack gap={WORKSPACE_GAP.group} width="100%" maxWidth={640}>
+      <VStack gap={WORKSPACE_GAP.group} width="100%" maxWidth="40rem">
         {stage === 0 ? (
           <UploadPanel token={token} embedded onSourceRef={handleSourceRef} />
         ) : null}

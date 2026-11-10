@@ -15,7 +15,7 @@ import { JobStatusLabel, listJobs, normalizeJobs, type PipelineJob } from '@/fea
 import { claimUnassignedJobs, DEFAULT_PROJECT_ID, listProjectJobIds, useProject } from '@/features/projects'
 import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { fileNameFromSourceRef } from '@/shared/media'
-import { WORKSPACE_GAP } from '@/shared/spacing'
+import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
 import { LibraryViewControl } from './LibraryViewControl'
@@ -99,7 +99,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
                     </Text>
                   ) : undefined
                 }
-                startContent={<Icon icon={QueueListIcon} size="sm" color="secondary" />}
+                startContent={<Icon icon={QueueListIcon} size="sm" color={MUTED_ICON_COLOR} />}
                 endContent={<JobStatusLabel status={job.status} />}
                 href={WORKSPACE_PATHS.historyJob(projectId, job.id)}
               />
@@ -107,26 +107,25 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           </List>
         ) : null}
         {jobs.length > 0 && view === 'grid' ? (
-          <Grid columns={{ minWidth: 240, max: 4 }} gap={4} width="100%" aria-label="Jobs">
+          <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Jobs">
             {jobs.map((job) => (
               <ClickableCard
                 key={job.id}
                 label={`Open ${jobLabel(job)}`}
                 href={WORKSPACE_PATHS.historyJob(projectId, job.id)}
-                padding={4}
-                elevation="low"
+                {...WORKSPACE_CARD}
                 height="100%"
               >
-                <VStack gap={2}>
+                <VStack gap={WORKSPACE_GAP.group}>
                   <HStack justify="between" vAlign="start">
-                    <Icon icon={QueueListIcon} size="sm" color="secondary" />
+                    <Icon icon={QueueListIcon} size="sm" color={MUTED_ICON_COLOR} />
                     <JobStatusLabel status={job.status} />
                   </HStack>
                   <Heading level={3} maxLines={2}>
                     {jobLabel(job)}
                   </Heading>
                   {job.dateCreated ? (
-                    <Text type="supporting" color="secondary">
+                    <Text type="supporting">
                       <Timestamp value={job.dateCreated} format="relative" />
                     </Text>
                   ) : null}

@@ -61,8 +61,8 @@ You can ask the user for their name to make the interaction more natural.
 - If the `gopls` MCP is missing, and only then, you can use the CLI tools `go doc` and `gopls` (try via LSP) for API and
   doc inspection.
 
-## CloudChamber frontend (Astryx)
+## Bubble frontend (Astryx)
 
-When editing `api/frontends/cloudchamber/`, follow the Astryx agent block in
-[`api/frontends/cloudchamber/AGENTS.md`](api/frontends/cloudchamber/AGENTS.md). Run CLI commands from that directory as
+When editing `api/frontends/bubble/`, follow the Astryx agent block in
+[`api/frontends/bubble/AGENTS.md`](api/frontends/bubble/AGENTS.md). Run CLI commands from that directory as
 `pnpm exec astryx <cmd>` (or `pnpm astryx` via the package script).

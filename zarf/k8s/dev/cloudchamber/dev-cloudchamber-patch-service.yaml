@@ -11,9 +11,9 @@ spec:
     - name: cloudchamber
       port: 3000
       targetPort: cloudchamber
-    - name: cloudchamber-debug
+    - name: chamber-debug
       port: 3010
-      targetPort: cloudchamber-debug
+      targetPort: chamber-debug
     - name: metrics
       port: 4000
       targetPort: metrics

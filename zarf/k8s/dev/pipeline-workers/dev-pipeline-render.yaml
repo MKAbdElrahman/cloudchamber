@@ -16,7 +16,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: pipeline-render
-          image: localhost/ardanlabs/pipeline-render:0.0.1
+          image: localhost/cloudchamber/pipeline-render:0.0.1
           env:
             - name: PIPELINE_TEMPORAL_HOST_PORT
               value: temporal-server-service:7233

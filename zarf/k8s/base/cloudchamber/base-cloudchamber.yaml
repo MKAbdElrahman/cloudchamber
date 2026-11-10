@@ -75,7 +75,7 @@ spec:
           ports:
             - name: cloudchamber
               containerPort: 3000
-            - name: cloudchamber-debug
+            - name: chamber-debug
               containerPort: 3010
 
           readinessProbe: # readiness probes mark the service available to accept traffic.

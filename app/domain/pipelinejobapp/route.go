@@ -28,13 +28,13 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	ruleUser := mid.Authorize(cfg.AuthClient, auth.RuleUserOnly)
+	ruleAny := mid.Authorize(cfg.AuthClient, auth.RuleAny)
 	rulePipelineJob := mid.AuthorizePipeline(cfg.AuthClient, cfg.PipelineJobBus)
 
 	api := newApp(cfg.Log, cfg.PipelineJobBus, cfg.UploadBus, cfg.TemporalClient, cfg.TemporalNamespace)
 
-	app.HandlerFunc(http.MethodPost, version, "/pipeline/jobs", api.create, authen, ruleUser)
-	app.HandlerFunc(http.MethodGet, version, "/pipeline/jobs", api.query, authen, ruleUser)
+	app.HandlerFunc(http.MethodPost, version, "/pipeline/jobs", api.create, authen, ruleAny)
+	app.HandlerFunc(http.MethodGet, version, "/pipeline/jobs", api.query, authen, ruleAny)
 	app.HandlerFunc(http.MethodGet, version, "/pipeline/jobs/{job_id}", api.queryByID, authen, rulePipelineJob)
 	app.HandlerFunc(http.MethodPost, version, "/pipeline/jobs/{job_id}/cancel", api.cancel, authen, rulePipelineJob)
 }

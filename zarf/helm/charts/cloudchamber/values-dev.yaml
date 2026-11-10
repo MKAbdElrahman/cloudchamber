@@ -2,7 +2,7 @@
 # Use with: helm install -f values.yaml -f values-dev.yaml
 
 image:
-  repository: localhost:5001/ardanlabs/cloudchamber
+  repository: localhost:5001/cloudchamber/cloudchamber
   tag: "0.0.1"
 
 replicaCount: 1
@@ -20,7 +20,7 @@ resources:
 
 metrics:
   image:
-    repository: localhost:5001/ardanlabs/metrics
+    repository: localhost:5001/cloudchamber/metrics
     tag: "0.0.1"
   resources:
     requests:

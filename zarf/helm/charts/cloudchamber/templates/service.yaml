@@ -13,9 +13,9 @@ spec:
     - name: cloudchamber
       port: {{ .Values.service.ports.http }}
       targetPort: cloudchamber
-    - name: cloudchamber-debug
+    - name: chamber-debug
       port: {{ .Values.service.ports.debug }}
-      targetPort: cloudchamber-debug
+      targetPort: chamber-debug
     - name: metrics
       port: {{ .Values.service.ports.metricsHttp }}
       targetPort: metrics

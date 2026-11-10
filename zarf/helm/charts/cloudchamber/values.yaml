@@ -6,7 +6,7 @@ namespace: cloudchamber-system
 
 # Image configuration
 image:
-  repository: registry.example.com/ardanlabs/cloudchamber
+  repository: registry.example.com/cloudchamber/cloudchamber
   tag: "1.0.0"
   pullPolicy: IfNotPresent
 
@@ -40,7 +40,7 @@ resources:
 metrics:
   enabled: true
   image:
-    repository: registry.example.com/ardanlabs/metrics
+    repository: registry.example.com/cloudchamber/metrics
     tag: "1.0.0"
     pullPolicy: IfNotPresent
   resources:

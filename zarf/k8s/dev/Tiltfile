@@ -71,7 +71,7 @@ local_resource(
 
 # Build Docker image with production dockerfile + hot-reload
 docker_build_with_restart(
-  'localhost:5001/ardanlabs/auth',
+  'localhost:5001/cloudchamber/auth',
   '.',
   entrypoint=['/service/auth'],
   dockerfile='./zarf/docker/dockerfile.auth',
@@ -111,7 +111,7 @@ local_resource(
 
 # Build Docker image with production dockerfile + hot-reload
 docker_build_with_restart(
-  'localhost:5001/ardanlabs/cloudchamber',
+  'localhost:5001/cloudchamber/cloudchamber',
   '.',
   entrypoint=['/service/cloudchamber'],
   dockerfile='./zarf/docker/dockerfile.cloudchamber',
@@ -161,7 +161,7 @@ local_resource(
 
 # Build Docker image with production dockerfile + hot-reload
 docker_build_with_restart(
-  'localhost:5001/ardanlabs/metrics',
+  'localhost:5001/cloudchamber/metrics',
   '.',
   entrypoint=['/service/metrics'],
   dockerfile='./zarf/docker/dockerfile.metrics',

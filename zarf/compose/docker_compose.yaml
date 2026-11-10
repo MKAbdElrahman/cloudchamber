@@ -22,7 +22,7 @@ services:
         ipv4_address: 10.5.0.2
 
   init-migrate-seed:
-    image: localhost/ardanlabs/cloudchamber:0.0.1
+    image: localhost/cloudchamber/cloudchamber:0.0.1
     pull_policy: never
     container_name: init-migrate-seed
     restart: unless-stopped
@@ -42,7 +42,7 @@ services:
       - database
 
   auth:
-    image: localhost/ardanlabs/auth:0.0.1
+    image: localhost/cloudchamber/auth:0.0.1
     pull_policy: never
     container_name: auth
     restart: unless-stopped
@@ -75,7 +75,7 @@ services:
       - database
 
   cloudchamber:
-    image: localhost/ardanlabs/cloudchamber:0.0.1
+    image: localhost/cloudchamber/cloudchamber:0.0.1
     pull_policy: never
     container_name: cloudchamber
     restart: unless-stopped
@@ -109,7 +109,7 @@ services:
       - init-migrate-seed
 
   metrics:
-    image: localhost/ardanlabs/metrics:0.0.1
+    image: localhost/cloudchamber/metrics:0.0.1
     pull_policy: never
     container_name: metrics
     restart: unless-stopped

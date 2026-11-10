@@ -54,7 +54,7 @@ spec:
           ports:
             - name: cloudchamber
               containerPort: {{ .Values.service.ports.http }}
-            - name: cloudchamber-debug
+            - name: chamber-debug
               containerPort: {{ .Values.service.ports.debug }}
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}

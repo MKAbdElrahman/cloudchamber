@@ -29,7 +29,7 @@ export function ForeignProjectNotice({ ownerId, jobId }: ForeignProjectNoticePro
       <Button
         label={`Open ${name}`}
         variant="secondary"
-        onClick={() => navigate(WORKSPACE_PATHS.historyJob(ownerId, jobId))}
+        onClick={() => navigate(WORKSPACE_PATHS.job(ownerId, jobId))}
       />
     </VStack>
   )

@@ -1,8 +1,8 @@
 import { Token } from '@astryxdesign/core/Token'
 
-import { jobStatusTokenColor } from './jobStatus'
+import { jobPhaseLabel, jobStatusTokenColor } from './jobStatus'
 
-/** Job status as a category token — quiet enough to repeat on every row. */
+/** Job status as a category token — the same word and hue on every surface. */
 export function JobStatusLabel({ status }: { status: string }) {
-  return <Token label={status} size="sm" color={jobStatusTokenColor(status)} />
+  return <Token label={jobPhaseLabel(status)} size="sm" color={jobStatusTokenColor(status)} />
 }

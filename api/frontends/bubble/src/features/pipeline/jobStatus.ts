@@ -3,6 +3,9 @@ import type { TokenColor } from '@astryxdesign/core/Token'
 /** One status intent. The token hue and any status banner both read this. */
 export type JobStatusIntent = 'success' | 'info' | 'warning' | 'error' | 'neutral'
 
+/** Where a job sits. The page stays the same; this is what changes on it. */
+export type JobPhase = 'waiting' | 'running' | 'paused' | 'finished' | 'failed' | 'canceled'
+
 const TOKEN_COLOR = {
   success: 'green',
   info: 'blue',
@@ -11,32 +14,82 @@ const TOKEN_COLOR = {
   neutral: 'gray',
 } as const satisfies Record<JobStatusIntent, TokenColor>
 
-export function jobStatusIntent(status: string | undefined): JobStatusIntent {
+export function jobPhase(status: string | undefined): JobPhase {
   switch (status) {
     case 'completed':
-      return 'success'
+      return 'finished'
     case 'running':
     case 'submitted':
-      return 'info'
+      return 'running'
+    case 'paused':
+      return 'paused'
     case 'failed':
-      return 'error'
+      return 'failed'
     case 'canceled':
     case 'cancelled':
     case 'timed_out':
     case 'terminated':
-      return 'warning'
+      return 'canceled'
     default:
+      return 'waiting'
+  }
+}
+
+/** Words on the status token. One label for each way a job can sit. */
+export function jobPhaseLabel(status: string | undefined): string {
+  switch (status) {
+    case 'uploading':
+      return 'Uploading'
+    case 'timed_out':
+      return 'Timed out'
+    case 'terminated':
+      return 'Terminated'
+    case 'cancelled':
+      return 'Canceled'
+    default:
+      switch (jobPhase(status)) {
+        case 'waiting':
+          return 'Waiting'
+        case 'running':
+          return 'Running'
+        case 'paused':
+          return 'Paused'
+        case 'finished':
+          return 'Finished'
+        case 'failed':
+          return 'Failed'
+        case 'canceled':
+          return 'Canceled'
+      }
+  }
+}
+
+export function jobStatusIntent(status: string | undefined): JobStatusIntent {
+  if (status === 'uploading') return 'info'
+  switch (jobPhase(status)) {
+    case 'finished':
+      return 'success'
+    case 'running':
+      return 'info'
+    case 'failed':
+      return 'error'
+    case 'paused':
+    case 'canceled':
+      return 'warning'
+    case 'waiting':
       return 'neutral'
   }
 }
 
 export function isTerminalJobStatus(status: string | undefined): boolean {
-  switch (jobStatusIntent(status)) {
-    case 'success':
-    case 'error':
-    case 'warning':
+  switch (jobPhase(status)) {
+    case 'finished':
+    case 'failed':
+    case 'canceled':
       return true
-    default:
+    case 'waiting':
+    case 'running':
+    case 'paused':
       return false
   }
 }
@@ -62,10 +115,37 @@ export function jobStatusBannerStatus(status: string): 'success' | 'info' | 'war
   }
 }
 
-/** Banner for a job's error text. A stopped run stays warning; a failure stays error. */
-export function jobOutcomeBanner(status: string): { status: 'warning' | 'error'; title: string } {
-  if (jobStatusIntent(status) === 'warning') {
-    return { status: 'warning', title: 'Stopped' }
+/**
+ * Status the badge should read. A document means the conversion finished,
+ * even when the list still has the status from the moment the job was created.
+ */
+export function visibleJobStatus(job: { status: string; documentRef?: string | null }): string {
+  const hasDocument = Boolean(job.documentRef?.trim())
+  switch (jobPhase(job.status)) {
+    case 'running':
+    case 'waiting':
+      if (hasDocument) return 'completed'
+      return job.status
+    case 'paused':
+    case 'finished':
+    case 'failed':
+    case 'canceled':
+      return job.status
   }
-  return { status: 'error', title: 'Error' }
+}
+
+/** Banner for a job that is paused, failed, or canceled. A running job has none. */
+export function jobOutcomeBanner(status: string): { status: 'warning' | 'error'; title: string } | null {
+  switch (jobPhase(status)) {
+    case 'failed':
+      return { status: 'error', title: 'Failed' }
+    case 'paused':
+      return { status: 'warning', title: 'Paused' }
+    case 'canceled':
+      return { status: 'warning', title: jobPhaseLabel(status) }
+    case 'waiting':
+    case 'running':
+    case 'finished':
+      return null
+  }
 }

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as tus from 'tus-js-client'
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 
@@ -7,12 +7,11 @@ import { Heading, Text } from '@astryxdesign/core/Text'
 import { Button } from '@astryxdesign/core/Button'
 import { Icon } from '@astryxdesign/core/Icon'
 import { Card } from '@astryxdesign/core/Card'
-import { TextInput } from '@astryxdesign/core/TextInput'
 import { FileInput } from '@astryxdesign/core/FileInput'
 import { ProgressBar } from '@astryxdesign/core/ProgressBar'
 import { Banner } from '@astryxdesign/core/Banner'
-import { Switch } from '@astryxdesign/core/Switch'
-import { env } from '@/shared/config'
+import { CheckboxInput } from '@astryxdesign/core/CheckboxInput'
+import { readTusdEndpoint } from '@/shared/config'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { sourceRefFromUploadUrl } from './sourceRef'
 
@@ -20,22 +19,33 @@ type Status = 'idle' | 'uploading' | 'success' | 'error'
 
 export function UploadPanel({
   token,
-  onSourceRef,
+  onUploaded,
+  startConversion,
+  onStartConversionChange,
+  onBusyChange,
+  onUploadingFile,
   embedded,
 }: {
   token: string
-  onSourceRef: (sourceRef: string) => void
+  onUploaded: (upload: { sourceRef: string; fileName: string }) => void
+  startConversion: boolean
+  onStartConversionChange: (checked: boolean) => void
+  onBusyChange?: (busy: boolean) => void
+  /** The file currently transferring, so the project can show Uploading first. */
+  onUploadingFile?: (fileName: string | null) => void
   embedded?: boolean
 }) {
   const [file, setFile] = useState<File | null>(null)
-  const [endpoint, setEndpoint] = useState(env.tusdEndpoint)
-  const [showEndpoint, setShowEndpoint] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
   const [sourceRef, setSourceRef] = useState<string | null>(null)
   const uploadRef = useRef<tus.Upload | null>(null)
   const canStart = useMemo(() => !!file && status !== 'uploading', [file, status])
+
+  useEffect(() => {
+    onBusyChange?.(status === 'uploading')
+  }, [onBusyChange, status])
 
   function resetUploadState() {
     setStatus('idle')
@@ -50,15 +60,17 @@ export function UploadPanel({
     setProgress(0)
     setMessage(null)
     setSourceRef(null)
+    onUploadingFile?.(file.name)
 
     const upload = new tus.Upload(file, {
-      endpoint,
+      endpoint: readTusdEndpoint(),
       retryDelays: [0, 1000, 3000, 5000, 10000],
       metadata: { filename: file.name, filetype: file.type || 'application/octet-stream' },
       headers: { Authorization: `Bearer ${token}` },
       onError(err) {
         setStatus('error')
         setMessage(err.message || 'Upload failed')
+        onUploadingFile?.(null)
       },
       onProgress(bytesUploaded, bytesTotal) {
         if (bytesTotal > 0) setProgress((bytesUploaded / bytesTotal) * 100)
@@ -69,10 +81,10 @@ export function UploadPanel({
         setProgress(100)
         if (sr) {
           setSourceRef(sr)
-          setMessage('Upload complete and finalized. Source reference is ready.')
-          onSourceRef(sr)
+          setMessage(null)
+          onUploaded({ sourceRef: sr, fileName: file.name })
         } else {
-          setMessage(`Upload complete at ${upload.url ?? '(unknown url)'}, but the sourceRef could not be derived.`)
+          setMessage(`Upload complete at ${upload.url ?? '(unknown url)'}, but the recording could not be saved.`)
         }
       },
     })
@@ -96,9 +108,6 @@ export function UploadPanel({
       )}
 
       <VStack gap={WORKSPACE_GAP.group}>
-        <Switch label="Custom tus endpoint" value={showEndpoint} onChange={setShowEndpoint} />
-        {showEndpoint ? <TextInput label="tusd endpoint" value={endpoint} onChange={setEndpoint} /> : null}
-
         <FileInput
           label="Recording"
           accept="video/*,audio/*"
@@ -116,6 +125,14 @@ export function UploadPanel({
         {status === 'uploading' || progress > 0 ? (
           <ProgressBar label="Upload progress" value={progress} hasValueLabel variant="accent" />
         ) : null}
+
+        <CheckboxInput
+          label="Create the document when the upload finishes"
+          description="Leave this off to watch the recording first, then start the conversion yourself."
+          value={startConversion}
+          onChange={onStartConversionChange}
+          isDisabled={status === 'uploading'}
+        />
       </VStack>
 
       {message ? (

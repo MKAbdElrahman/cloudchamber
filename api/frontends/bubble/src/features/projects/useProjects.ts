@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { claimUnassignedJobs, listProjects, projectIdForJob } from './api'
+import { claimUnassignedJobs, getRecording, listProjectRecordings, listProjects, projectIdForJob } from './api'
 import { DEFAULT_PROJECT_ID } from './store'
 
 export function useProjects() {
@@ -14,6 +14,22 @@ export function useProjects() {
 export function useProject(projectId: string) {
   const projects = useProjects()
   return projects.data?.find((project) => project.id === projectId)
+}
+
+export function useProjectRecordings(projectId: string) {
+  return useQuery({
+    queryKey: ['project-recordings', projectId],
+    queryFn: () => listProjectRecordings(projectId),
+    enabled: Boolean(projectId),
+  })
+}
+
+export function useRecording(projectId: string, recordingId: string) {
+  return useQuery({
+    queryKey: ['project-recording', projectId, recordingId],
+    queryFn: () => getRecording(projectId, recordingId),
+    enabled: Boolean(projectId && recordingId),
+  })
 }
 
 /** The project that owns a job. An unassigned job joins the default project. */

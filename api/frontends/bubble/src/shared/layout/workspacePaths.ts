@@ -8,8 +8,14 @@ export const WORKSPACE_PATHS = {
   home: '/',
   project: (projectId: string) => projectPrefix(projectId),
   pipeline: (projectId: string) => `${projectPrefix(projectId)}/pipeline`,
+  recording: (projectId: string, recordingId: string) =>
+    `${projectPrefix(projectId)}/recordings/${encodeURIComponent(recordingId)}`,
+  job: (projectId: string, jobId: string) =>
+    `${projectPrefix(projectId)}/jobs/${encodeURIComponent(jobId)}`,
   historyJob: (projectId: string, jobId: string) =>
     `${projectPrefix(projectId)}/history/${encodeURIComponent(jobId)}`,
+  projectFile: (projectId: string, jobId: string, kind: string) =>
+    `${projectPrefix(projectId)}/files/${encodeURIComponent(jobId)}/${encodeURIComponent(kind)}`,
   settings: '/settings',
   settingsSection: (section: SettingsSectionId) => `/settings/${section}`,
 } as const

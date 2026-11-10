@@ -1,40 +1,43 @@
-import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 
-import { VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
-import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList'
-import { Tab, TabList } from '@astryxdesign/core/TabList'
-import { Text } from '@astryxdesign/core/Text'
-import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { JobStatusLabel, jobOutcomeBanner, usePipelineJob } from '@/features/pipeline'
+import { Button } from '@astryxdesign/core/Button'
+import { HStack, VStack } from '@astryxdesign/core/Layout'
+import { filesFromJob } from '@/features/outputs'
+import { JobStages, JobStatusLabel, jobOutcomeBanner, useJobProgress, usePipelineJob } from '@/features/pipeline'
 import { ForeignProjectNotice, useJobOwner } from '@/features/projects'
-import { JobInputMedia } from '@/features/upload'
-import { PageHeader, PendingLines, WorkspacePage } from '@/shared/layout'
-import { WORKSPACE_GAP } from '@/shared/spacing'
+import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { fileNameFromSourceRef } from '@/shared/media'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { ProjectTrail } from '../projects/ProjectTrail'
 
-type HistoryJobTab = 'status' | 'input'
+const MEDIA_FILE = /\.(mp4|webm|mov|m4v|mkv|avi|ogv|mp3|wav|ogg|m4a|aac|flac)$/i
 
 type HistoryJobPageProps = {
   token: string
 }
 
-/** One job: status and the uploaded source. Nothing here is invented beyond the job record. */
+function recordingTitle(sourceRef: string | undefined): string {
+  const name = sourceRef?.trim() ? fileNameFromSourceRef(sourceRef) : ''
+  if (MEDIA_FILE.test(name)) return name
+  return 'Conversion'
+}
+
+/** One recording becoming one document, as the workflow workers run it. */
 export function HistoryJobPage({ token }: HistoryJobPageProps) {
   const { jobId: jobIdParam, projectId = '' } = useParams()
   const jobId = jobIdParam?.trim() ?? ''
   const owner = useJobOwner(jobId)
-  const [tab, setTab] = useState<HistoryJobTab>('status')
-
   const jobQuery = usePipelineJob(token, jobId || null)
   const job = jobQuery.data
   const inProject = owner.data === projectId
   const visibleJob = inProject ? job : undefined
+  const progress = useJobProgress(visibleJob)
+  const document = visibleJob ? filesFromJob(visibleJob)[0] : undefined
   const outcome = visibleJob ? jobOutcomeBanner(visibleJob.status) : null
   const pending = owner.isPending || (inProject && jobQuery.isPending && !job)
+  const title = visibleJob ? recordingTitle(visibleJob.sourceRef) : 'Another project'
 
   if (!jobId) {
     return (
@@ -51,48 +54,31 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
     <WorkspacePage
       header={
         <VStack gap={WORKSPACE_GAP.group} width="100%">
-          <ProjectTrail
-            projectId={projectId}
-            current={visibleJob ? fileNameFromSourceRef(visibleJob.sourceRef) : 'Job'}
-          />
+          <ProjectTrail projectId={projectId} current={visibleJob || pending ? title : 'Another project'} />
           <PageHeader
-            title={
-              visibleJob
-                ? fileNameFromSourceRef(visibleJob.sourceRef)
-                : pending
-                  ? 'Job'
-                  : 'Another project'
-            }
-            description={
+            title={visibleJob || pending ? title : 'Another project'}
+            description={visibleJob ? progress?.headline : pending ? undefined : 'This project cannot show this job.'}
+            end={
               visibleJob ? (
-                <Text type="code">{visibleJob.id}</Text>
-              ) : pending ? undefined : (
-                'This project cannot show this job.'
-              )
+                <HStack gap={WORKSPACE_GAP.group} vAlign="center">
+                  <JobStatusLabel status={visibleJob.status} />
+                  {document ? (
+                    <Button
+                      label="Open document"
+                      variant="primary"
+                      href={WORKSPACE_PATHS.projectFile(projectId, visibleJob.id, document.kind)}
+                    />
+                  ) : null}
+                </HStack>
+              ) : undefined
             }
-            end={visibleJob ? <JobStatusLabel status={visibleJob.status} /> : undefined}
           />
-          {inProject ? (
-            <TabList
-              layout="fill"
-              value={tab}
-              onChange={(value) => setTab(value as HistoryJobTab)}
-              aria-label="Job sections"
-            >
-              <Tab value="status" label="Status" />
-              <Tab value="input" label="Input" />
-            </TabList>
-          ) : null}
         </VStack>
       }
     >
       <VStack gap={WORKSPACE_GAP.group}>
         {inProject && jobQuery.isError ? (
-          <Banner
-            status="error"
-            title="Could not load job"
-            description={(jobQuery.error as Error).message}
-          />
+          <Banner status="error" title="Could not load job" description={(jobQuery.error as Error).message} />
         ) : null}
 
         {pending ? <PendingLines /> : null}
@@ -101,46 +87,12 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
           <ForeignProjectNotice ownerId={owner.data} jobId={jobId} />
         ) : null}
 
-        {visibleJob && tab === 'status' ? (
+        {visibleJob && progress ? (
           <VStack gap={WORKSPACE_GAP.group}>
-            <MetadataList>
-              <MetadataListItem label="Job">
-                <Text type="code">{visibleJob.id}</Text>
-              </MetadataListItem>
-              <MetadataListItem label="Status">
-                <JobStatusLabel status={visibleJob.status} />
-              </MetadataListItem>
-              {visibleJob.workflowId ? (
-                <MetadataListItem label="Workflow">{visibleJob.workflowId}</MetadataListItem>
-              ) : null}
-              {visibleJob.runId ? <MetadataListItem label="Run">{visibleJob.runId}</MetadataListItem> : null}
-              {visibleJob.dateCreated ? (
-                <MetadataListItem label="Created">
-                  <Timestamp value={visibleJob.dateCreated} format="date_time" />
-                </MetadataListItem>
-              ) : null}
-              {visibleJob.dateUpdated ? (
-                <MetadataListItem label="Updated">
-                  <Timestamp value={visibleJob.dateUpdated} format="relative" />
-                </MetadataListItem>
-              ) : null}
-            </MetadataList>
-            {visibleJob?.errorMessage && outcome ? (
+            {visibleJob.errorMessage && outcome ? (
               <Banner status={outcome.status} title={outcome.title} description={visibleJob.errorMessage} />
             ) : null}
-          </VStack>
-        ) : null}
-
-        {visibleJob && tab === 'input' ? (
-          <VStack gap={WORKSPACE_GAP.group}>
-            <JobInputMedia sourceRef={visibleJob.sourceRef} />
-            {visibleJob.dateCreated ? (
-              <MetadataList>
-                <MetadataListItem label="Uploaded">
-                  <Timestamp value={visibleJob.dateCreated} format="date_time" />
-                </MetadataListItem>
-              </MetadataList>
-            ) : null}
+            <JobStages progress={progress} />
           </VStack>
         ) : null}
       </VStack>

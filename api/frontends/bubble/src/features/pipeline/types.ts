@@ -6,6 +6,11 @@ export type PipelineJob = {
   sourceRef: string
   status: string
   errorMessage?: string | null
+  /** Produced artifacts. Absent until that stage of the job has finished. */
+  audioRef?: string | null
+  transcriptRef?: string | null
+  keyFramesRef?: string | null
+  documentRef?: string | null
   dateCreated?: string
   dateUpdated?: string
 }

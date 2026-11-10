@@ -14,9 +14,10 @@ import type { SourceMediaKind } from './sourceMedia'
 type InlineMediaPlayerProps = {
   playbackUrl: string | null
   kind: SourceMediaKind
+  fileName?: string
 }
 
-export function InlineMediaPlayer({ playbackUrl, kind }: InlineMediaPlayerProps) {
+export function InlineMediaPlayer({ playbackUrl, kind, fileName }: InlineMediaPlayerProps) {
   const [playbackError, setPlaybackError] = useState(false)
 
   if (playbackUrl && !playbackError) {
@@ -51,9 +52,7 @@ export function InlineMediaPlayer({ playbackUrl, kind }: InlineMediaPlayerProps)
       <VStack hAlign="center" vAlign="center" gap={WORKSPACE_GAP.local} width="100%" height="100%">
         <Icon icon={FilmIcon} size="lg" color={MUTED_ICON_COLOR} />
         <Text type="supporting">
-          {playbackError
-            ? 'Preview is not available from this environment.'
-            : 'Preview will appear when the file URL can be resolved.'}
+          {fileName ? `${fileName} cannot be played from here.` : 'This recording cannot be played from here.'}
         </Text>
       </VStack>
     </AspectRatio>

@@ -1,3 +1,7 @@
+export { loadDocumentBody, readingTitle } from './documentBody'
+export type { DocumentBody } from './documentBody'
+export { filesFromJob, filesFromJobs, isProjectFileKind, projectFileLabel } from './projectFiles'
+export type { ProjectFile, ProjectFileKind } from './projectFiles'
 export { JobOutputsPanel } from './JobOutputsPanel'
 export { outputFileKindLabel } from './outputFileKind'
 export type { OutputFile, OutputFileKind } from './types'

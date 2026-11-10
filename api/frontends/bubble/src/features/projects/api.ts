@@ -4,11 +4,15 @@ import {
   insertProject,
   removeProject,
   renameProject,
+  insertRecording,
+  linkRecordingJob,
   readProjectIdForJob,
   readProjectJobIds,
   readProjects,
+  readProjectRecordings,
+  readRecording,
 } from './store'
-import type { Project } from './types'
+import type { Project, ProjectRecording } from './types'
 
 /**
  * Stand-in for the project API. The shapes match the endpoints we will add:
@@ -48,6 +52,26 @@ export function addProjectJob(projectId: string, jobId: string): Promise<void> {
 
 export function projectIdForJob(jobId: string): Promise<string | null> {
   return Promise.resolve(readProjectIdForJob(jobId))
+}
+
+export function listProjectRecordings(projectId: string): Promise<ProjectRecording[]> {
+  return Promise.resolve(readProjectRecordings(projectId))
+}
+
+export function getRecording(projectId: string, recordingId: string): Promise<ProjectRecording | null> {
+  return Promise.resolve(readRecording(projectId, recordingId))
+}
+
+export function addProjectRecording(
+  projectId: string,
+  input: { sourceRef: string; name: string },
+): Promise<ProjectRecording> {
+  return Promise.resolve(insertRecording(projectId, input))
+}
+
+export function attachRecordingJob(recordingId: string, jobId: string): Promise<void> {
+  linkRecordingJob(recordingId, jobId)
+  return Promise.resolve()
 }
 
 export function claimUnassignedJobs(jobIds: readonly string[], fallbackProjectId: string): Promise<void> {

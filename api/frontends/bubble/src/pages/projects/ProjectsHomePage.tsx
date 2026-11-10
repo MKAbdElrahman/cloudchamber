@@ -27,7 +27,8 @@ import {
   useProjects,
   type Project,
 } from '@/features/projects'
-import { listJobs, normalizeJobs } from '@/features/pipeline'
+import { listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
+import { filesFromJob } from '@/features/outputs'
 import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_CARD, WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
@@ -45,36 +46,36 @@ function countLabel(count: number, singular: string, plural: string): string {
 
 type ProjectTileProps = {
   project: Project
-  jobs: number
+  files: number
   countsReady: boolean
   onRename: (project: Project) => void
   onDelete: (project: Project) => void
 }
 
-function projectSummary(jobs: number, countsReady: boolean): string | null {
+function projectSummary(files: number, countsReady: boolean): string | null {
   if (!countsReady) return null
-  if (jobs === 0) return 'No jobs yet.'
-  return `${countLabel(jobs, 'job', 'jobs')}.`
+  if (files === 0) return 'No documents yet.'
+  return `${countLabel(files, 'document', 'documents')}.`
 }
 
 type ProjectScope = {
-  jobs: { id: string }[]
+  jobs: PipelineJob[]
   jobIds: Record<string, string[]>
 }
 
-function projectJobCount(
+function projectFileCount(
   projectId: string,
   scope: ProjectScope | undefined,
   countsPending: boolean,
 ): number {
   if (countsPending || !scope) return 0
   const jobIds = new Set(scope.jobIds[projectId] ?? [])
-  return scope.jobs.filter((job) => jobIds.has(job.id)).length
+  return scope.jobs.filter((job) => jobIds.has(job.id)).reduce((count, job) => count + filesFromJob(job).length, 0)
 }
 
 /** One project card. The folder mark names it; the card opens it. */
-function ProjectTile({ project, jobs, countsReady, onRename, onDelete }: ProjectTileProps) {
-  const summary = projectSummary(jobs, countsReady)
+function ProjectTile({ project, files, countsReady, onRename, onDelete }: ProjectTileProps) {
+  const summary = projectSummary(files, countsReady)
 
   return (
     <ClickableCard
@@ -183,7 +184,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       header={
         <PageHeader
           title="Projects"
-          description="Open a project to see its jobs."
+            description="Open a project to see its documents."
           end={<Button label="New project" variant="primary" onClick={() => setCreating(true)} />}
         />
       }
@@ -205,12 +206,12 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
           {view === 'grid' ? (
             <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Projects">
               {rows.map((project) => {
-                const jobs = projectJobCount(project.id, scope.data, scope.isPending)
+                const files = projectFileCount(project.id, scope.data, scope.isPending)
                 return (
                   <ProjectTile
                     key={project.id}
                     project={project}
-                    jobs={jobs}
+                    files={files}
                     countsReady={!scope.isPending}
                     onRename={(item) => {
                       setRenameName(item.name)
@@ -224,8 +225,8 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
           ) : (
             <List density="spacious" edge="flush" hasDividers aria-label="Projects">
               {rows.map((project) => {
-                const jobs = projectJobCount(project.id, scope.data, scope.isPending)
-                const summary = projectSummary(jobs, !scope.isPending)
+                const files = projectFileCount(project.id, scope.data, scope.isPending)
+                const summary = projectSummary(files, !scope.isPending)
                 return (
                   <ListItem
                     key={project.id}

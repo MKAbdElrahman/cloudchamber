@@ -1,5 +1,7 @@
 export { HistoryJobPage } from './history/HistoryJobPage'
-export { PipelineWorkspace } from './pipeline/PipelineWorkspace'
+export { JobFilePage } from './jobs/JobFilePage'
+export { RecordingPage } from './recordings/RecordingPage'
+export { ProjectFilePage } from './projects/ProjectFilePage'
 export { ProjectHomePage } from './projects/ProjectHomePage'
 export { ProjectsHomePage } from './projects/ProjectsHomePage'
 export { SettingsPanel } from './settings/SettingsPanel'

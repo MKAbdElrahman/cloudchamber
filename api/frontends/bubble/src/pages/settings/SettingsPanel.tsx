@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMediaQuery } from '@astryxdesign/core/hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -7,6 +7,8 @@ import { Heading, Text } from '@astryxdesign/core/Text'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Icon } from '@astryxdesign/core/Icon'
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList'
+import { Switch } from '@astryxdesign/core/Switch'
+import { TextInput } from '@astryxdesign/core/TextInput'
 import { Token } from '@astryxdesign/core/Token'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { Link } from '@astryxdesign/core/Link'
@@ -18,7 +20,7 @@ import {
 
 import { AppearancePanel, SettingsSectionSearch, useSettingsSectionSearch } from '@/features/settings'
 import { accountDisplayLabel, parseServiceJwt, useSession } from '@/shared/auth'
-import { env } from '@/shared/config'
+import { env, readCustomTusdEndpoint, writeCustomTusdEndpoint } from '@/shared/config'
 import {
   isSettingsSectionId,
   PageHeader,
@@ -41,6 +43,38 @@ const DEVELOPER_LINKS = [
   { label: 'Design conventions (wiki)', href: 'https://github.com/meta/astryx/wiki/Design-Conventions' },
   { label: 'Template sync checklist', href: 'https://github.com/meta/astryx/tree/main/packages/cli/assets/templates' },
 ] as const
+
+function TusdEndpointSetting() {
+  const stored = readCustomTusdEndpoint()
+  const [custom, setCustom] = useState(stored !== null)
+  const [value, setValue] = useState(stored ?? env.tusdEndpoint)
+
+  function toggle(on: boolean) {
+    setCustom(on)
+    if (!on) {
+      writeCustomTusdEndpoint(null)
+      return
+    }
+    writeCustomTusdEndpoint(value.trim() || env.tusdEndpoint)
+  }
+
+  function change(next: string) {
+    setValue(next)
+    writeCustomTusdEndpoint(next)
+  }
+
+  return (
+    <VStack gap={WORKSPACE_GAP.group}>
+      <Switch
+        label="Custom tus endpoint"
+        description="Uploads use this instead of the endpoint configured for the app."
+        value={custom}
+        onChange={toggle}
+      />
+      {custom ? <TextInput label="tusd endpoint" value={value} onChange={change} /> : null}
+    </VStack>
+  )
+}
 
 /** Settings sidebar — section links beside the active pane. Below the shell's lg point the list stacks above the pane. */
 export function SettingsPanel() {
@@ -110,6 +144,7 @@ export function SettingsPanel() {
             <MetadataListItem label="tusd">{env.tusdEndpoint}</MetadataListItem>
             <MetadataListItem label="Artifacts bucket">{env.artifactsBucket}</MetadataListItem>
           </MetadataList>
+          <TusdEndpointSetting />
           <VStack gap={WORKSPACE_GAP.local}>
             <Text type="label">Astryx references</Text>
             <Text type="supporting">

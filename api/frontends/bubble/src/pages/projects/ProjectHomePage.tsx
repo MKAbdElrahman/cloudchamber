@@ -1,7 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
-import { QueueListIcon } from '@heroicons/react/24/outline'
+import { useEffect, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { Square2StackIcon } from '@heroicons/react/24/outline'
 
+import { Banner } from '@astryxdesign/core/Banner'
+import { Card } from '@astryxdesign/core/Card'
 import { Grid } from '@astryxdesign/core/Grid'
 import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { Button } from '@astryxdesign/core/Button'
@@ -10,48 +12,183 @@ import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
+import { Section } from '@astryxdesign/core/Section'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { JobStatusLabel, listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
-import { claimUnassignedJobs, DEFAULT_PROJECT_ID, listProjectJobIds, useProject } from '@/features/projects'
-import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
-import { fileNameFromSourceRef } from '@/shared/media'
+import { JobStatusLabel, jobPhase, visibleJobStatus, type PipelineJob } from '@/features/pipeline'
+import { useProject, useProjectRecordings, type ProjectRecording } from '@/features/projects'
+import { filesFromJob } from '@/features/outputs'
+import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
+import type { SourceMediaKind } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
+import { faceFileName, knownMediaName, mediaKindOf } from '../jobs/jobContainer'
+import { JobOpenIcons } from '../jobs/JobOpenIcons'
+import { JobPeek, type PeekVideo } from '../jobs/JobPeek'
+import { AddRecordingDialog } from './AddRecordingDialog'
 import { LibraryViewControl } from './LibraryViewControl'
 import { useLibraryView } from './useLibraryView'
+import { useProjectJobs } from './useProjectJobs'
 import { ProjectTrail } from './ProjectTrail'
 
 type ProjectHomePageProps = {
   token: string
 }
 
-function jobLabel(job: PipelineJob): string {
-  return fileNameFromSourceRef(job.sourceRef)
+function EntryWhen({ entry }: { entry: LibraryEntry }) {
+  return (
+    <Text type="supporting">
+      {entry.detail ? entry.detail : null}
+      {entry.detail && entry.date ? ' · ' : null}
+      {entry.date ? <Timestamp value={entry.date} format="relative" /> : null}
+    </Text>
+  )
 }
 
-/** One project — the jobs it owns. A job opens its status page. */
+type LibraryEntry = {
+  id: string
+  jobId?: string
+  sourceRef: string
+  recordingName?: string
+  name: string
+  href?: string
+  date?: string
+  detail: string
+  kind: SourceMediaKind
+  status?: string
+  showStatus: boolean
+}
+
+function containersFor(projectId: string, jobs: PipelineJob[], recordings: ProjectRecording[]): LibraryEntry[] {
+  const recordingByJob = new Map(
+    recordings.flatMap((recording) => (recording.jobId ? [[recording.jobId, recording] as const] : [])),
+  )
+  const recordingBySource = new Map(recordings.map((recording) => [recording.sourceRef, recording]))
+  const linked = new Set<string>()
+  const fromJobs = jobs.map((job) => {
+    const recording = recordingByJob.get(job.id) ?? recordingBySource.get(job.sourceRef)
+    if (recording) linked.add(recording.id)
+    const media = knownMediaName(job.sourceRef, recording?.name)
+    const document = filesFromJob(job, media ?? undefined)[0]
+    const date = job.dateUpdated ?? recording?.dateAdded
+    const status = visibleJobStatus(job)
+    const name = faceFileName({
+      face: 'library',
+      sourceRef: job.sourceRef,
+      recordingName: recording?.name,
+      documentName: document?.name,
+      date,
+    })
+    return {
+      id: job.id,
+      jobId: job.id,
+      sourceRef: job.sourceRef,
+      recordingName: recording?.name,
+      name,
+      href: WORKSPACE_PATHS.job(projectId, job.id),
+      date,
+      detail: media && media !== name ? media : '',
+      kind: mediaKindOf(job.sourceRef, recording?.name),
+      status,
+      showStatus: jobPhase(status) !== 'finished',
+    }
+  })
+  const drafts = recordings
+    .filter((recording) => !recording.jobId && !linked.has(recording.id))
+    .map((recording) => {
+      const media = knownMediaName(recording.sourceRef, recording.name)
+      const name = faceFileName({
+        face: 'video',
+        sourceRef: recording.sourceRef,
+        recordingName: recording.name,
+        date: recording.dateAdded,
+      })
+      return {
+        id: recording.id,
+        sourceRef: recording.sourceRef,
+        recordingName: recording.name,
+        name,
+        href: WORKSPACE_PATHS.recording(projectId, recording.id),
+        date: recording.dateAdded,
+        detail: media && media !== name ? media : '',
+        kind: mediaKindOf(recording.sourceRef, recording.name),
+        showStatus: false,
+      }
+    })
+  return [...fromJobs, ...drafts].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+}
+
+function uploadingEntry(fileName: string): LibraryEntry {
+  return {
+    id: 'upload-in-progress',
+    sourceRef: '',
+    recordingName: fileName,
+    name: fileName,
+    detail: '',
+    kind: mediaKindOf(undefined, fileName),
+    status: 'uploading',
+    showStatus: true,
+  }
+}
+
+/** One project. Each job is one file that holds its recording and, once written, its document. */
 export function ProjectHomePage({ token }: ProjectHomePageProps) {
   const { projectId = '' } = useParams()
   const project = useProject(projectId)
+  const jobsQuery = useProjectJobs(token, projectId)
+  const recordingsQuery = useProjectRecordings(projectId)
   const [view, setView] = useLibraryView()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const askedToAdd = searchParams.get('add') === 'recording'
+  const [addOpen, setAddOpen] = useState(askedToAdd)
+  const [formKey, setFormKey] = useState(0)
+  const [startError, setStartError] = useState<string | null>(null)
+  const [video, setVideo] = useState<PeekVideo | null>(null)
+  const [videoOpen, setVideoOpen] = useState(false)
+  const [pipeline, setPipeline] = useState<{ id: string; name: string } | null>(null)
+  const [pipelineOpen, setPipelineOpen] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null)
 
-  const jobsQuery = useQuery({
-    queryKey: ['pipeline-jobs', projectId],
-    queryFn: async () => {
-      const jobs = normalizeJobs(await listJobs(token))
-      await claimUnassignedJobs(
-        jobs.map((job) => job.id),
-        DEFAULT_PROJECT_ID,
-      )
-      const ids = new Set(await listProjectJobIds(projectId))
-      return jobs.filter((job) => ids.has(job.id))
-    },
-    enabled: Boolean(projectId),
-    staleTime: 30_000,
-  })
+  function openPeek(entry: LibraryEntry, target: 'video' | 'pipeline') {
+    if (target === 'video') {
+      setVideo({
+        name: faceFileName({
+          face: 'video',
+          sourceRef: entry.sourceRef,
+          recordingName: entry.recordingName,
+          date: entry.date,
+        }),
+        sourceRef: entry.sourceRef,
+      })
+      setVideoOpen(true)
+      return
+    }
+    if (!entry.jobId) return
+    setPipeline({ id: entry.jobId, name: entry.name })
+    setPipelineOpen(true)
+  }
+  const listed = containersFor(projectId, jobsQuery.data ?? [], recordingsQuery.data ?? [])
+  const entries = uploadingFile ? [uploadingEntry(uploadingFile), ...listed] : listed
+  const pending = jobsQuery.isPending || recordingsQuery.isPending
 
-  const jobs = jobsQuery.data ?? []
+  if (askedToAdd && !addOpen) {
+    setFormKey((current) => current + 1)
+    setStartError(null)
+    setAddOpen(true)
+  }
+
+  useEffect(() => {
+    if (!askedToAdd) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('add')
+    setSearchParams(next, { replace: true })
+  }, [askedToAdd, searchParams, setSearchParams])
+
+  function openAddRecording() {
+    setFormKey((current) => current + 1)
+    setStartError(null)
+    setAddOpen(true)
+  }
 
   return (
     <WorkspacePage
@@ -60,81 +197,126 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           <ProjectTrail projectId={projectId} />
           <PageHeader
             title={project?.name ?? 'Project'}
-            description="Open a job to see its status and source."
-            end={
-              <Button
-                label="New job"
-                variant="primary"
-                href={WORKSPACE_PATHS.pipeline(projectId)}
-              />
-            }
+            description="One file for each recording."
+            end={<Button label="Add recording" variant="primary" onClick={openAddRecording} />}
           />
         </VStack>
       }
     >
       <VStack gap={WORKSPACE_GAP.group}>
-        <HStack justify="between" vAlign="center">
-          <Heading level={2}>Jobs</Heading>
-          {jobs.length > 0 ? <LibraryViewControl value={view} onChange={setView} /> : null}
-        </HStack>
-        {jobsQuery.isPending ? <PendingLines /> : null}
-        {jobs.length === 0 && !jobsQuery.isPending ? (
+        {startError ? (
+          <Banner
+            status="error"
+            title="The recording was saved"
+            description={`${startError} You can start the conversion from the file.`}
+          />
+        ) : null}
+        {entries.length > 0 ? (
+          <HStack justify="end" vAlign="center">
+            <LibraryViewControl value={view} onChange={setView} />
+          </HStack>
+        ) : null}
+        {pending ? <PendingLines /> : null}
+        {entries.length === 0 && !pending ? (
           <EmptyState
             title="No jobs yet"
-            description="Start a job to process one recording."
-            icon={<Icon icon={QueueListIcon} size="lg" color={MUTED_ICON_COLOR} />}
+            description="Add a recording. It shows up here as one file, and you can turn it into a document when you want."
+            icon={<Icon icon={Square2StackIcon} size="lg" color={MUTED_ICON_COLOR} />}
             isCompact
           />
         ) : null}
-        {jobs.length > 0 && view === 'list' ? (
-          <List density="spacious" edge="flush" hasDividers aria-label="Jobs">
-            {jobs.map((job) => (
-              <ListItem
-                key={job.id}
-                label={jobLabel(job)}
-                description={
-                  job.dateCreated ? (
-                    <Text type="supporting">
-                      <Timestamp value={job.dateCreated} format="relative" />
-                    </Text>
-                  ) : undefined
-                }
-                startContent={<Icon icon={QueueListIcon} size="sm" color={MUTED_ICON_COLOR} />}
-                endContent={<JobStatusLabel status={job.status} />}
-                href={WORKSPACE_PATHS.historyJob(projectId, job.id)}
-              />
-            ))}
-          </List>
+        {entries.length > 0 && view === 'list' ? (
+          <Section variant="transparent" padding={WORKSPACE_CONTENT_PADDING}>
+            <List density="spacious" edge="flush" hasDividers aria-label="Jobs">
+              {entries.map((entry) => (
+                <ListItem
+                  key={entry.id}
+                  label={entry.name}
+                  description={<EntryWhen entry={entry} />}
+                  startContent={<Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />}
+                  endContent={
+                    <HStack gap={WORKSPACE_GAP.local} vAlign="center">
+                      {entry.sourceRef ? (
+                        <JobOpenIcons
+                          kind={entry.kind}
+                          hasPipeline={Boolean(entry.jobId)}
+                          status={entry.status}
+                          onOpen={(target) => openPeek(entry, target)}
+                        />
+                      ) : null}
+                      {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
+                    </HStack>
+                  }
+                  href={entry.href}
+                />
+              ))}
+            </List>
+          </Section>
         ) : null}
-        {jobs.length > 0 && view === 'grid' ? (
+        {entries.length > 0 && view === 'grid' ? (
           <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Jobs">
-            {jobs.map((job) => (
-              <ClickableCard
-                key={job.id}
-                label={`Open ${jobLabel(job)}`}
-                href={WORKSPACE_PATHS.historyJob(projectId, job.id)}
-                {...WORKSPACE_CARD}
-                height="100%"
-              >
+            {entries.map((entry) => {
+              const body = (
                 <VStack gap={WORKSPACE_GAP.group}>
                   <HStack justify="between" vAlign="start">
-                    <Icon icon={QueueListIcon} size="sm" color={MUTED_ICON_COLOR} />
-                    <JobStatusLabel status={job.status} />
+                    <Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />
+                    <HStack gap={WORKSPACE_GAP.local} vAlign="center">
+                      {entry.sourceRef ? (
+                        <JobOpenIcons
+                          kind={entry.kind}
+                          hasPipeline={Boolean(entry.jobId)}
+                          status={entry.status}
+                          onOpen={(target) => openPeek(entry, target)}
+                        />
+                      ) : null}
+                      {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
+                    </HStack>
                   </HStack>
                   <Heading level={3} maxLines={2}>
-                    {jobLabel(job)}
+                    {entry.name}
                   </Heading>
-                  {job.dateCreated ? (
-                    <Text type="supporting">
-                      <Timestamp value={job.dateCreated} format="relative" />
-                    </Text>
-                  ) : null}
+                  <EntryWhen entry={entry} />
                 </VStack>
-              </ClickableCard>
-            ))}
+              )
+              if (!entry.href) {
+                return (
+                  <Card key={entry.id} {...WORKSPACE_CARD} height="100%">
+                    {body}
+                  </Card>
+                )
+              }
+              return (
+                <ClickableCard key={entry.id} label={`Open ${entry.name}`} href={entry.href} {...WORKSPACE_CARD} height="100%">
+                  {body}
+                </ClickableCard>
+              )
+            })}
           </Grid>
         ) : null}
       </VStack>
+      <JobPeek
+        token={token}
+        video={video}
+        videoOpen={videoOpen}
+        onVideoOpenChange={setVideoOpen}
+        pipelineJobId={pipeline?.id ?? null}
+        pipelineName={pipeline?.name ?? 'Pipeline'}
+        pipelineOpen={pipelineOpen}
+        onPipelineOpenChange={setPipelineOpen}
+      />
+      <AddRecordingDialog
+        token={token}
+        projectId={projectId}
+        isOpen={addOpen}
+        formKey={formKey}
+        onOpenChange={setAddOpen}
+        onUploadingFile={setUploadingFile}
+        onFinished={(notice) => {
+          setUploadingFile(null)
+          setAddOpen(false)
+          setStartError(notice ?? null)
+        }}
+      />
     </WorkspacePage>
   )
 }

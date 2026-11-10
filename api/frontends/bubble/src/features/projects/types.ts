@@ -4,3 +4,13 @@ export type Project = {
   name: string
   dateCreated: string
 }
+
+/** A recording kept in a project. Stand-in until a media API exists. */
+export type ProjectRecording = {
+  id: string
+  projectId: string
+  sourceRef: string
+  name: string
+  dateAdded: string
+  jobId?: string
+}

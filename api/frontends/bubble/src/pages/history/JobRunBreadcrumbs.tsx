@@ -2,6 +2,7 @@ import { ChevronRightIcon, ClockIcon } from '@heroicons/react/24/outline'
 
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
 import { Icon } from '@astryxdesign/core/Icon'
+import { Text } from '@astryxdesign/core/Text'
 import { WORKSPACE_PATHS } from '@/shared/layout'
 
 type JobRunBreadcrumbsProps = {
@@ -23,7 +24,7 @@ export function JobRunBreadcrumbs({ currentLabel }: JobRunBreadcrumbsProps) {
         History
       </BreadcrumbItem>
       <BreadcrumbItem isCurrent>
-        <span title={currentLabel}>{currentLabel}</span>
+        <Text maxLines={1}>{currentLabel}</Text>
       </BreadcrumbItem>
     </Breadcrumbs>
   )

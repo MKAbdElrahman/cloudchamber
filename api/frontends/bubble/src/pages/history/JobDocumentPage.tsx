@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { ChevronRightIcon } from '@heroicons/react/24/outline'
 
@@ -7,15 +7,19 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
 import { Button } from '@astryxdesign/core/Button'
 import { Icon } from '@astryxdesign/core/Icon'
-import { Link } from '@astryxdesign/core/Link'
+import { Markdown } from '@astryxdesign/core/Markdown'
+import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
 import { Heading, Text } from '@astryxdesign/core/Text'
+import type { HeadingLevel } from '@astryxdesign/core/Heading'
 import { isJobSuccess, usePipelineJob } from '@/features/pipeline'
 import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 import { fileNameFromSourceRef } from '@/shared/media'
 
-import { parseDocument, type DocumentBlock } from './documentMarkdown'
+import { readingDocument } from './documentReading'
 import { outputsForJob } from '../fixtures/mockOutputs'
+
+const TimeByHeading = createContext<ReadonlyMap<string, string>>(new Map())
 
 type JobDocumentPageProps = {
   token: string
@@ -31,27 +35,30 @@ function downloadMarkdown(name: string, markdown: string) {
   URL.revokeObjectURL(url)
 }
 
-function DocumentBody({ blocks }: { blocks: DocumentBlock[] }) {
+function nodeText(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(nodeText).join('')
+  if (node && typeof node === 'object' && 'props' in node) {
+    const element = node as { props?: { children?: ReactNode } }
+    return nodeText(element.props?.children)
+  }
+  return ''
+}
+
+function DocumentHeading({
+  level,
+  children,
+  id,
+}: {
+  level: HeadingLevel
+  children: ReactNode
+  id?: string
+}) {
+  const time = useContext(TimeByHeading).get(nodeText(children).trim())
   return (
-    <VStack gap={WORKSPACE_GAP.group}>
-      {blocks.map((block, index) => {
-        if (block.kind === 'heading') {
-          return (
-            <VStack key={block.id} id={block.id} gap={0.5}>
-              {block.time ? <Text type="supporting">{block.time}</Text> : null}
-              <Heading level={block.level === 1 ? 2 : block.level}>{block.text}</Heading>
-            </VStack>
-          )
-        }
-        if (block.kind === 'quote') {
-          return (
-            <Text key={`quote-${index}`} color="secondary">
-              {block.text}
-            </Text>
-          )
-        }
-        return <Text key={`p-${index}`}>{block.text}</Text>
-      })}
+    <VStack id={id} gap={0.5}>
+      {time ? <Text type="supporting">{time}</Text> : null}
+      <Heading level={level}>{children}</Heading>
     </VStack>
   )
 }
@@ -66,12 +73,9 @@ export function JobDocumentPage({ token }: JobDocumentPageProps) {
     if (!job || !isJobSuccess(job.status)) return undefined
     return outputsForJob(job.id, job.status).find((item) => item.markdown)
   }, [job])
-  const blocks = useMemo(() => parseDocument(file?.markdown ?? ''), [file?.markdown])
-  const titleBlock = blocks.find((block) => block.kind === 'heading' && block.level === 1)
-  const title = titleBlock?.kind === 'heading' ? titleBlock.text : file?.name ?? 'Document'
-  const dek = blocks.find((block) => block.kind === 'paragraph')
-  const body = blocks.filter((block) => block !== titleBlock && block !== dek)
-  const outline = body.filter((block) => block.kind === 'heading' && block.level === 2)
+  const document = useMemo(() => readingDocument(file?.markdown ?? ''), [file?.markdown])
+  const outline = useOutlineFromMarkdown(document.body)
+  const title = document.title ?? file?.name ?? 'Document'
   const jobLabel = job ? fileNameFromSourceRef(job.sourceRef) : jobId
 
   return (
@@ -89,7 +93,7 @@ export function JobDocumentPage({ token }: JobDocumentPageProps) {
           </Breadcrumbs>
           <PageHeader
             title={title}
-            description={dek?.kind === 'paragraph' ? dek.text : undefined}
+            description={document.dek}
             end={
               file?.markdown ? (
                 <Button
@@ -115,22 +119,16 @@ export function JobDocumentPage({ token }: JobDocumentPageProps) {
         <Text color="secondary">This run does not have a document yet.</Text>
       ) : null}
       {file ? (
-        <HStack gap={WORKSPACE_GAP.section} vAlign="start" wrap="wrap">
+        <HStack gap={WORKSPACE_GAP.section} vAlign="start" width="100%">
           {outline.length > 0 ? (
-            <VStack gap={1} aria-label="In this document">
+            <VStack gap={WORKSPACE_GAP.local} width={220}>
               <Text type="label">In this document</Text>
-              {outline.map((block) =>
-                block.kind === 'heading' ? (
-                  <Link key={block.id} href={`#${block.id}`}>
-                    {block.text}
-                  </Link>
-                ) : null,
-              )}
+              <Outline items={outline} label="In this document" />
             </VStack>
           ) : null}
-          <VStack gap={WORKSPACE_GAP.group}>
-            <DocumentBody blocks={body} />
-          </VStack>
+          <TimeByHeading.Provider value={document.timeByHeading}>
+            <Markdown components={{ heading: DocumentHeading }}>{document.body}</Markdown>
+          </TimeByHeading.Provider>
         </HStack>
       ) : null}
     </WorkspacePage>

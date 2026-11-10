@@ -1,6 +1,4 @@
-import type { SettingsSectionId } from '@/features/workspace/settingsSections'
-
-import type { WorkspaceSection } from './workspace'
+import type { SettingsSectionId, WorkspaceSection } from './workspace'
 
 export const WORKSPACE_PATHS = {
   overview: '/overview',

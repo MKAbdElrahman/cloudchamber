@@ -1,5 +1,4 @@
-import type { PipelineJob } from '@/features/pipeline/types'
-import { isJobSuccess, jobStepStatus } from '@/features/pipeline/jobStatus'
+import { isJobSuccess, jobStepStatus, type PipelineJob } from '@/features/pipeline'
 
 export type JobRunEvent = {
   id: string

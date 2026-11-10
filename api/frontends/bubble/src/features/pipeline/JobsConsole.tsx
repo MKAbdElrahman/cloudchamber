@@ -13,7 +13,7 @@ import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { QueueListIcon, ArrowPathIcon, CpuChipIcon } from '@heroicons/react/24/outline'
 
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
-import { MUTED_ICON_COLOR } from '@/shared/theme/presentation'
+import { MUTED_ICON_COLOR } from '@/shared/theme'
 
 import { JobStatusLabel } from './JobStatusLabel'
 import type { PipelineJob } from './types'

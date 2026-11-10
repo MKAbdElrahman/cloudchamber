@@ -12,9 +12,9 @@ import { DocumentIcon, DocumentTextIcon, PlayCircleIcon } from '@heroicons/react
 import { PageHeader } from '@/shared/layout/PageHeader'
 import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH } from '@/shared/layout/contentSurface'
 import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
-import { META_TOKEN_COLOR, SHELL_ICON_COLOR } from '@/shared/theme/presentation'
+import { META_TOKEN_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
-import { MOCK_OUTPUT_FILES, type MockOutputFile } from './mockOutputs'
+import { MOCK_OUTPUT_FILES, type MockOutputFile } from '@/features/outputs'
 
 function outputIcon(file: MockOutputFile) {
   return file.kind === 'pdf' ? DocumentIcon : DocumentTextIcon

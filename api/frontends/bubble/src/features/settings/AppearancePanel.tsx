@@ -1,8 +1,7 @@
 import { Selector } from '@astryxdesign/core/Selector'
 import { PaintBrushIcon, SwatchIcon } from '@heroicons/react/24/outline'
 
-import { APP_THEMES, type AppThemeId } from '@/app/themes'
-import type { ColorMode } from '@/app/ThemePreference'
+import { APP_THEMES, type AppThemeId, type ColorMode } from '@/shared/theme'
 
 import { ColorModeChoiceCards } from './ThemeAppearanceControls'
 import { SettingsCard, SettingsRow } from './SettingsFormLayout'

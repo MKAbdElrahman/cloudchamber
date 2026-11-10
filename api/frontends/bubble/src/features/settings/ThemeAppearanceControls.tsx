@@ -14,7 +14,7 @@ import {
   SunIcon,
 } from '@heroicons/react/24/outline'
 
-import type { ColorMode } from '@/app/ThemePreference'
+import type { ColorMode } from '@/shared/theme'
 
 const previewSurface: CSSProperties = {
   backgroundColor: 'var(--color-background-muted)',

@@ -19,12 +19,14 @@ import {
 } from '@heroicons/react/24/solid'
 import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid'
 
-import { UploadPanel } from '@/features/upload/UploadPanel'
-import { CreateJobForm } from '@/features/pipeline/PipelinePanel'
-import { JobsConsole } from '@/features/pipeline/JobsConsole'
-import { JobStatusLabel } from '@/features/pipeline/JobStatusLabel'
-import { usePipelineRun } from '@/features/pipeline/PipelineRunContext'
-import { usePipelineJob } from '@/features/pipeline/usePipelineJob'
+import {
+  CreateJobForm,
+  JobsConsole,
+  JobStatusLabel,
+  usePipelineJob,
+  usePipelineRun,
+} from '@/features/pipeline'
+import { UploadPanel } from '@/features/upload'
 import { PageHeader } from '@/shared/layout/PageHeader'
 import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
 

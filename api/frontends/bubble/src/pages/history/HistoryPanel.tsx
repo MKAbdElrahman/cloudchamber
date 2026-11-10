@@ -10,12 +10,11 @@ import { List, ListItem } from '@astryxdesign/core/List'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 
-import { listJobs, normalizeJobs } from '@/features/pipeline/api'
-import { JobStatusLabel } from '@/features/pipeline/JobStatusLabel'
+import { JobStatusLabel, listJobs, normalizeJobs } from '@/features/pipeline'
 import { PageHeader } from '@/shared/layout/PageHeader'
 import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
 import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
-import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme/presentation'
+import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
 type HistoryPanelProps = {
   token: string

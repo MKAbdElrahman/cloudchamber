@@ -4,7 +4,7 @@ import { Token } from '@astryxdesign/core/Token'
 import { VStack } from '@astryxdesign/core/Layout'
 
 import { WORKSPACE_GAP } from '@/shared/layout/contentSurface'
-import { META_TOKEN_COLOR } from '@/shared/theme/presentation'
+import { META_TOKEN_COLOR } from '@/shared/theme'
 
 import { InlineMediaPlayer } from './inlineMediaPlayer'
 import {

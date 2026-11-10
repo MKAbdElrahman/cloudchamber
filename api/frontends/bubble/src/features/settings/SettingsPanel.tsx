@@ -28,20 +28,17 @@ import {
 } from '@heroicons/react/24/outline'
 
 import { env } from '@/shared/config/env'
-import { useThemePreference } from '@/app/ThemePreference'
-import { AppearancePanel } from '@/features/settings/AppearancePanel'
-import { SettingsSectionSearch } from '@/features/settings/SettingsSectionSearch'
-import { useSettingsSectionSearch } from '@/features/settings/useSettingsSectionSearch'
+import { AppearancePanel } from './AppearancePanel'
+import { SettingsSectionSearch } from './SettingsSectionSearch'
+import { useSettingsSectionSearch } from './useSettingsSectionSearch'
 import { useSession } from '@/shared/auth/session'
 import { accountDisplayLabel, parseServiceJwt } from '@/shared/auth/tokenClaims'
 import { PageHeader } from '@/shared/layout/PageHeader'
 import { WORKSPACE_CONTENT_PADDING, WORKSPACE_CONTENT_WIDTH, WORKSPACE_GAP } from '@/shared/layout/contentSurface'
 import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
-import { META_TOKEN_COLOR, SHELL_ICON_COLOR } from '@/shared/theme/presentation'
+import { META_TOKEN_COLOR, SHELL_ICON_COLOR, useThemePreference } from '@/shared/theme'
 
-import { isSettingsSectionId, type SettingsSectionId } from './settingsSections'
-
-export type { SettingsSectionId } from './settingsSections'
+import { isSettingsSectionId, type SettingsSectionId } from '@/shared/layout/workspace'
 
 const fillViewport: CSSProperties = { minHeight: '100dvh' }
 

@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { SignInExperience } from '@/features/auth/SignInExperience'
-import { PipelineRunProvider } from '@/features/pipeline/PipelineRunContext'
+import { SignInExperience } from '@/features/auth'
+import { PipelineRunProvider } from '@/features/pipeline'
 import { AuthenticatedRoutes } from '@/app/AuthenticatedRoutes'
 import { useSession } from '@/shared/auth/session'
 import { accountDisplayLabel, parseServiceJwt } from '@/shared/auth/tokenClaims'

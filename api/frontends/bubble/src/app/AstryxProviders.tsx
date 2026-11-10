@@ -4,7 +4,7 @@ import { LayerProvider } from '@astryxdesign/core/Layer'
 import { Theme } from '@astryxdesign/core/theme'
 
 import { ThemeDocumentSync } from './ThemeDocumentSync'
-import { ThemePreferenceProvider, useThemePreference } from './ThemePreference'
+import { ThemePreferenceProvider, useThemePreference } from '@/shared/theme'
 
 export function AstryxProviders({ children }: { children: ReactNode }) {
   return (

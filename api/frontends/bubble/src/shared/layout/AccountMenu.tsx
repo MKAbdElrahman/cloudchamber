@@ -9,7 +9,7 @@ import {
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
 
-import { SHELL_ICON_COLOR } from '@/shared/theme/presentation'
+import { SHELL_ICON_COLOR } from '@/shared/theme'
 
 type AccountMenuProps = {
   accountName: string

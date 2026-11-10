@@ -1,10 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
-import { HistoryJobPage } from '@/features/workspace/HistoryJobPage'
-import { HistoryPanel } from '@/features/workspace/HistoryPanel'
-import { OverviewPanel } from '@/features/workspace/OverviewPanel'
-import { PipelineWorkspace } from '@/features/workspace/PipelineWorkspace'
-import { SettingsPanel } from '@/features/workspace/SettingsPanel'
+import { SettingsPanel } from '@/features/settings'
+import { HistoryJobPage, HistoryPanel, OverviewPanel, PipelineWorkspace } from '@/pages'
 import { useSession } from '@/shared/auth/session'
 import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
 

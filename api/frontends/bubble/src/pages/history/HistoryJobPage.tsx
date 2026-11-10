@@ -13,29 +13,25 @@ import { Step, Stepper } from '@astryxdesign/core/Stepper'
 import { Tab, TabList } from '@astryxdesign/core/TabList'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { JobStatusLabel } from '@/features/pipeline/JobStatusLabel'
-import { usePipelineJob } from '@/features/pipeline/usePipelineJob'
-import { JobInputMedia } from '@/features/upload/JobInputMedia'
-import { fileNameFromSourceRef } from '@/features/upload/sourceMedia'
+import { JobStatusLabel, usePipelineJob } from '@/features/pipeline'
+import { JobOutputsPanel, outputsForJob } from '@/features/outputs'
+import { fileNameFromSourceRef, JobInputMedia } from '@/features/upload'
 import { PageHeader } from '@/shared/layout/PageHeader'
 import {
   WORKSPACE_CONTENT_PADDING,
   WORKSPACE_CONTENT_WIDTH,
   WORKSPACE_GAP,
 } from '@/shared/layout/contentSurface'
-import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme/presentation'
+import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
+import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
+import { JobRunBreadcrumbs } from './JobRunBreadcrumbs'
 import {
   mockJobRunEvents,
   pipelineActiveStep,
   pipelineStepStatuses,
   PIPELINE_STEPS,
 } from './jobRunMock'
-import { JobOutputsPanel } from './JobOutputsPanel'
-import { WORKSPACE_PATHS } from '@/shared/layout/workspacePaths'
-
-import { JobRunBreadcrumbs } from './JobRunBreadcrumbs'
-import { outputsForJob } from './mockOutputs'
 
 type HistoryJobTab = 'status' | 'input' | 'output' | 'history'
 

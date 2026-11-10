@@ -1,9 +1,6 @@
 import { env } from '@/shared/config/env'
 
-import {
-  sourceMediaKind,
-  type SourceMediaKind,
-} from '@/features/upload/sourceMedia'
+import { sourceMediaKind, type SourceMediaKind } from '@/features/upload'
 
 import type { MockOutputFile } from './mockOutputs'
 

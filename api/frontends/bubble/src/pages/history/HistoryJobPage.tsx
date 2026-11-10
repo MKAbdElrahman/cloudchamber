@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { InboxArrowDownIcon, QueueListIcon } from '@heroicons/react/24/outline'
+import { useNavigate, useParams } from 'react-router-dom'
+import { QueueListIcon } from '@heroicons/react/24/outline'
 
-import { VStack } from '@astryxdesign/core/Layout'
+import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
-import { EmptyState } from '@astryxdesign/core/EmptyState'
+import { Button } from '@astryxdesign/core/Button'
 import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList'
@@ -13,15 +13,13 @@ import { Step, Stepper } from '@astryxdesign/core/Stepper'
 import { Tab, TabList } from '@astryxdesign/core/TabList'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { JobOutputsPanel } from '@/features/outputs'
-import { JobStatusLabel, usePipelineJob } from '@/features/pipeline'
+import { isJobSuccess, JobStatusLabel, usePipelineJob } from '@/features/pipeline'
 import { JobInputMedia } from '@/features/upload'
 import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 import { fileNameFromSourceRef } from '@/shared/media'
-import { MUTED_ICON_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
+import { SHELL_ICON_COLOR } from '@/shared/theme'
 
-import { outputsForJob } from '../fixtures/mockOutputs'
 import { JobRunBreadcrumbs } from './JobRunBreadcrumbs'
 import {
   mockJobRunEvents,
@@ -30,14 +28,15 @@ import {
   PIPELINE_STEPS,
 } from './jobRunMock'
 
-type HistoryJobTab = 'status' | 'input' | 'output' | 'history'
+type HistoryJobTab = 'status' | 'input' | 'history'
 
 type HistoryJobPageProps = {
   token: string
 }
 
-/** Single job run — input, outputs (mock), status, and activity. */
+/** Single job run — status, recording, and activity. Read opens the one document. */
 export function HistoryJobPage({ token }: HistoryJobPageProps) {
+  const navigate = useNavigate()
   const { jobId: jobIdParam } = useParams()
   const jobId = jobIdParam?.trim() ?? ''
   const [tab, setTab] = useState<HistoryJobTab>('status')
@@ -45,10 +44,6 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
   const jobQuery = usePipelineJob(token, jobId || null)
   const job = jobQuery.data
 
-  const outputs = useMemo(
-    () => (job ? outputsForJob(job.id, job.status) : []),
-    [job],
-  )
   const events = useMemo(() => (job ? mockJobRunEvents(job) : []), [job])
   const stepStatuses = useMemo(() => pipelineStepStatuses(job?.status), [job?.status])
   const activeStep = pipelineActiveStep(job?.status)
@@ -83,7 +78,20 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
                 'Loading job details…'
               )
             }
-            end={job ? <JobStatusLabel status={job.status} /> : undefined}
+            end={
+              job ? (
+                <HStack gap={WORKSPACE_GAP.group} vAlign="center">
+                  {isJobSuccess(job.status) ? (
+                    <Button
+                      label="Read"
+                      variant="primary"
+                      onClick={() => navigate(WORKSPACE_PATHS.historyJobDocument(job.id))}
+                    />
+                  ) : null}
+                  <JobStatusLabel status={job.status} />
+                </HStack>
+              ) : undefined
+            }
           />
           <TabList
             layout="fill"
@@ -93,7 +101,6 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
           >
             <Tab value="status" label="Status" />
             <Tab value="input" label="Input" />
-            <Tab value="output" label="Output" />
             <Tab value="history" label="History" />
           </TabList>
         </VStack>
@@ -163,23 +170,6 @@ export function HistoryJobPage({ token }: HistoryJobPageProps) {
                 </MetadataList>
               ) : null}
             </VStack>
-          ) : null}
-
-          {job && tab === 'output' ? (
-            outputs.length > 0 ? (
-              <JobOutputsPanel files={outputs} />
-            ) : (
-              <EmptyState
-                title="No outputs yet"
-                description={
-                  job.status === 'completed'
-                    ? 'Outputs will appear here when artifact listing is wired to the API.'
-                    : 'Outputs are generated when the pipeline run completes.'
-                }
-                icon={<Icon icon={InboxArrowDownIcon} size="lg" color={MUTED_ICON_COLOR} />}
-                isCompact
-              />
-            )
           ) : null}
 
           {job && tab === 'history' ? (

@@ -5,6 +5,7 @@ export const WORKSPACE_PATHS = {
   pipeline: '/pipeline',
   history: '/history',
   historyJob: (jobId: string) => `/history/${encodeURIComponent(jobId)}`,
+  historyJobDocument: (jobId: string) => `/history/${encodeURIComponent(jobId)}/read`,
   settings: '/settings',
   settingsSection: (section: SettingsSectionId) => `/settings/${section}`,
 } as const

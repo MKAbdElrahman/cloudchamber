@@ -1,4 +1,5 @@
 export { HistoryJobPage } from './history/HistoryJobPage'
+export { JobDocumentPage } from './history/JobDocumentPage'
 export { HistoryPanel } from './history/HistoryPanel'
 export { OverviewPanel } from './overview/OverviewPanel'
 export { PipelineWorkspace } from './pipeline/PipelineWorkspace'

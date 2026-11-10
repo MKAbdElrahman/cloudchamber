@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { PipelineRunProvider } from '@/features/pipeline'
-import { HistoryJobPage, HistoryPanel, OverviewPanel, PipelineWorkspace, SettingsPanel } from '@/pages'
+import { HistoryJobPage, HistoryPanel, JobDocumentPage, OverviewPanel, PipelineWorkspace, SettingsPanel } from '@/pages'
 import { useSession } from '@/shared/auth'
 import { WORKSPACE_PATHS } from '@/shared/layout'
 
@@ -23,6 +23,7 @@ export function AuthenticatedRoutes() {
         }
       />
       <Route path={WORKSPACE_PATHS.history} element={<HistoryPanel token={token} />} />
+      <Route path={`${WORKSPACE_PATHS.history}/:jobId/read`} element={<JobDocumentPage token={token} />} />
       <Route path={`${WORKSPACE_PATHS.history}/:jobId`} element={<HistoryJobPage token={token} />} />
       <Route path="/settings" element={<Navigate to={WORKSPACE_PATHS.settingsSection('appearance')} replace />} />
       <Route path="/settings/:section" element={<SettingsPanel />} />

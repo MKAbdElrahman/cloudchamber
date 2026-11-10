@@ -4,9 +4,10 @@ import { FilmIcon, MusicalNoteIcon, QueueListIcon } from '@heroicons/react/24/ou
 import { HStack } from '@astryxdesign/core/Layout'
 import { Icon } from '@astryxdesign/core/Icon'
 import { IconButton } from '@astryxdesign/core/IconButton'
-import { jobPhase } from '@/features/pipeline'
-import { WORKSPACE_GAP } from '@/shared/spacing'
 import type { SourceMediaKind } from '@/shared/media'
+import { WORKSPACE_GAP } from '@/shared/spacing'
+
+import { jobPhase } from './jobStatus'
 
 export type JobPeekTarget = 'video' | 'pipeline'
 
@@ -18,10 +19,21 @@ type JobOpenIconsProps = {
   status?: string
 }
 
+function openLabel(kind: SourceMediaKind): string {
+  switch (kind) {
+    case 'audio':
+      return 'Audio'
+    case 'video':
+      return 'Video'
+    default:
+      return 'Recording'
+  }
+}
+
 /** Icons that open the recording or the pipeline over the current page. */
 export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status }: JobOpenIconsProps) {
   const mediaIcon = kind === 'audio' ? MusicalNoteIcon : FilmIcon
-  const mediaLabel = kind === 'audio' ? 'Audio' : kind === 'video' ? 'Video' : 'Recording'
+  const label = openLabel(kind)
 
   function press(target: JobPeekTarget) {
     return (event: MouseEvent) => {
@@ -34,8 +46,8 @@ export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status }: JobO
   return (
     <HStack gap={WORKSPACE_GAP.local} vAlign="center">
       <IconButton
-        label={mediaLabel}
-        tooltip={`Open ${mediaLabel.toLowerCase()}`}
+        label={label}
+        tooltip={`Open ${label.toLowerCase()}`}
         variant="ghost"
         size="sm"
         icon={<Icon icon={mediaIcon} />}

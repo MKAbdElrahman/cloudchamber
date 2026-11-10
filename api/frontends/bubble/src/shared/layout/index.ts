@@ -5,11 +5,7 @@ export { PendingLines } from './PendingLines'
 export { WORKSPACE_CONTENT_PADDING } from './contentSurface'
 export { SHELL_NARROW_QUERY } from './shellBreakpoint'
 export { WorkspacePage } from './WorkspacePage'
-export {
-  isSettingsSectionId,
-  type SettingsSectionId,
-  type WorkspaceSection,
-} from './workspace'
+export type { WorkspaceSection } from './workspace'
 export {
   projectIdFromPath,
   WORKSPACE_PATHS,

@@ -10,10 +10,11 @@ import { Markdown } from '@astryxdesign/core/Markdown'
 import { Text } from '@astryxdesign/core/Text'
 import { createMarkdownHeadingLinks } from '@astryxdesign/core/Markdown/plugins'
 import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
-import { filesFromJob, loadDocumentBody } from '@/features/outputs'
-import { JobStatusLabel, createJob, jobPhase, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
+import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKindOf, mediaLabel } from '@/features/outputs'
+import { JobOpenIcons, JobPeek, JobStatusLabel, createJob, jobPhase, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
 import {
   ForeignProjectNotice,
+  ProjectTrail,
   addProjectJob,
   attachRecordingJob,
   useJobOwner,
@@ -23,11 +24,6 @@ import {
 import { ApiError } from '@/shared/api'
 import { PageHeader, PendingLines, SHELL_NARROW_QUERY, WorkspacePage } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
-
-import { ProjectTrail } from '../projects/ProjectTrail'
-import { faceFileName, knownMediaName, mediaKindOf, mediaLabel } from './jobContainer'
-import { JobOpenIcons } from './JobOpenIcons'
-import { JobPeek } from './JobPeek'
 
 type JobFilePageProps = {
   token: string

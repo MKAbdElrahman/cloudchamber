@@ -1,4 +1,5 @@
 export { ForeignProjectNotice } from './ForeignProjectNotice'
+export { ProjectTrail } from './ProjectTrail'
 export {
   addProjectJob,
   addProjectRecording,

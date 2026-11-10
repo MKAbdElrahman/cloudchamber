@@ -1,6 +1,7 @@
 import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
-import { useProject } from '@/features/projects'
 import { WORKSPACE_PATHS } from '@/shared/layout'
+
+import { useProject } from './useProjects'
 
 type ProjectTrailProps = {
   projectId: string

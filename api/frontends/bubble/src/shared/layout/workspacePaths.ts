@@ -1,4 +1,4 @@
-import type { SettingsSectionId, WorkspaceSection } from './workspace'
+import type { WorkspaceSection } from './workspace'
 
 function projectPrefix(projectId: string): string {
   return `/p/${encodeURIComponent(projectId)}`
@@ -12,7 +12,7 @@ export const WORKSPACE_PATHS = {
     `${projectPrefix(projectId)}/recordings/${encodeURIComponent(recordingId)}`,
   job: (projectId: string, jobId: string) =>
     `${projectPrefix(projectId)}/jobs/${encodeURIComponent(jobId)}`,
-  settingsSection: (section: SettingsSectionId) => `/settings/${section}`,
+  settingsSection: (section: string) => `/settings/${section}`,
 } as const
 
 export function projectIdFromPath(pathname: string): string | null {

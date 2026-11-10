@@ -18,17 +18,16 @@ import {
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
 
-import { AppearancePanel, SettingsSectionSearch, useSettingsSectionSearch } from '@/features/settings'
+import {
+  AppearancePanel,
+  SettingsSectionSearch,
+  isSettingsSectionId,
+  useSettingsSectionSearch,
+  type SettingsSectionId,
+} from '@/features/settings'
 import { accountDisplayLabel, parseServiceJwt, useSession } from '@/shared/auth'
 import { env, readCustomTusdEndpoint, writeCustomTusdEndpoint } from '@/shared/config'
-import {
-  isSettingsSectionId,
-  PageHeader,
-  SHELL_NARROW_QUERY,
-  WorkspacePage,
-  WORKSPACE_PATHS,
-  type SettingsSectionId,
-} from '@/shared/layout'
+import { PageHeader, SHELL_NARROW_QUERY, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 import { META_TOKEN_COLOR, SHELL_ICON_COLOR, useThemePreference } from '@/shared/theme'
 

@@ -2,10 +2,15 @@ import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer'
 import { Layout, LayoutContent, VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Lightbox } from '@astryxdesign/core/Lightbox'
-import { JobStages, JobStatusLabel, jobOutcomeBanner, useJobProgress, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
 import { PendingLines } from '@/shared/layout'
 import { playbackUrlFromSourceRef } from '@/shared/media'
 import { WORKSPACE_GAP } from '@/shared/spacing'
+
+import { JobStages } from './JobStages'
+import { JobStatusLabel } from './JobStatusLabel'
+import { jobOutcomeBanner, visibleJobStatus } from './jobStatus'
+import { useJobProgress } from './useJobProgress'
+import { usePipelineJob } from './usePipelineJob'
 
 export type PeekVideo = {
   name: string

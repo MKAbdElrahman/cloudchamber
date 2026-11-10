@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getJob } from './api'
-import { writeCachedJob, readCachedJob } from './pipelineJobCache'
+import { loadJob } from './loadJob'
+import { readCachedJob } from './pipelineJobCache'
 import { isTerminalJobStatus } from './jobStatus'
 
 const POLL_MS = 3000
@@ -10,11 +10,7 @@ const POLL_MS = 3000
 export function usePipelineJob(token: string, jobId: string | null) {
   return useQuery({
     queryKey: ['pipeline-job', jobId],
-    queryFn: async () => {
-      const job = await getJob(token, jobId!)
-      writeCachedJob(job)
-      return job
-    },
+    queryFn: () => loadJob(token, jobId!),
     enabled: Boolean(jobId),
     initialData: () => (jobId ? readCachedJob(jobId) : undefined),
     staleTime: 30_000,

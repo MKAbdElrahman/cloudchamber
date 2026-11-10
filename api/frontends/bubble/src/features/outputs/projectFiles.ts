@@ -1,6 +1,6 @@
 import { fileNameFromSourceRef } from '@/shared/media'
 
-const MEDIA_FILE = /\.(mp4|webm|mov|m4v|mkv|avi|ogv|mp3|wav|ogg|m4a|aac|flac)$/i
+import { knownMediaName } from './fileName'
 
 /** The refs a job may have. The project lists the document only. */
 export type JobArtifacts = {
@@ -29,22 +29,14 @@ export function documentFormat(ref: string): ProjectFileKind {
   return fileNameFromSourceRef(ref).toLowerCase().endsWith('.pdf') ? 'pdf' : 'markdown'
 }
 
-function stemOfMediaName(name: string): string {
-  if (!MEDIA_FILE.test(name)) return ''
-  return name.trim().replace(/\.[^.]+$/, '')
-}
-
 /**
  * File name for the project. A recording named week-03.mp4 becomes week-03.md.
  * An opaque upload id keeps the export's own name, document.md.
  */
 export function documentFileName(sourceRef: string | undefined, documentRef: string, mediaName?: string): string {
   const extension = documentFormat(documentRef) === 'pdf' ? 'pdf' : 'md'
-  const fromMedia = stemOfMediaName(mediaName ?? '')
-  if (fromMedia.length > 0) return `${fromMedia}.${extension}`
-  const sourceName = sourceRef?.trim() ? fileNameFromSourceRef(sourceRef) : ''
-  const fromRef = stemOfMediaName(sourceName)
-  if (fromRef.length > 0) return `${fromRef}.${extension}`
+  const media = knownMediaName(sourceRef, mediaName)
+  if (media) return `${media.replace(/\.[^.]+$/, '')}.${extension}`
   return fileNameFromSourceRef(documentRef)
 }
 
@@ -52,7 +44,7 @@ export function documentFileName(sourceRef: string | undefined, documentRef: str
 export function filesFromJob(job: JobArtifacts, mediaName?: string): ProjectFile[] {
   const ref = job.documentRef?.trim()
   if (!ref) return []
-  const named = mediaName?.trim() && MEDIA_FILE.test(mediaName.trim()) ? mediaName.trim() : undefined
+  const named = knownMediaName(undefined, mediaName) ?? undefined
   const sourceName = named ?? (job.sourceRef?.trim() ? fileNameFromSourceRef(job.sourceRef) : undefined)
   return [
     {

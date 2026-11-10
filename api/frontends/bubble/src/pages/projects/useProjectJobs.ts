@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { getJob, isTerminalJobStatus, listJobs, normalizeJobs, writeCachedJob, type PipelineJob } from '@/features/pipeline'
+import { isTerminalJobStatus, listJobs, loadJob, normalizeJobs, type PipelineJob } from '@/features/pipeline'
 import { claimUnassignedJobs, DEFAULT_PROJECT_ID, listProjectJobIds } from '@/features/projects'
 
 const POLL_MS = 3_000
@@ -15,9 +15,7 @@ async function reconcileOpenJobs(token: string, jobs: PipelineJob[]): Promise<Pi
     jobs.map(async (job) => {
       if (!needsReconcile(job)) return job
       try {
-        const current = await getJob(token, job.id)
-        writeCachedJob(current)
-        return current
+        return await loadJob(token, job.id)
       } catch {
         return job
       }

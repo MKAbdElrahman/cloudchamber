@@ -25,7 +25,7 @@ export function InlineMediaPlayer({ playbackUrl, kind }: InlineMediaPlayerProps)
             preload="metadata"
             src={playbackUrl}
             onError={() => setPlaybackError(true)}
-            style={{ width: '100%' }}
+            className="w-full"
           >
             Your browser does not support audio playback.
           </audio>
@@ -36,12 +36,7 @@ export function InlineMediaPlayer({ playbackUrl, kind }: InlineMediaPlayerProps)
             preload="metadata"
             src={playbackUrl}
             onError={() => setPlaybackError(true)}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              background: 'var(--color-background-surface)',
-            }}
+            className="h-full w-full bg-surface object-contain"
           >
             Your browser does not support video playback.
           </video>

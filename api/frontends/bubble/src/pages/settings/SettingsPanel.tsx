@@ -190,7 +190,7 @@ export function SettingsPanel() {
       start={
         isNarrow ? undefined : (
           <LayoutPanel width={280} hasDivider>
-            <VStack gap={3}>
+            <VStack gap={WORKSPACE_GAP.group}>
               <Heading level={2}>Settings</Heading>
               <SettingsSectionSearch query={query} onQueryChange={setQuery} />
               {isFiltering && navItems.length === 0 ? (

@@ -6,20 +6,31 @@ import { List, ListItem } from '@astryxdesign/core/List'
 import { Icon } from '@astryxdesign/core/Icon'
 import { Token } from '@astryxdesign/core/Token'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { DocumentIcon, DocumentTextIcon, PlayCircleIcon } from '@heroicons/react/24/outline'
+import {
+  DocumentIcon,
+  DocumentTextIcon,
+  FilmIcon,
+  PlayCircleIcon,
+  SpeakerWaveIcon,
+} from '@heroicons/react/24/outline'
 
-import type { OutputFile } from '@/features/outputs'
+import { outputFileKindLabel, type OutputFile } from '@/features/outputs'
 import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { META_TOKEN_COLOR, SHELL_ICON_COLOR } from '@/shared/theme'
 
 import { MOCK_OUTPUT_FILES } from '../fixtures/mockOutputs'
 
 function outputIcon(file: OutputFile) {
-  return file.kind === 'pdf' ? DocumentIcon : DocumentTextIcon
-}
-
-function kindLabel(kind: OutputFile['kind']) {
-  return kind === 'pdf' ? 'PDF' : 'Markdown'
+  switch (file.kind) {
+    case 'pdf':
+      return DocumentIcon
+    case 'video':
+      return FilmIcon
+    case 'audio':
+      return SpeakerWaveIcon
+    case 'markdown':
+      return DocumentTextIcon
+  }
 }
 
 /** Studio home — spacious list, one primary path to the pipeline. */
@@ -54,7 +65,7 @@ export function OverviewPanel() {
                 </Text>
               }
               startContent={<Icon icon={outputIcon(file)} size="sm" color={SHELL_ICON_COLOR} />}
-              endContent={<Token label={kindLabel(file.kind)} size="sm" color={META_TOKEN_COLOR} />}
+              endContent={<Token label={outputFileKindLabel(file.kind)} size="sm" color={META_TOKEN_COLOR} />}
             />
           ))}
         </List>

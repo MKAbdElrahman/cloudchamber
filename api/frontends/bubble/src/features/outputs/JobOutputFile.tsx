@@ -14,21 +14,9 @@ import { InlineMediaPlayer } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { META_TOKEN_COLOR } from '@/shared/theme'
 
+import { outputFileKindLabel } from './outputFileKind'
 import { outputMediaKindForFile, playbackUrlForOutput } from './outputMedia'
 import type { OutputFile } from './types'
-
-function typeLabel(kind: OutputFile['kind']): string {
-  switch (kind) {
-    case 'video':
-      return 'Video'
-    case 'audio':
-      return 'Audio'
-    case 'pdf':
-      return 'PDF'
-    default:
-      return 'Markdown'
-  }
-}
 
 function MarkdownPreview({ source }: { source: string }) {
   return (
@@ -58,7 +46,7 @@ export function JobOutputFile({ file }: JobOutputFileProps) {
         <MetadataList>
           <MetadataListItem label="File">{file.name}</MetadataListItem>
           <MetadataListItem label="Type">
-            <Token label={typeLabel(file.kind)} size="sm" color={META_TOKEN_COLOR} />
+            <Token label={outputFileKindLabel(file.kind)} size="sm" color={META_TOKEN_COLOR} />
           </MetadataListItem>
           <MetadataListItem label="Updated">
             <Timestamp value={file.dateUpdated} format="relative" />
@@ -77,7 +65,7 @@ export function JobOutputFile({ file }: JobOutputFileProps) {
                   title={file.name}
                   src={playbackUrl}
                   onError={() => setPdfError(true)}
-                  style={{ width: '100%', height: '100%', border: 'none', background: 'var(--color-background-surface)' }}
+                  className="h-full w-full border-0 bg-surface"
                 />
               </AspectRatio>
             ) : (

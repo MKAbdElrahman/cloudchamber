@@ -88,7 +88,7 @@ export function LoginPanel({
       </TabList>
 
       {tab === 'credentials' ? (
-        <form onSubmit={onSubmit} style={{ width: '100%' }}>
+        <form onSubmit={onSubmit} className="w-full">
           <VStack gap={3}>
             <TextInput
               label="Email or username"

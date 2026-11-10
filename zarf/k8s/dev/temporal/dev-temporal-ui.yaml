@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-ui
+  namespace: cloudchamber-system
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: temporal-ui
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: temporal-ui
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      containers:
+        - name: temporal-ui
+          image: temporalio/ui:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: temporal-server-service:7233
+            - name: TEMPORAL_CORS_ORIGINS
+              value: http://localhost:8080
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-ui-service
+  namespace: cloudchamber-system
+spec:
+  type: ClusterIP
+  selector:
+    app: temporal-ui
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

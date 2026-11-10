@@ -1,0 +1,31 @@
+# Build the Go Binary.
+FROM golang:1.27 AS build_pipeline_asr
+ENV CGO_ENABLED=0
+ARG BUILD_TAG
+
+# Copy the source code into the container.
+COPY . /service
+
+# Build the service binary. We are doing this last since this will be different
+# every time we run through this process.
+WORKDIR /service/api/workers/asr
+RUN go build -ldflags "-X main.build=${BUILD_TAG}"
+
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.24
+ARG BUILD_DATE
+ARG BUILD_TAG
+RUN addgroup -g 1000 -S pipeline && \
+    adduser -u 1000 -h /service -G pipeline -S pipeline
+COPY --from=build_pipeline_asr --chown=pipeline:pipeline /service/api/workers/asr/asr /service/asr
+WORKDIR /service
+USER pipeline
+CMD ["./asr"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="pipeline-asr-worker" \
+      org.opencontainers.image.authors="MKAbdElrahman" \
+      org.opencontainers.image.source="https://github.com/MKAbdElrahman/cloudchamber/tree/master/api/workers/asr" \
+      org.opencontainers.image.revision="${BUILD_TAG}" \
+      org.opencontainers.image.vendor="cloudchamber"

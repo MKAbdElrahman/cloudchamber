@@ -1,0 +1,64 @@
+# Local reference clone (not part of this module)
+references/
+
+# Structurizr local server (see doc/architecture/c4/)
+doc/architecture/c4/workspace.json
+doc/architecture/c4/workspace-from-code.dsl
+doc/architecture/c4/.structurizr/
+
+.env
+.envrc
+.misc
+
+# Project
+app/services/cloudchamber-api/cloudchamber-api
+app/services/metrics/metrics
+app/tooling/cloudchamber-admin/cloudchamber-admin
+app/tooling/cloudchamber-admin/logfmt
+app/tooling/cloudchamber-admin/docs
+.excalidraw
+database-data/
+
+# Environment
+api/cmd/frontends/admin/.env
+
+# Mac
+.DS_Store
+
+# Backup files
+*~*
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Folders
+_obj
+_test
+zarf/build/
+
+# Editor files
+.idea/
+*.iml
+*.swp
+.vscode
+CLAUDE.md
+.claude/
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+*.exe
+//*.test
+.vscode/tasks.json
+zarf/compose/database-data/data

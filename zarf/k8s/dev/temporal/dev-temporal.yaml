@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-server
+  namespace: cloudchamber-system
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: temporal-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: temporal-server
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      initContainers:
+        - name: init-temporal-visibility-db
+          image: postgres:18.6
+          env:
+            - name: PGPASSWORD
+              value: temporal
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until pg_isready -h temporal-database-service -U temporal -d temporal; do
+                echo "waiting for temporal-database-service"
+                sleep 2
+              done
+              psql -h temporal-database-service -U temporal -d temporal -v ON_ERROR_STOP=1 <<'SQL'
+              SELECT 'CREATE DATABASE temporal_visibility'
+              WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'temporal_visibility')\gexec
+              SQL
+      containers:
+        - name: temporal-server
+          image: temporalio/auto-setup:latest
+          ports:
+            - name: frontend
+              containerPort: 7233
+          env:
+            - name: DB
+              value: postgres12
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_SEEDS
+              value: temporal-database-service
+            - name: POSTGRES_USER
+              value: temporal
+            - name: POSTGRES_PWD
+              value: temporal
+            - name: DBNAME
+              value: temporal
+            - name: VISIBILITY_DBNAME
+              value: temporal_visibility
+            - name: BIND_ON_IP
+              value: 0.0.0.0
+          readinessProbe:
+            tcpSocket:
+              port: frontend
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: frontend
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-server-service
+  namespace: cloudchamber-system
+spec:
+  type: ClusterIP
+  selector:
+    app: temporal-server
+  ports:
+    - name: frontend
+      port: 7233
+      targetPort: frontend

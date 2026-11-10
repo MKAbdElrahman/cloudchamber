@@ -1,0 +1,57 @@
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+
+/* Default pack only — other packs load on demand (themeAssets.ts). */
+@import "@astryxdesign/theme-neutral/fonts.css";
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
+@import "@astryxdesign/core/tailwind-theme.css";
+@import "tailwindcss/utilities.css" layer(utilities);
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Login split hero (matches Astryx login-split container-query pattern) */
+.login-split-grid {
+  container-type: inline-size;
+  container-name: login-split;
+  padding: var(--spacing-8);
+}
+
+.login-hero-panel {
+  min-height: 420px;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, color-mix(in srgb, var(--color-accent) 35%, transparent), transparent),
+    linear-gradient(
+      165deg,
+      var(--color-background-surface) 0%,
+      color-mix(in srgb, var(--color-accent) 12%, var(--color-background-body)) 100%
+    );
+}
+
+.login-split-image {
+  width: 100%;
+  order: 0;
+}
+
+@container login-split (max-width: 511px) {
+  .login-split-grid {
+    padding: var(--spacing-4);
+  }
+  .login-split-image {
+    order: -1;
+  }
+  .login-hero-panel {
+    min-height: 240px;
+  }
+}

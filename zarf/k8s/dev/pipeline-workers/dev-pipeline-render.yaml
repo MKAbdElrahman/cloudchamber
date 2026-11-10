@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipeline-render
+  namespace: cloudchamber-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pipeline-render
+  template:
+    metadata:
+      labels:
+        app: pipeline-render
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: pipeline-render
+          image: localhost/ardanlabs/pipeline-render:0.0.1
+          env:
+            - name: PIPELINE_TEMPORAL_HOST_PORT
+              value: temporal-server-service:7233
+            - name: PIPELINE_TEMPORAL_NAMESPACE
+              value: default
+            - name: PIPELINE_TEMPO_HOST
+              value: tempo:4317
+            - name: PIPELINE_TEMPO_SERVICE_NAME
+              value: pipeline-render
+            - name: PIPELINE_TEMPO_PROBABILITY
+              value: "1.0"
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f1f1f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <title>CloudChamber</title>
+    <script>
+      (function () {
+        var KEY = 'cloudchamber.appearance.v1'
+        var LT = 'cloudchamber.astryx-theme'
+        var LM = 'cloudchamber.astryx-color-mode'
+        var theme = 'neutral'
+        var mode = 'system'
+        try {
+          var raw = localStorage.getItem(KEY)
+          if (raw) {
+            var o = JSON.parse(raw)
+            if (o && o.themeId) theme = o.themeId
+            if (o && o.colorMode) mode = o.colorMode
+          } else {
+            var lt = localStorage.getItem(LT)
+            var lm = localStorage.getItem(LM)
+            if (lt) theme = lt
+            if (lm) mode = lm
+          }
+          var root = document.documentElement
+          root.setAttribute('data-astryx-theme', theme)
+          var resolved = mode
+          if (mode === 'system') {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          root.setAttribute('data-theme', resolved)
+          root.style.colorScheme = resolved
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

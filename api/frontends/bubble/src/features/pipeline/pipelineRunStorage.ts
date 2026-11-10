@@ -6,28 +6,39 @@ export type PipelineRunSnapshot = {
   currentJobId: string | null
 }
 
-export function readPipelineRun(): PipelineRunSnapshot {
-  try {
-    const current = localStorage.getItem(RUN_KEY)
-    const raw = current ?? localStorage.getItem(LEGACY_RUN_KEY)
-    if (!current && raw) {
-      localStorage.setItem(RUN_KEY, raw)
-      localStorage.removeItem(LEGACY_RUN_KEY)
-    }
-    if (!raw) return { sourceRef: null, currentJobId: null }
-    const parsed = JSON.parse(raw) as Partial<PipelineRunSnapshot>
-    return {
-      sourceRef: typeof parsed.sourceRef === 'string' ? parsed.sourceRef : null,
-      currentJobId: typeof parsed.currentJobId === 'string' ? parsed.currentJobId : null,
-    }
-  } catch {
-    return { sourceRef: null, currentJobId: null }
+function runKey(projectId: string): string {
+  return `${RUN_KEY}.${projectId}`
+}
+
+function parseSnapshot(raw: string | null): PipelineRunSnapshot | null {
+  if (!raw) return null
+  const parsed = JSON.parse(raw) as Partial<PipelineRunSnapshot>
+  return {
+    sourceRef: typeof parsed.sourceRef === 'string' ? parsed.sourceRef : null,
+    currentJobId: typeof parsed.currentJobId === 'string' ? parsed.currentJobId : null,
   }
 }
 
-export function writePipelineRun(snapshot: PipelineRunSnapshot) {
+export function readPipelineRun(projectId: string, adoptLegacy: boolean): PipelineRunSnapshot {
+  const empty = { sourceRef: null, currentJobId: null }
   try {
-    localStorage.setItem(RUN_KEY, JSON.stringify(snapshot))
+    const own = parseSnapshot(localStorage.getItem(runKey(projectId)))
+    if (own) return own
+    if (!adoptLegacy) return empty
+    const legacy = localStorage.getItem(RUN_KEY) ?? localStorage.getItem(LEGACY_RUN_KEY)
+    const snapshot = parseSnapshot(legacy) ?? empty
+    localStorage.setItem(runKey(projectId), JSON.stringify(snapshot))
+    localStorage.removeItem(RUN_KEY)
+    localStorage.removeItem(LEGACY_RUN_KEY)
+    return snapshot
+  } catch {
+    return empty
+  }
+}
+
+export function writePipelineRun(projectId: string, snapshot: PipelineRunSnapshot) {
+  try {
+    localStorage.setItem(runKey(projectId), JSON.stringify(snapshot))
   } catch {
     /* ignore */
   }

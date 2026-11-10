@@ -4,12 +4,11 @@ export { PageHeader } from './PageHeader'
 export { WorkspacePage } from './WorkspacePage'
 export {
   isSettingsSectionId,
-  WORKSPACE_LABELS,
   type SettingsSectionId,
   type WorkspaceSection,
 } from './workspace'
 export {
-  pathForWorkspaceSection,
+  projectIdFromPath,
   WORKSPACE_PATHS,
   workspaceSectionFromPath,
 } from './workspacePaths'

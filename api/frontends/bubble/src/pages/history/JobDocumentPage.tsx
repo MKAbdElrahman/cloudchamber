@@ -1,21 +1,18 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
-import { useParams } from 'react-router-dom'
-import { ChevronRightIcon } from '@heroicons/react/24/outline'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
-import { BreadcrumbItem, Breadcrumbs } from '@astryxdesign/core/Breadcrumbs'
 import { Button } from '@astryxdesign/core/Button'
-import { Icon } from '@astryxdesign/core/Icon'
 import { Markdown } from '@astryxdesign/core/Markdown'
 import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import type { HeadingLevel } from '@astryxdesign/core/Heading'
 import { isJobSuccess, usePipelineJob } from '@/features/pipeline'
+import { ForeignProjectNotice, useJobOwner } from '@/features/projects'
 import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { ProjectTrail } from '../projects/ProjectTrail'
 import { WORKSPACE_GAP } from '@/shared/spacing'
-import { fileNameFromSourceRef } from '@/shared/media'
-
 import { readingDocument } from './documentReading'
 import { outputsForJob } from '../fixtures/mockOutputs'
 
@@ -63,11 +60,14 @@ function DocumentHeading({
   )
 }
 
-/** The one document a finished job produces. */
+/** The file a finished job produced. The job stays behind View job. */
 export function JobDocumentPage({ token }: JobDocumentPageProps) {
-  const { jobId: jobIdParam } = useParams()
+  const navigate = useNavigate()
+  const { jobId: jobIdParam, projectId = '' } = useParams()
   const jobId = jobIdParam?.trim() ?? ''
-  const jobQuery = usePipelineJob(token, jobId || null)
+  const owner = useJobOwner(jobId)
+  const inProject = owner.data === projectId
+  const jobQuery = usePipelineJob(token, inProject ? jobId || null : null)
   const job = jobQuery.data
   const file = useMemo(() => {
     if (!job || !isJobSuccess(job.status)) return undefined
@@ -75,50 +75,56 @@ export function JobDocumentPage({ token }: JobDocumentPageProps) {
   }, [job])
   const document = useMemo(() => readingDocument(file?.markdown ?? ''), [file?.markdown])
   const outline = useOutlineFromMarkdown(document.body)
-  const title = document.title ?? file?.name ?? 'Document'
-  const jobLabel = job ? fileNameFromSourceRef(job.sourceRef) : jobId
+  const title =
+    owner.isSuccess && !inProject ? 'Another project' : (document.title ?? file?.name ?? 'Document')
 
   return (
     <WorkspacePage
       header={
         <VStack gap={WORKSPACE_GAP.group} width="100%">
-          <Breadcrumbs
-            variant="supporting"
-            separator={<Icon icon={ChevronRightIcon} size="sm" color="secondary" />}
-            aria-label="Document navigation"
-          >
-            <BreadcrumbItem href={WORKSPACE_PATHS.history}>History</BreadcrumbItem>
-            <BreadcrumbItem href={WORKSPACE_PATHS.historyJob(jobId)}>{jobLabel}</BreadcrumbItem>
-            <BreadcrumbItem isCurrent>Document</BreadcrumbItem>
-          </Breadcrumbs>
+          <ProjectTrail projectId={projectId} current={title} />
           <PageHeader
             title={title}
             description={document.dek}
             end={
-              file?.markdown ? (
-                <Button
-                  label="Markdown"
-                  variant="secondary"
-                  onClick={() => downloadMarkdown(file.name, file.markdown ?? '')}
-                />
+              inProject && job ? (
+                <HStack gap={WORKSPACE_GAP.local} vAlign="center">
+                  {file?.markdown ? (
+                    <Button
+                      label="Markdown"
+                      variant="secondary"
+                      onClick={() => downloadMarkdown(file.name, file.markdown ?? '')}
+                    />
+                  ) : null}
+                  <Button
+                    label="View job"
+                    variant="secondary"
+                    onClick={() => navigate(WORKSPACE_PATHS.historyJob(projectId, job.id))}
+                  />
+                </HStack>
               ) : undefined
             }
           />
         </VStack>
       }
     >
-      {jobQuery.isError ? (
+      {owner.data && owner.data !== projectId ? (
+        <ForeignProjectNotice ownerId={owner.data} jobId={jobId} />
+      ) : null}
+      {inProject && jobQuery.isError ? (
         <Banner
           status="error"
           title="Could not load job"
           description={(jobQuery.error as Error).message}
         />
       ) : null}
-      {jobQuery.isPending && !job ? <Text type="supporting">Loading document…</Text> : null}
-      {job && !file ? (
+      {owner.isPending || (inProject && jobQuery.isPending && !job) ? (
+        <Text type="supporting">Loading document…</Text>
+      ) : null}
+      {inProject && job && !file ? (
         <Text color="secondary">This run does not have a document yet.</Text>
       ) : null}
-      {file ? (
+      {inProject && file ? (
         <HStack gap={WORKSPACE_GAP.section} vAlign="start" width="100%">
           {outline.length > 0 ? (
             <VStack gap={WORKSPACE_GAP.local} width={220}>

@@ -9,18 +9,17 @@ import {
   SideNavItem,
   SideNavSection,
 } from '@astryxdesign/core/SideNav'
-import { ClockIcon, HomeModernIcon, QueueListIcon } from '@heroicons/react/24/outline'
-import { ClockIcon as ClockSolid, HomeIcon, QueueListIcon as QueueListSolid } from '@heroicons/react/24/solid'
+import { FolderIcon } from '@heroicons/react/24/outline'
+import { FolderIcon as FolderSolid } from '@heroicons/react/24/solid'
 
 import type { WorkspaceSection } from './workspace'
-import { WORKSPACE_LABELS } from './workspace'
 import { AccountMenu } from './AccountMenu'
 
 type AppChromeProps = {
   children: ReactNode
   section: WorkspaceSection
   accountName: string
-  onSectionChange: (section: WorkspaceSection) => void
+  onOpenProjects: () => void
   onOpenProfile: () => void
   onOpenSettings: () => void
   onSignOut: () => void
@@ -31,11 +30,13 @@ export function AppChrome({
   children,
   section,
   accountName,
-  onSectionChange,
+  onOpenProjects,
   onOpenProfile,
   onOpenSettings,
   onSignOut,
 }: AppChromeProps) {
+  const projectsOpen = section === 'projects'
+
   return (
     <AppShell
       height="fill"
@@ -45,9 +46,7 @@ export function AppChrome({
       topNav={
         <TopNav
           label="CloudChamber"
-          heading={
-            <TopNavHeading heading="CloudChamber" />
-          }
+          heading={<TopNavHeading heading="CloudChamber" />}
         />
       }
       sideNav={
@@ -76,22 +75,10 @@ export function AppChrome({
         >
           <SideNavSection title="Workspace">
             <SideNavItem
-              label={WORKSPACE_LABELS.overview}
-              icon={section === 'overview' ? HomeIcon : HomeModernIcon}
-              isSelected={section === 'overview'}
-              onClick={() => onSectionChange('overview')}
-            />
-            <SideNavItem
-              label={WORKSPACE_LABELS.pipeline}
-              icon={section === 'pipeline' ? QueueListSolid : QueueListIcon}
-              isSelected={section === 'pipeline'}
-              onClick={() => onSectionChange('pipeline')}
-            />
-            <SideNavItem
-              label={WORKSPACE_LABELS.history}
-              icon={section === 'history' ? ClockSolid : ClockIcon}
-              isSelected={section === 'history'}
-              onClick={() => onSectionChange('history')}
+              label="Projects"
+              icon={projectsOpen ? FolderSolid : FolderIcon}
+              isSelected={projectsOpen}
+              onClick={onOpenProjects}
             />
           </SideNavSection>
         </SideNav>

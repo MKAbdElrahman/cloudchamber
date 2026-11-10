@@ -2,9 +2,10 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { SignInExperience } from '@/features/auth'
+import { rememberProject } from '@/features/projects'
 import { AuthenticatedRoutes } from '@/app/AuthenticatedRoutes'
 import { accountDisplayLabel, parseServiceJwt, useSession } from '@/shared/auth'
-import { AppChrome, pathForWorkspaceSection, WORKSPACE_PATHS, workspaceSectionFromPath } from '@/shared/layout'
+import { AppChrome, projectIdFromPath, WORKSPACE_PATHS, workspaceSectionFromPath } from '@/shared/layout'
 
 function AuthenticatedApp() {
   const navigate = useNavigate()
@@ -21,7 +22,7 @@ function AuthenticatedApp() {
     <AppChrome
       section={section}
       accountName={accountName}
-      onSectionChange={(next) => navigate(pathForWorkspaceSection(next))}
+      onOpenProjects={() => navigate(WORKSPACE_PATHS.home)}
       onOpenProfile={() => navigate(WORKSPACE_PATHS.settingsSection('account'))}
       onOpenSettings={() => navigate(WORKSPACE_PATHS.settingsSection('appearance'))}
       onSignOut={signOut}
@@ -33,14 +34,12 @@ function AuthenticatedApp() {
 
 export default function App() {
   const { token, setToken } = useSession()
-  const navigate = useNavigate()
   const location = useLocation()
 
   useEffect(() => {
-    if (token && location.pathname === '/') {
-      navigate(WORKSPACE_PATHS.overview, { replace: true })
-    }
-  }, [token, location.pathname, navigate])
+    const routeProjectId = projectIdFromPath(location.pathname)
+    if (routeProjectId) rememberProject(routeProjectId)
+  }, [location.pathname])
 
   if (!token) {
     return (

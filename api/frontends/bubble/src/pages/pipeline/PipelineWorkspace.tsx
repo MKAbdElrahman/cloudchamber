@@ -21,12 +21,15 @@ import {
   usePipelineJob,
   usePipelineRun,
 } from '@/features/pipeline'
+import { addProjectJob, useProject } from '@/features/projects'
 import { UploadPanel } from '@/features/upload'
 import { PageHeader, WorkspacePage } from '@/shared/layout'
+import { ProjectTrail } from '../projects/ProjectTrail'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 type PipelineWorkspaceProps = {
   token: string
+  projectId: string
 }
 
 type PipelineTab = 'upload' | 'job' | 'monitor'
@@ -37,7 +40,8 @@ function StepCompleteMark({ done }: { done: boolean }) {
 }
 
 /** Pipeline — stage tabs (upload → job → monitor) on a single content surface. */
-export function PipelineWorkspace({ token }: PipelineWorkspaceProps) {
+export function PipelineWorkspace({ token, projectId }: PipelineWorkspaceProps) {
+  const project = useProject(projectId)
   const [tab, setTab] = useState<PipelineTab>('upload')
   const { sourceRef, setSourceRef, currentJobId, setCurrentJobId } = usePipelineRun()
   /** Stage checkmarks — session only; persisted sourceRef/job id must not imply “done” on a fresh visit. */
@@ -55,6 +59,7 @@ export function PipelineWorkspace({ token }: PipelineWorkspaceProps) {
   }
 
   function handleJobCreated(job: { id: string }) {
+    void addProjectJob(projectId, job.id)
     setCurrentJobId(job.id)
     setJobStageDone(true)
     setTab('monitor')
@@ -64,8 +69,10 @@ export function PipelineWorkspace({ token }: PipelineWorkspaceProps) {
     <WorkspacePage
       header={
           <VStack gap={WORKSPACE_GAP.group} width="100%">
+            <ProjectTrail projectId={projectId} current="New job" />
             <PageHeader
-              title="Pipeline"
+              title="New job"
+              description={project ? `A new job stays in ${project.name}.` : 'A new job stays in this project.'}
               end={monitoring && currentJobId && jobStatus ? <JobStatusLabel status={jobStatus} /> : null}
             />
             <TabList

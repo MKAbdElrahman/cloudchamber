@@ -1,6 +1,6 @@
 export { HistoryJobPage } from './history/HistoryJobPage'
 export { JobDocumentPage } from './history/JobDocumentPage'
-export { HistoryPanel } from './history/HistoryPanel'
-export { OverviewPanel } from './overview/OverviewPanel'
 export { PipelineWorkspace } from './pipeline/PipelineWorkspace'
+export { ProjectHomePage } from './projects/ProjectHomePage'
+export { ProjectsHomePage } from './projects/ProjectsHomePage'
 export { SettingsPanel } from './settings/SettingsPanel'

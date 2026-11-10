@@ -28,11 +28,10 @@ import {
   type Project,
 } from '@/features/projects'
 import { listJobs, normalizeJobs } from '@/features/pipeline'
-import { PageHeader, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
-import { outputsForJob } from '../fixtures/mockOutputs'
 import { LibraryViewControl } from './LibraryViewControl'
 import { useLibraryView } from './useLibraryView'
 
@@ -46,39 +45,36 @@ function countLabel(count: number, singular: string, plural: string): string {
 
 type ProjectTileProps = {
   project: Project
-  documents: number
   jobs: number
   countsReady: boolean
   onRename: (project: Project) => void
   onDelete: (project: Project) => void
 }
 
-function projectSummary(documents: number, jobs: number, countsReady: boolean): string | null {
+function projectSummary(jobs: number, countsReady: boolean): string | null {
   if (!countsReady) return null
-  if (documents === 0 && jobs === 0) return 'No documents or jobs yet.'
-  return `${countLabel(documents, 'document', 'documents')} and ${countLabel(jobs, 'job', 'jobs')}.`
+  if (jobs === 0) return 'No jobs yet.'
+  return `${countLabel(jobs, 'job', 'jobs')}.`
 }
 
 type ProjectScope = {
-  jobs: { id: string; status: string }[]
+  jobs: { id: string }[]
   jobIds: Record<string, string[]>
 }
 
-function projectCounts(
+function projectJobCount(
   projectId: string,
   scope: ProjectScope | undefined,
   countsPending: boolean,
-): { documents: number; jobs: number } {
-  if (countsPending || !scope) return { documents: 0, jobs: 0 }
+): number {
+  if (countsPending || !scope) return 0
   const jobIds = new Set(scope.jobIds[projectId] ?? [])
-  const projectJobs = scope.jobs.filter((job) => jobIds.has(job.id))
-  const documents = projectJobs.filter((job) => outputsForJob(job.id, job.status).length > 0).length
-  return { documents, jobs: projectJobs.length }
+  return scope.jobs.filter((job) => jobIds.has(job.id)).length
 }
 
 /** One project card. The folder mark names it; the card opens it. */
-function ProjectTile({ project, documents, jobs, countsReady, onRename, onDelete }: ProjectTileProps) {
-  const summary = projectSummary(documents, jobs, countsReady)
+function ProjectTile({ project, jobs, countsReady, onRename, onDelete }: ProjectTileProps) {
+  const summary = projectSummary(jobs, countsReady)
 
   return (
     <ClickableCard
@@ -188,12 +184,12 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       header={
         <PageHeader
           title="Projects"
-          description="Open a project to see its files."
+          description="Open a project to see its jobs."
           end={<Button label="New project" variant="primary" onClick={() => setCreating(true)} />}
         />
       }
     >
-      {projects.isPending ? <Text type="supporting">Loading projects…</Text> : null}
+      {projects.isPending ? <PendingLines /> : null}
       {rows.length === 0 && !projects.isPending ? (
         <EmptyState
           title="No projects yet"
@@ -208,14 +204,13 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
             <LibraryViewControl value={view} onChange={setView} />
           </HStack>
           {view === 'grid' ? (
-            <Grid columns={{ minWidth: 260, repeat: 'fit' }} gap={4} width="100%" aria-label="Projects">
+            <Grid columns={{ minWidth: 240, max: 4 }} gap={4} width="100%" aria-label="Projects">
               {rows.map((project) => {
-                const { documents, jobs } = projectCounts(project.id, scope.data, scope.isPending)
+                const jobs = projectJobCount(project.id, scope.data, scope.isPending)
                 return (
                   <ProjectTile
                     key={project.id}
                     project={project}
-                    documents={documents}
                     jobs={jobs}
                     countsReady={!scope.isPending}
                     onRename={(item) => {
@@ -230,8 +225,8 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
           ) : (
             <List density="spacious" edge="flush" hasDividers aria-label="Projects">
               {rows.map((project) => {
-                const { documents, jobs } = projectCounts(project.id, scope.data, scope.isPending)
-                const summary = projectSummary(documents, jobs, !scope.isPending)
+                const jobs = projectJobCount(project.id, scope.data, scope.isPending)
+                const summary = projectSummary(jobs, !scope.isPending)
                 return (
                   <ListItem
                     key={project.id}
@@ -266,7 +261,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       ) : null}
 
       <Dialog isOpen={isCreating} onOpenChange={setCreating} purpose="form">
-        <DialogHeader title="New project" subtitle="Jobs and documents stay inside it." onOpenChange={setCreating} />
+        <DialogHeader title="New project" subtitle="Jobs stay inside it." onOpenChange={setCreating} />
         <VStack gap={WORKSPACE_GAP.group}>
           <TextInput label="Name" value={createName} onChange={setCreateName} />
           <HStack gap={WORKSPACE_GAP.local} justify="end">

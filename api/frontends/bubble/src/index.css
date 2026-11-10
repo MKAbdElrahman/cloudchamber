@@ -1,13 +1,17 @@
 @layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
 
-/* Default pack only — other packs load on demand (themeAssets.ts). */
+/* Every installed pack. Theme CSS is scoped by theme name, so all three can load together. */
 @import "@astryxdesign/theme-neutral/fonts.css";
+@import "@astryxdesign/theme-stone/fonts.css";
+@import "@astryxdesign/theme-matcha/fonts.css";
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/preflight.css" layer(base);
 @import "@astryxdesign/core/reset.css";
 @import "@astryxdesign/core/astryx.css";
 @import "@astryxdesign/theme-neutral/theme.css";
+@import "@astryxdesign/theme-stone/theme.css";
+@import "@astryxdesign/theme-matcha/theme.css";
 @import "@astryxdesign/core/tailwind-theme.css";
 @import "tailwindcss/utilities.css" layer(utilities);
 
@@ -15,45 +19,11 @@ html,
 body,
 #root {
   height: 100%;
+  /* Same tokens Theme resolves. light-dark() follows data-theme via color-scheme. */
+  background-color: var(--color-background-body);
+  color: var(--color-text-primary);
 }
 
 body {
   margin: 0;
-}
-
-/* Login split hero (matches Astryx login-split container-query pattern) */
-.login-split-grid {
-  container-type: inline-size;
-  container-name: login-split;
-  padding: var(--spacing-8);
-}
-
-.login-hero-panel {
-  min-height: 420px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-background-body) 22%, transparent),
-      transparent 18%,
-      transparent 78%,
-      color-mix(in srgb, var(--color-background-body) 35%, transparent)
-    ),
-    url('/cloud-chamber.jpg') center / cover no-repeat;
-}
-
-.login-split-image {
-  width: 100%;
-  order: 0;
-}
-
-@container login-split (max-width: 511px) {
-  .login-split-grid {
-    padding: var(--spacing-4);
-  }
-  .login-split-image {
-    order: -1;
-  }
-  .login-hero-panel {
-    min-height: 240px;
-  }
 }

@@ -12,6 +12,7 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { QueueListIcon, ArrowPathIcon, CpuChipIcon } from '@heroicons/react/24/outline'
 
+import { PendingLines } from '@/shared/layout'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
@@ -36,7 +37,7 @@ function MonitorEmpty({ onGoToJob }: { onGoToJob?: () => void }) {
       isCompact
       actions={
         onGoToJob ? (
-          <Button label="Create job" variant="secondary" size="lg" icon={<CpuChipIcon />} onClick={onGoToJob} />
+          <Button label="Create job" variant="secondary" size="lg" icon={<Icon icon={CpuChipIcon} />} onClick={onGoToJob} />
         ) : undefined
       }
     />
@@ -78,7 +79,7 @@ export function JobsConsole({
             label="Refresh"
             variant="ghost"
             size="sm"
-            icon={<ArrowPathIcon />}
+            icon={<Icon icon={ArrowPathIcon} />}
             isLoading={jobQuery.isFetching}
             onClick={() => {
               void qc.invalidateQueries({ queryKey: ['pipeline-job', jobId] })
@@ -92,9 +93,7 @@ export function JobsConsole({
         <Banner status="error" title="Could not load job" description={(jobQuery.error as Error).message} />
       ) : null}
 
-      {jobQuery.isPending && !job ? (
-        <Text type="supporting">Fetching job status…</Text>
-      ) : null}
+      {jobQuery.isPending && !job ? <PendingLines /> : null}
 
       {job ? (
         <VStack gap={WORKSPACE_GAP.group}>
@@ -105,7 +104,7 @@ export function JobsConsole({
                 label="Refresh"
                 variant="ghost"
                 size="sm"
-                icon={<ArrowPathIcon />}
+                icon={<Icon icon={ArrowPathIcon} />}
                 isLoading={jobQuery.isFetching}
                 onClick={() => {
                   void qc.invalidateQueries({ queryKey: ['pipeline-job', jobId] })

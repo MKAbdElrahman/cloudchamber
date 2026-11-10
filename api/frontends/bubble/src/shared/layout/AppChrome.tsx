@@ -9,40 +9,33 @@ import {
   SideNavItem,
   SideNavSection,
 } from '@astryxdesign/core/SideNav'
-import { FolderIcon } from '@heroicons/react/24/outline'
+import { Cog6ToothIcon, FolderIcon } from '@heroicons/react/24/outline'
 import { FolderIcon as FolderSolid } from '@heroicons/react/24/solid'
 
 import type { WorkspaceSection } from './workspace'
+import { WORKSPACE_PATHS } from './workspacePaths'
 import { AccountMenu } from './AccountMenu'
 
 type AppChromeProps = {
   children: ReactNode
   section: WorkspaceSection
   accountName: string
-  onOpenProjects: () => void
-  onOpenProfile: () => void
-  onOpenSettings: () => void
   onSignOut: () => void
 }
 
-/** App shell — top nav + collapsible side nav (settings via account menu). */
-export function AppChrome({
-  children,
-  section,
-  accountName,
-  onOpenProjects,
-  onOpenProfile,
-  onOpenSettings,
-  onSignOut,
-}: AppChromeProps) {
-  const projectsOpen = section === 'projects'
-
+/**
+ * App shell. Fills the viewport (height fill = 100dvh) and swaps regions:
+ *   >= md (768)   SideNav, resizable 200–400, default 260
+ *   < md          SideNav moves into the mobile drawer
+ * Settings drops its own start panel at lg (1024); see SHELL_NARROW_QUERY.
+ */
+export function AppChrome({ children, section, accountName, onSignOut }: AppChromeProps) {
   return (
     <AppShell
       height="fill"
       contentPadding={0}
       variant="elevated"
-      mobileNav={{ breakpoint: 'lg' }}
+      mobileNav={{ breakpoint: 'md' }}
       topNav={
         <TopNav
           label="CloudChamber"
@@ -64,21 +57,21 @@ export function AppChrome({
               <SideNavCollapseButton size="sm" />
             </HStack>
           }
-          footer={
-            <AccountMenu
-              accountName={accountName}
-              onProfile={onOpenProfile}
-              onSettings={onOpenSettings}
-              onSignOut={onSignOut}
-            />
-          }
+          footer={<AccountMenu accountName={accountName} onSignOut={onSignOut} />}
         >
           <SideNavSection title="Workspace">
             <SideNavItem
               label="Projects"
-              icon={projectsOpen ? FolderSolid : FolderIcon}
-              isSelected={projectsOpen}
-              onClick={onOpenProjects}
+              icon={FolderIcon}
+              selectedIcon={FolderSolid}
+              isSelected={section === 'projects'}
+              href={WORKSPACE_PATHS.home}
+            />
+            <SideNavItem
+              label="Settings"
+              icon={Cog6ToothIcon}
+              isSelected={section === 'settings'}
+              href={WORKSPACE_PATHS.settings}
             />
           </SideNavSection>
         </SideNav>

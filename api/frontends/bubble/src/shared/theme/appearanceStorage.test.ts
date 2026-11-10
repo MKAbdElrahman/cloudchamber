@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { APPEARANCE_STORAGE_KEY, readAppearance, writeAppearance } from './appearanceStorage'
+import {
+  APPEARANCE_STORAGE_KEY,
+  applyAppearanceToDocument,
+  readAppearance,
+  writeAppearance,
+} from './appearanceStorage'
 
 const storage = new Map<string, string>()
 
@@ -29,6 +34,40 @@ describe('appearanceStorage', () => {
     expect(read.themeId).toBe('stone')
     expect(read.colorMode).toBe('dark')
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toContain('"v":1')
+  })
+
+  it('sets data-theme for an explicit mode and clears an inline color-scheme pin', () => {
+    const attrs = new Map<string, string>()
+    const root = {
+      style: {
+        colorScheme: 'dark',
+        removeProperty(name: string) {
+          if (name === 'color-scheme') this.colorScheme = ''
+        },
+      },
+      setAttribute(name: string, value: string) {
+        attrs.set(name, value)
+      },
+      removeAttribute(name: string) {
+        attrs.delete(name)
+      },
+      getAttribute(name: string) {
+        return attrs.get(name) ?? null
+      },
+    }
+    Object.defineProperty(globalThis, 'document', {
+      value: { documentElement: root },
+      configurable: true,
+    })
+
+    applyAppearanceToDocument({ v: 1, themeId: 'neutral', colorMode: 'light' })
+    expect(root.getAttribute('data-theme')).toBe('light')
+    expect(root.getAttribute('data-astryx-theme')).toBe('neutral')
+    expect(root.style.colorScheme).toBe('')
+
+    applyAppearanceToDocument({ v: 1, themeId: 'stone', colorMode: 'system' })
+    expect(root.getAttribute('data-theme')).toBeNull()
+    expect(root.getAttribute('data-astryx-theme')).toBe('stone')
   })
 
   it('migrates legacy keys into v1', () => {

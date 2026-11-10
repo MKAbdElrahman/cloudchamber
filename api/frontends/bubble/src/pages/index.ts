@@ -1,5 +1,4 @@
 export { HistoryJobPage } from './history/HistoryJobPage'
-export { JobDocumentPage } from './history/JobDocumentPage'
 export { PipelineWorkspace } from './pipeline/PipelineWorkspace'
 export { ProjectHomePage } from './projects/ProjectHomePage'
 export { ProjectsHomePage } from './projects/ProjectsHomePage'

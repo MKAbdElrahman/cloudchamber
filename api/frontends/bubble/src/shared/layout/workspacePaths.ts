@@ -10,8 +10,6 @@ export const WORKSPACE_PATHS = {
   pipeline: (projectId: string) => `${projectPrefix(projectId)}/pipeline`,
   historyJob: (projectId: string, jobId: string) =>
     `${projectPrefix(projectId)}/history/${encodeURIComponent(jobId)}`,
-  historyJobDocument: (projectId: string, jobId: string) =>
-    `${projectPrefix(projectId)}/history/${encodeURIComponent(jobId)}/read`,
   settings: '/settings',
   settingsSection: (section: SettingsSectionId) => `/settings/${section}`,
 } as const

@@ -65,7 +65,6 @@ export function JobOutputFile({ file }: JobOutputFileProps) {
                   title={file.name}
                   src={playbackUrl}
                   onError={() => setPdfError(true)}
-                  className="h-full w-full border-0 bg-surface"
                 />
               </AspectRatio>
             ) : (

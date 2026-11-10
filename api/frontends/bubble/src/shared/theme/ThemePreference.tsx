@@ -1,20 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import {
-  applyAppearanceToDocument,
-  readAppearance,
-  writeAppearance,
-  type ColorMode,
-} from './appearanceStorage'
-import { ensureThemePackAssets } from './themeAssets'
+import { readAppearance, writeAppearance, type ColorMode } from './appearanceStorage'
 import { APP_THEMES, type AppThemeId } from './themes'
 import { ThemePreferenceContext } from './useThemePreference'
-
-function persist(themeId: AppThemeId, colorMode: ColorMode) {
-  const snapshot = { v: 1 as const, themeId, colorMode }
-  writeAppearance(snapshot)
-  applyAppearanceToDocument(snapshot)
-}
 
 export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
   const initial = readAppearance()
@@ -22,8 +10,7 @@ export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
   const [colorMode, setColorModeState] = useState<ColorMode>(initial.colorMode)
 
   useEffect(() => {
-    void ensureThemePackAssets(themeId)
-    persist(themeId, colorMode)
+    writeAppearance({ v: 1, themeId, colorMode })
   }, [themeId, colorMode])
 
   const setThemeId = useCallback((id: AppThemeId) => setThemeIdState(id), [])

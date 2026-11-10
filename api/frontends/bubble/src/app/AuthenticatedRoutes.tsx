@@ -1,32 +1,38 @@
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 
-import { Text } from '@astryxdesign/core/Text'
 import { PipelineRunProvider } from '@/features/pipeline'
 import { DEFAULT_PROJECT_ID, readCurrentProjectId, useProjects } from '@/features/projects'
-import { HistoryJobPage, JobDocumentPage, PipelineWorkspace, ProjectHomePage, ProjectsHomePage, SettingsPanel } from '@/pages'
+import { HistoryJobPage, PipelineWorkspace, ProjectHomePage, ProjectsHomePage, SettingsPanel } from '@/pages'
 import { useSession } from '@/shared/auth'
-import { WORKSPACE_PATHS } from '@/shared/layout'
+import { PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 
 function ProjectHomeRedirect() {
   const { projectId = '' } = useParams()
   return <Navigate to={WORKSPACE_PATHS.project(projectId)} replace />
 }
 
-function LegacyJobRedirect({ kind }: { kind: 'job' | 'read' }) {
+function LegacyJobRedirect() {
   const { jobId = '' } = useParams()
   const projectId = readCurrentProjectId()
-  const to =
-    kind === 'read'
-      ? WORKSPACE_PATHS.historyJobDocument(projectId, jobId)
-      : WORKSPACE_PATHS.historyJob(projectId, jobId)
-  return <Navigate to={to} replace />
+  return <Navigate to={WORKSPACE_PATHS.historyJob(projectId, jobId)} replace />
+}
+
+function ProjectReadRedirect() {
+  const { projectId = '', jobId = '' } = useParams()
+  return <Navigate to={WORKSPACE_PATHS.historyJob(projectId, jobId)} replace />
 }
 
 function ProjectScreen({ children }: { children: ReactNode }) {
   const { projectId = '' } = useParams()
   const projects = useProjects()
-  if (projects.isPending) return <Text type="supporting">Loading project…</Text>
+  if (projects.isPending) {
+    return (
+      <WorkspacePage>
+        <PendingLines />
+      </WorkspacePage>
+    )
+  }
   const known = projects.data?.some((project) => project.id === projectId)
   if (!known) return <Navigate to={WORKSPACE_PATHS.home} replace />
   return children
@@ -51,8 +57,8 @@ export function AuthenticatedRoutes() {
       <Route path="/" element={<ProjectsHomePage token={token} />} />
       <Route path="/overview" element={<Navigate to={WORKSPACE_PATHS.home} replace />} />
       <Route path="/pipeline" element={<Navigate to={WORKSPACE_PATHS.home} replace />} />
-      <Route path="/history/:jobId/read" element={<LegacyJobRedirect kind="read" />} />
-      <Route path="/history/:jobId" element={<LegacyJobRedirect kind="job" />} />
+      <Route path="/history/:jobId/read" element={<LegacyJobRedirect />} />
+      <Route path="/history/:jobId" element={<LegacyJobRedirect />} />
       <Route path="/history" element={<Navigate to={WORKSPACE_PATHS.home} replace />} />
       <Route path="/p/:projectId/overview" element={<ProjectHomeRedirect />} />
       <Route
@@ -60,7 +66,7 @@ export function AuthenticatedRoutes() {
         element={<ProjectScreen><ProjectPipeline token={token} /></ProjectScreen>}
       />
       <Route path="/p/:projectId/history" element={<ProjectHomeRedirect />} />
-      <Route path="/p/:projectId/history/:jobId/read" element={<ProjectScreen><JobDocumentPage token={token} /></ProjectScreen>} />
+      <Route path="/p/:projectId/history/:jobId/read" element={<ProjectReadRedirect />} />
       <Route path="/p/:projectId/history/:jobId" element={<ProjectScreen><HistoryJobPage token={token} /></ProjectScreen>} />
       <Route path="/p/:projectId" element={<ProjectScreen><ProjectHomePage token={token} /></ProjectScreen>} />
       <Route path="/settings" element={<Navigate to={WORKSPACE_PATHS.settingsSection('appearance')} replace />} />

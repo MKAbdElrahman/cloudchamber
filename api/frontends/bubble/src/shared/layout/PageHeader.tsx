@@ -13,7 +13,7 @@ type PageHeaderProps = {
 /** Shared page title block — eyebrow + h1 + supporting line (Astryx layout scaffold). */
 export function PageHeader({ eyebrow, title, description, end }: PageHeaderProps) {
   return (
-    <HStack vAlign="center" justify="between" gap={4}>
+    <HStack vAlign="center" justify="between" gap={4} wrap="wrap" width="100%">
       <VStack gap={1}>
         {eyebrow ? <Text type="supporting">{eyebrow}</Text> : null}
         <Heading level={1}>{title}</Heading>

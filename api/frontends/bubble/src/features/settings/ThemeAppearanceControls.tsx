@@ -2,7 +2,9 @@ import type { DefinedTheme } from '@astryxdesign/core/theme'
 import { Grid } from '@astryxdesign/core/Grid'
 import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout'
 import { AspectRatio } from '@astryxdesign/core/AspectRatio'
+import { Section } from '@astryxdesign/core/Section'
 import { SelectableCard } from '@astryxdesign/core/SelectableCard'
+import { Skeleton } from '@astryxdesign/core/Skeleton'
 import { Icon } from '@astryxdesign/core/Icon'
 import { Text } from '@astryxdesign/core/Text'
 import { Theme } from '@astryxdesign/core/theme'
@@ -15,15 +17,10 @@ import {
 import type { ColorMode } from '@/shared/theme'
 
 function PreviewBar({ wide }: { wide?: boolean }) {
-  return (
-    <VStack
-      aria-hidden
-      className={wide ? 'h-1 w-2/3 rounded-full bg-border-strong' : 'h-1 w-1/2 rounded-full bg-border-strong'}
-    />
-  )
+  return <Skeleton width={wide ? '66%' : '50%'} height={4} radius="rounded" />
 }
 
-/** Mini UI chrome inside a nested Theme (Meta settings-dialog swatch). */
+/** Mini UI chrome inside a nested Theme (settings color-mode swatch). */
 function ThemeModeCanvas({
   mode,
   previewTheme,
@@ -33,19 +30,23 @@ function ThemeModeCanvas({
 }) {
   return (
     <Theme theme={previewTheme} mode={mode}>
-      <VStack padding={2} gap={1.5} height="100%" className="bg-muted">
-        <VStack gap={1} hAlign="center">
-          <PreviewBar wide />
-          <PreviewBar />
-        </VStack>
-        <StackItem size="fill">
-          <VStack padding={2} gap={1} vAlign="center" height="100%" className="bg-surface">
-            <PreviewBar />
-            <PreviewBar />
+      <Section variant="muted" padding={2} height="100%">
+        <VStack gap={1.5} height="100%">
+          <VStack gap={1} hAlign="center">
+            <PreviewBar wide />
             <PreviewBar />
           </VStack>
-        </StackItem>
-      </VStack>
+          <StackItem size="fill">
+            <Section variant="section" padding={2} height="100%">
+              <VStack gap={1} vAlign="center" height="100%">
+                <PreviewBar />
+                <PreviewBar />
+                <PreviewBar />
+              </VStack>
+            </Section>
+          </StackItem>
+        </VStack>
+      </Section>
     </Theme>
   )
 }
@@ -58,8 +59,8 @@ function ThemeModePreview({
   previewTheme: DefinedTheme
 }) {
   return (
-    <AspectRatio ratio={3 / 2} className="pointer-events-none">
-      <VStack aria-hidden height="100%" className="overflow-hidden rounded-md">
+    <AspectRatio ratio={3 / 2}>
+      <VStack aria-hidden height="100%">
         {scheme === 'system' ? (
           <HStack gap={0} height="100%">
             <StackItem size="fill">

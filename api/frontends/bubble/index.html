@@ -31,12 +31,12 @@
           }
           var root = document.documentElement
           root.setAttribute('data-astryx-theme', theme)
-          var resolved = mode
-          if (mode === 'system') {
-            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          root.style.removeProperty('color-scheme')
+          if (mode === 'light' || mode === 'dark') {
+            root.setAttribute('data-theme', mode)
+          } else {
+            root.removeAttribute('data-theme')
           }
-          root.setAttribute('data-theme', resolved)
-          root.style.colorScheme = resolved
         } catch (e) {}
       })()
     </script>

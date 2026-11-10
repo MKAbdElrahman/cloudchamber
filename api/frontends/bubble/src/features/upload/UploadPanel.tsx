@@ -5,6 +5,7 @@ import { ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import { VStack } from '@astryxdesign/core/Layout'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { Button } from '@astryxdesign/core/Button'
+import { Icon } from '@astryxdesign/core/Icon'
 import { Card } from '@astryxdesign/core/Card'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { FileInput } from '@astryxdesign/core/FileInput'
@@ -138,7 +139,7 @@ export function UploadPanel({
         label={status === 'uploading' ? 'Uploading…' : 'Start upload'}
         variant="primary"
         size="lg"
-        icon={<ArrowUpTrayIcon />}
+        icon={<Icon icon={ArrowUpTrayIcon} />}
         onClick={start}
         isDisabled={!canStart}
         isLoading={status === 'uploading'}

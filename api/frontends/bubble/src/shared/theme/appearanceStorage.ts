@@ -84,9 +84,19 @@ export function resolveDocumentColorMode(colorMode: ColorMode): 'light' | 'dark'
   return 'light'
 }
 
+/**
+ * First paint only. After mount, Theme owns these attributes and reset.css
+ * maps `data-theme` to `color-scheme`, which is what `light-dark()` follows.
+ * System omits `data-theme`. An inline `color-scheme` would beat that map and
+ * freeze the first paint, so this clears one if a previous script left it.
+ */
 export function applyAppearanceToDocument(snapshot: AppearanceSnapshot) {
   const root = document.documentElement
-  root.setAttribute('data-astryx-theme', snapshot.themeId)
-  const resolved = resolveDocumentColorMode(snapshot.colorMode)
-  root.setAttribute('data-theme', resolved)
+  root.setAttribute('data-astryx-theme', APP_THEMES[snapshot.themeId].theme.name)
+  root.style.removeProperty('color-scheme')
+  if (snapshot.colorMode === 'system') {
+    root.removeAttribute('data-theme')
+    return
+  }
+  root.setAttribute('data-theme', snapshot.colorMode)
 }

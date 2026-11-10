@@ -57,7 +57,7 @@ export function LoginPanel({
 
   if (success) {
     return (
-      <VStack gap={4} height="100%" vAlign="center" hAlign="stretch" padding={4} width="100%">
+      <VStack gap={4} height="100%" vAlign="center" hAlign="stretch" width="100%">
         <EmptyState
           icon={<Icon icon={CheckCircleIcon} size="lg" color="success" />}
           title="Signed in"
@@ -74,7 +74,7 @@ export function LoginPanel({
   }
 
   return (
-    <VStack gap={4} height="100%" vAlign="center" hAlign="stretch" padding={4} width="100%">
+    <VStack gap={4} height="100%" vAlign="center" hAlign="stretch" width="100%">
       <VStack gap={1} width="100%">
         <Heading level={1}>Sign in</Heading>
         <Text color="secondary">
@@ -88,7 +88,7 @@ export function LoginPanel({
       </TabList>
 
       {tab === 'credentials' ? (
-        <form onSubmit={onSubmit} className="w-full">
+        <form onSubmit={onSubmit}>
           <VStack gap={3}>
             <TextInput
               label="Email or username"

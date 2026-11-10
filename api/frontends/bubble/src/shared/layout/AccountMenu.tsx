@@ -11,15 +11,15 @@ import {
 
 import { SHELL_ICON_COLOR } from '@/shared/theme'
 
+import { WORKSPACE_PATHS } from './workspacePaths'
+
 type AccountMenuProps = {
   accountName: string
-  onProfile: () => void
-  onSettings: () => void
   onSignOut: () => void
 }
 
 /** SideNav footer account control — icon-only when the rail is collapsed. */
-export function AccountMenu({ accountName, onProfile, onSettings, onSignOut }: AccountMenuProps) {
+export function AccountMenu({ accountName, onSignOut }: AccountMenuProps) {
   const { isCollapsed } = useSideNavCollapse()
 
   return (
@@ -46,12 +46,12 @@ export function AccountMenu({ accountName, onProfile, onSettings, onSignOut }: A
           label: 'Profile',
           description: 'Session identity',
           icon: UserCircleIcon,
-          onClick: onProfile,
+          href: WORKSPACE_PATHS.settingsSection('account'),
         },
         {
           label: 'Settings',
           icon: Cog6ToothIcon,
-          onClick: onSettings,
+          href: WORKSPACE_PATHS.settingsSection('appearance'),
         },
         { type: 'divider' },
         {

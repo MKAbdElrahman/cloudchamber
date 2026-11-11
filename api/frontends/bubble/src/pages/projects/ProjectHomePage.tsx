@@ -227,8 +227,10 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           />
         ) : null}
         {entries.length > 0 && view === 'list' ? (
+          // Outset in a transparent section: the hover keeps the element radius.
+          // A divider would square that highlight.
           <Section variant="transparent" padding={WORKSPACE_CONTENT_PADDING}>
-            <List density="spacious" edge="flush" hasDividers aria-label="Jobs">
+            <List density="spacious" edge="outset" aria-label="Jobs">
               {entries.map((entry) => (
                 <ListItem
                   key={entry.id}

@@ -1,11 +1,37 @@
-import { apiFetch } from '@/shared/api'
+import { apiFetch, apiFetchResult } from '@/shared/api'
 import type { JobsQuery, PipelineJob } from './types'
 
-export function createJob(token: string, sourceRef: string, idempotencyKey?: string) {
+export function createJob(token: string, fileId: string, idempotencyKey?: string) {
   return apiFetch<PipelineJob>('/v1/pipeline/jobs', {
     method: 'POST',
     token,
-    body: JSON.stringify({ sourceRef, idempotencyKey: idempotencyKey || undefined }),
+    body: JSON.stringify({ fileId, idempotencyKey: idempotencyKey || undefined }),
+  })
+}
+
+export async function readFileURL(token: string, fileId: string) {
+  const result = await apiFetchResult<{ url: string; expiresAt: string }>(
+    `/v1/files/${encodeURIComponent(fileId)}/url`,
+    { method: 'GET', token },
+  )
+  return {
+    url: result.body.url,
+    expiresAt: result.body.expiresAt,
+    traceparent: result.headers.get('traceparent'),
+  }
+}
+
+export function reportPlayback(
+  token: string,
+  fileId: string,
+  traceparent: string,
+  report: { outcome: 'loaded' | 'error'; readyState: number; waitedMs: number; mediaError?: number },
+) {
+  return apiFetch<null>(`/v1/files/${encodeURIComponent(fileId)}/playback`, {
+    method: 'POST',
+    token,
+    headers: { traceparent },
+    body: JSON.stringify(report),
   })
 }
 

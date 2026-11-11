@@ -16,6 +16,7 @@ type Job struct {
 	OwnerID       string  `json:"ownerId"`
 	WorkflowID    string  `json:"workflowId"`
 	RunID         string  `json:"runId"`
+	FileID        string  `json:"fileId,omitempty"`
 	SourceRef     string  `json:"sourceRef"`
 	Status        string  `json:"status"`
 	ErrorMessage  *string `json:"errorMessage,omitempty"`
@@ -33,12 +34,13 @@ func (j Job) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppJob(bus pipelinejobbus.Job) Job {
+func toAppJob(bus pipelinejobbus.Job, fileID string) Job {
 	return Job{
 		ID:            bus.ID.String(),
 		OwnerID:       bus.OwnerID.String(),
 		WorkflowID:    bus.WorkflowID,
 		RunID:         bus.RunID,
+		FileID:        fileID,
 		SourceRef:     bus.SourceRef,
 		Status:        bus.Status.String(),
 		ErrorMessage:  bus.ErrorMessage,
@@ -51,17 +53,17 @@ func toAppJob(bus pipelinejobbus.Job) Job {
 	}
 }
 
-func toAppJobs(jobs []pipelinejobbus.Job) []Job {
+func toAppJobs(jobs []pipelinejobbus.Job, fileIDs map[string]string) []Job {
 	app := make([]Job, len(jobs))
 	for i, job := range jobs {
-		app[i] = toAppJob(job)
+		app[i] = toAppJob(job, fileIDs[job.SourceRef])
 	}
 	return app
 }
 
 // NewJob represents the data required to create a pipeline job.
 type NewJob struct {
-	SourceRef      string `json:"sourceRef"`
+	FileID         string `json:"fileId"`
 	IdempotencyKey string `json:"idempotencyKey"`
 }
 
@@ -72,8 +74,8 @@ func (nj *NewJob) Decode(data []byte) error {
 
 // Validate checks the data in the model is considered clean.
 func (nj NewJob) Validate() error {
-	if nj.SourceRef == "" {
-		return errs.NewFieldErrors("sourceRef", fmt.Errorf("sourceRef is required"))
+	if nj.FileID == "" {
+		return errs.NewFieldErrors("fileId", fmt.Errorf("fileId is required"))
 	}
 	return nil
 }

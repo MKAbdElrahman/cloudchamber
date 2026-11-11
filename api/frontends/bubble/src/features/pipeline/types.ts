@@ -3,6 +3,7 @@ export type PipelineJob = {
   ownerId?: string
   workflowId?: string
   runId?: string | null
+  fileId?: string
   sourceRef: string
   status: string
   errorMessage?: string | null

@@ -41,15 +41,15 @@ function AddRecordingForm({
   const [startConversion, setStartConversion] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleUploaded(upload: { sourceRef: string; fileName: string }) {
+  async function handleUploaded(upload: { fileId: string; fileName: string }) {
     onSavingChange(true)
     setError(null)
     try {
-      const recording = await addProjectRecording(projectId, { sourceRef: upload.sourceRef, name: upload.fileName })
+      const recording = await addProjectRecording(projectId, { fileId: upload.fileId, name: upload.fileName })
       let notice: string | undefined
       if (startConversion) {
         try {
-          const job = await createJob(token, upload.sourceRef, `ui-${crypto.randomUUID()}`)
+          const job = await createJob(token, upload.fileId, `ui-${crypto.randomUUID()}`)
           await addProjectJob(projectId, job.id)
           await attachRecordingJob(recording.id, job.id)
           queryClient.setQueryData(['pipeline-job', job.id], job)

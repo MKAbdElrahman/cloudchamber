@@ -13,8 +13,8 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/errs"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mid"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/query"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/order"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/page"
 	"github.com/MKAbdElrahman/cloudchamber/business/types/role"
@@ -28,16 +28,16 @@ import (
 type app struct {
 	log            *logger.Logger
 	pipelineJobBus pipelinejobbus.ExtBusiness
-	uploadBus      uploadbus.ExtBusiness
+	artifactBus    artifactbus.ExtBusiness
 	temporal       client.Client
 	temporalNS     string
 }
 
-func newApp(log *logger.Logger, pipelineJobBus pipelinejobbus.ExtBusiness, uploadBus uploadbus.ExtBusiness, temporal client.Client, temporalNS string) *app {
+func newApp(log *logger.Logger, pipelineJobBus pipelinejobbus.ExtBusiness, artifactBus artifactbus.ExtBusiness, temporal client.Client, temporalNS string) *app {
 	return &app{
 		log:            log,
 		pipelineJobBus: pipelineJobBus,
-		uploadBus:      uploadBus,
+		artifactBus:    artifactBus,
 		temporal:       temporal,
 		temporalNS:     temporalNS,
 	}
@@ -54,24 +54,24 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.Unauthenticated, err)
 	}
 
-	sourceRef := strings.TrimSpace(app.SourceRef)
-
-	if a.uploadBus != nil {
-		up, err := a.uploadBus.QueryBySourceRef(ctx, sourceRef)
-		if err != nil {
-			if errors.Is(err, uploadbus.ErrNotFound) {
-				return errs.NewFieldErrors("sourceRef", errors.New("sourceRef must reference a ready, owned upload"))
-			}
-			return errs.Errorf(errs.Internal, "resolve sourceRef: %s", err)
-		}
-		if up.OwnerID != ownerID {
-			return errs.NewFieldErrors("sourceRef", errors.New("sourceRef must reference a ready, owned upload"))
-		}
-		if up.Status.String() != uploadbus.StatusReady {
-			return errs.NewFieldErrors("sourceRef", errors.New("upload is not ready"))
-		}
-		sourceRef = up.SourceRef
+	fileID, err := uuid.Parse(strings.TrimSpace(app.FileID))
+	if err != nil {
+		return errs.NewFieldErrors("fileId", errors.New("fileId is required"))
 	}
+
+	art, err := a.artifactBus.QueryByFileID(ctx, fileID)
+	if err != nil {
+		if errors.Is(err, artifactbus.ErrNotFound) {
+			return errs.NewFieldErrors("fileId", errors.New("fileId must reference a ready file you own"))
+		}
+		return errs.Errorf(errs.Internal, "resolve fileId: %s", err)
+	}
+	ready := art.Status.Equal(artifactbus.MustParseStatus(artifactbus.StatusReady))
+	switch {
+	case art.OwnerID != ownerID, !ready:
+		return errs.NewFieldErrors("fileId", errors.New("fileId must reference a ready file you own"))
+	}
+	sourceRef := art.SourceRef
 
 	key := strings.TrimSpace(app.IdempotencyKey)
 	if key == "" {
@@ -168,7 +168,7 @@ func (a *app) respondCreated(ctx context.Context, job pipelinejobbus.Job) web.En
 	if err != nil {
 		return errs.Errorf(errs.Internal, "response writer: %s", err)
 	}
-	if err := WriteResponse(w, toAppJob(job)); err != nil {
+	if err := WriteResponse(w, a.appJob(ctx, job)); err != nil {
 		return errs.Errorf(errs.Internal, "write response: %s", err)
 	}
 	return web.NewNoResponse()
@@ -218,7 +218,7 @@ func (a *app) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppJobs(jobs), total, pg)
+	return query.NewResult(toAppJobs(jobs, a.fileIDs(ctx, jobs)), total, pg)
 }
 
 func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
@@ -232,7 +232,7 @@ func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
 		a.log.Error(ctx, "pipelinejob.reconcile", "err", err, "job_id", job.ID)
 	}
 
-	return toAppJob(job)
+	return a.appJob(ctx, job)
 }
 
 func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
@@ -252,7 +252,37 @@ func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
 		a.log.Error(ctx, "pipelinejob.cancel.update", "err", err)
 	}
 
-	return toAppJob(job)
+	return a.appJob(ctx, job)
+}
+
+func (a *app) appJob(ctx context.Context, job pipelinejobbus.Job) Job {
+	return toAppJob(job, a.fileID(ctx, job.SourceRef))
+}
+
+func (a *app) fileID(ctx context.Context, sourceRef string) string {
+	ids := a.fileIDs(ctx, []pipelinejobbus.Job{{SourceRef: sourceRef}})
+	return ids[sourceRef]
+}
+
+func (a *app) fileIDs(ctx context.Context, jobs []pipelinejobbus.Job) map[string]string {
+	refs := make([]string, 0, len(jobs))
+	for _, job := range jobs {
+		if job.SourceRef != "" {
+			refs = append(refs, job.SourceRef)
+		}
+	}
+
+	found, err := a.artifactBus.QueryBySourceRefs(ctx, refs)
+	if err != nil {
+		a.log.Error(ctx, "pipelinejob.file-ids", "err", err)
+		return map[string]string{}
+	}
+
+	ids := make(map[string]string, len(found))
+	for _, art := range found {
+		ids[art.SourceRef] = art.FileID.String()
+	}
+	return ids
 }
 
 func (a *app) reconcile(ctx context.Context, job pipelinejobbus.Job) (pipelinejobbus.Job, error) {

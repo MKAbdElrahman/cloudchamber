@@ -9,7 +9,10 @@ export type Project = {
 export type ProjectRecording = {
   id: string
   projectId: string
-  sourceRef: string
+  /** Durable id the API uses. The storage location stays on the server. */
+  fileId?: string
+  /** Older rows only. New recordings do not store this. */
+  sourceRef?: string
   name: string
   dateAdded: string
   jobId?: string

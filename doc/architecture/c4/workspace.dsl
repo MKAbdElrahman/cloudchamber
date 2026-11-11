@@ -72,6 +72,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService -> cloudchamber.temporalServer "Starts and queries CloudChamber pipeline workflows via (planned)" "gRPC"
         cloudchamber.apiService -> cloudchamber.artifactStore "Manages source/document artifact refs via (planned)"
+        endUser -> cloudchamber.artifactStore "Reads an owned artifact through a short-lived URL (planned)" "S3 API"
         cloudchamber.uploadService -> cloudchamber.artifactStore "Stores upload data in" "S3 API"
         cloudchamber.uploadService -> cloudchamber.apiService "Calls hooks on the existing API service (pre-create, post-finish) (planned)" "HTTPS/JSON"
         cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC"
@@ -259,6 +260,19 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             cloudchamber.uploadService -> cloudchamber.apiService "post-finish hook: reports completion"
             cloudchamber.apiService -> cloudchamber.artifactStore "Verifies the finalized upload"
             cloudchamber.apiService -> cloudchamber.postgres "Records the owned sourceRef"
+
+            autoLayout tb
+        }
+
+        dynamic cloudchamber "WatchArtifactDynamic" {
+            title "Dynamic View: Watch a recording"
+            description "The user opens a recording they own. The API checks the artifact and signs a short-lived URL. Object storage serves the bytes."
+
+            endUser -> cloudchamber.apiService "Asks for a short-lived URL for a file id"
+            cloudchamber.apiService -> cloudchamber.postgres "Loads the artifact and checks the owner"
+            cloudchamber.apiService -> cloudchamber.artifactStore "Signs a GetObject URL for the browser"
+            cloudchamber.apiService -> endUser "Returns the URL and when it expires"
+            endUser -> cloudchamber.artifactStore "Reads the recording, including range requests"
 
             autoLayout tb
         }

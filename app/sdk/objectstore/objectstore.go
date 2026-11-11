@@ -4,21 +4,27 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Config holds the information needed to connect to an object store.
 type Config struct {
-	Endpoint     string
-	Bucket       string
-	Region       string
-	AccessKey    string
-	SecretKey    string
-	UsePathStyle bool
+	Endpoint       string
+	PublicEndpoint string
+	Bucket         string
+	Region         string
+	AccessKey      string
+	SecretKey      string
+	UsePathStyle   bool
 }
 
 // Info represents metadata about an object.
@@ -29,8 +35,9 @@ type Info struct {
 
 // Client manages access to an S3-compatible object store.
 type Client struct {
-	svc    *s3.Client
-	bucket string
+	svc     *s3.Client
+	presign *s3.PresignClient
+	bucket  string
 }
 
 // New constructs a Client for use.
@@ -53,24 +60,41 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("loading aws config: %w", err)
 	}
 
-	s3Opts := func(o *s3.Options) {
-		if cfg.Endpoint != "" {
-			o.BaseEndpoint = aws.String(cfg.Endpoint)
-		}
-		o.UsePathStyle = cfg.UsePathStyle
+	publicEndpoint := cfg.PublicEndpoint
+	if publicEndpoint == "" {
+		publicEndpoint = cfg.Endpoint
 	}
 
+	internal := newS3Client(awsCfg, cfg.Endpoint, cfg.UsePathStyle)
+	public := newS3Client(awsCfg, publicEndpoint, cfg.UsePathStyle)
+
 	return &Client{
-		svc:    s3.NewFromConfig(awsCfg, s3Opts),
-		bucket: cfg.Bucket,
+		svc:     internal,
+		presign: s3.NewPresignClient(public),
+		bucket:  cfg.Bucket,
 	}, nil
 }
 
+func newS3Client(awsCfg aws.Config, endpoint string, pathStyle bool) *s3.Client {
+	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
+		}
+		o.UsePathStyle = pathStyle
+	})
+}
+
 // HeadObject retrieves metadata for an object.
-func (c *Client) HeadObject(ctx context.Context, bucket, key string) (Info, error) {
+func (c *Client) HeadObject(ctx context.Context, bucket, key string) (info Info, err error) {
 	if bucket == "" {
 		bucket = c.bucket
 	}
+
+	ctx, span := startSpan(ctx, "objectstore.head_object",
+		attribute.String("object.bucket", bucket),
+		attribute.String("object.key", key),
+	)
+	defer func() { endSpan(span, err) }()
 
 	out, err := c.svc.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
@@ -90,10 +114,57 @@ func (c *Client) HeadObject(ctx context.Context, bucket, key string) (Info, erro
 		etag = *out.ETag
 	}
 
+	span.SetAttributes(attribute.Int64("object.size", size))
 	return Info{Size: size, ETag: etag}, nil
 }
 
 // Bucket returns the configured default bucket.
 func (c *Client) Bucket() string {
 	return c.bucket
+}
+
+// PresignGet signs a GetObject URL the browser can open. Signing does not fetch the object.
+func (c *Client) PresignGet(ctx context.Context, bucket, key string, ttl time.Duration) (signed string, expiresAt time.Time, err error) {
+	if bucket == "" {
+		bucket = c.bucket
+	}
+
+	ctx, span := startSpan(ctx, "objectstore.presign_get",
+		attribute.String("object.bucket", bucket),
+		attribute.String("object.key", key),
+		attribute.Int64("presign.ttl_seconds", int64(ttl.Seconds())),
+	)
+	defer func() { endSpan(span, err) }()
+
+	out, err := c.presign.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}, s3.WithPresignExpires(ttl))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("presign get bucket[%s] key[%s]: %w", bucket, key, err)
+	}
+
+	if parsed, parseErr := url.Parse(out.URL); parseErr == nil {
+		span.SetAttributes(attribute.String("server.address", parsed.Host))
+	}
+
+	return out.URL, time.Now().Add(ttl), nil
+}
+
+func startSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
+	return trace.SpanFromContext(ctx).TracerProvider().Tracer("app.sdk.objectstore").Start(
+		ctx,
+		name,
+		trace.WithAttributes(attrs...),
+	)
+}
+
+func endSpan(span trace.Span, err error) {
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	} else {
+		span.SetStatus(codes.Ok, "")
+	}
+	span.End()
 }

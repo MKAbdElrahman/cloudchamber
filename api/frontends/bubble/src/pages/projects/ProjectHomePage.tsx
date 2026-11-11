@@ -18,7 +18,7 @@ import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type
 import { ProjectTrail, useProject, useProjectRecordings, type ProjectRecording } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
 import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
-import type { SourceMediaKind } from '@/shared/media'
+import { fileIdFromSourceRef, type SourceMediaKind } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
@@ -44,6 +44,7 @@ function EntryWhen({ entry }: { entry: LibraryEntry }) {
 type LibraryEntry = {
   id: string
   jobId?: string
+  fileId?: string
   sourceRef: string
   recordingName?: string
   name: string
@@ -59,10 +60,18 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
   const recordingByJob = new Map(
     recordings.flatMap((recording) => (recording.jobId ? [[recording.jobId, recording] as const] : [])),
   )
-  const recordingBySource = new Map(recordings.map((recording) => [recording.sourceRef, recording]))
+  const recordingBySource = new Map(
+    recordings.flatMap((recording) => (recording.sourceRef ? [[recording.sourceRef, recording] as const] : [])),
+  )
+  const recordingByFile = new Map(
+    recordings.flatMap((recording) => (recording.fileId ? [[recording.fileId, recording] as const] : [])),
+  )
   const linked = new Set<string>()
   const fromJobs = jobs.map((job) => {
-    const recording = recordingByJob.get(job.id) ?? recordingBySource.get(job.sourceRef)
+    const recording =
+      recordingByJob.get(job.id) ??
+      (job.fileId ? recordingByFile.get(job.fileId) : undefined) ??
+      recordingBySource.get(job.sourceRef)
     if (recording) linked.add(recording.id)
     const media = knownMediaName(job.sourceRef, recording?.name)
     const document = filesFromJob(job, media ?? undefined)[0]
@@ -78,6 +87,7 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
     return {
       id: job.id,
       jobId: job.id,
+      fileId: job.fileId ?? recording?.fileId ?? fileIdFromSourceRef(job.sourceRef) ?? undefined,
       sourceRef: job.sourceRef,
       recordingName: recording?.name,
       name,
@@ -101,7 +111,8 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
       })
       return {
         id: recording.id,
-        sourceRef: recording.sourceRef,
+        fileId: recording.fileId ?? fileIdFromSourceRef(recording.sourceRef) ?? undefined,
+        sourceRef: recording.sourceRef ?? '',
         recordingName: recording.name,
         name,
         href: WORKSPACE_PATHS.recording(projectId, recording.id),
@@ -147,6 +158,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
 
   function openPeek(entry: LibraryEntry, target: 'video' | 'pipeline') {
     if (target === 'video') {
+      if (!entry.fileId) return
       setVideo({
         name: faceFileName({
           face: 'video',
@@ -154,7 +166,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           recordingName: entry.recordingName,
           date: entry.date,
         }),
-        sourceRef: entry.sourceRef,
+        fileId: entry.fileId,
       })
       setVideoOpen(true)
       return
@@ -232,7 +244,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
                   startContent={<Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />}
                   endContent={
                     <HStack gap={WORKSPACE_GAP.local} vAlign="center">
-                      {entry.sourceRef ? (
+                      {entry.fileId || entry.jobId ? (
                         <JobOpenIcons
                           kind={entry.kind}
                           hasPipeline={Boolean(entry.jobId)}
@@ -257,7 +269,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
                   <HStack justify="between" vAlign="start">
                     <Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />
                     <HStack gap={WORKSPACE_GAP.local} vAlign="center">
-                      {entry.sourceRef ? (
+                      {entry.fileId || entry.jobId ? (
                         <JobOpenIcons
                           kind={entry.kind}
                           hasPipeline={Boolean(entry.jobId)}

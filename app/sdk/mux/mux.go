@@ -10,6 +10,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mid"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
@@ -78,6 +79,7 @@ type BusConfig struct {
 	VProductBus    vproductbus.ExtBusiness
 	PipelineJobBus pipelinejobbus.ExtBusiness
 	UploadBus      uploadbus.ExtBusiness
+	ArtifactBus    artifactbus.ExtBusiness
 }
 
 // Config contains all the mandatory systems required by handlers.

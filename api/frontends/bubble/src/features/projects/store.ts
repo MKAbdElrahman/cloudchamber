@@ -1,3 +1,5 @@
+import { fileIdFromSourceRef } from '@/shared/media'
+
 import type { Project, ProjectRecording } from './types'
 
 const STORAGE_KEY = 'bubble.projects.v1'
@@ -57,7 +59,7 @@ function parseStore(raw: string): ProjectStore | null {
   const current = projects.some((project) => project.id === parsed.currentProjectId)
     ? parsed.currentProjectId!
     : (projects[0]?.id ?? '')
-  const recordings = Array.isArray(parsed.recordings) ? parsed.recordings.filter(isRecording) : []
+  const recordings = Array.isArray(parsed.recordings) ? parsed.recordings.filter(isRecording).map(withFileId) : []
   return { projects, jobProject, recordings, currentProjectId: current }
 }
 
@@ -67,10 +69,16 @@ function isRecording(value: unknown): value is ProjectRecording {
   return (
     typeof row.id === 'string' &&
     typeof row.projectId === 'string' &&
-    typeof row.sourceRef === 'string' &&
+    (typeof row.fileId === 'string' || typeof row.sourceRef === 'string') &&
     typeof row.name === 'string' &&
     typeof row.dateAdded === 'string'
   )
+}
+
+function withFileId(recording: ProjectRecording): ProjectRecording {
+  if (recording.fileId) return recording
+  const fileId = fileIdFromSourceRef(recording.sourceRef)
+  return fileId ? { ...recording, fileId } : recording
 }
 
 function writeStore(store: ProjectStore) {
@@ -189,11 +197,11 @@ export function readRecording(projectId: string, recordingId: string): ProjectRe
   )
 }
 
-export function insertRecording(projectId: string, input: { sourceRef: string; name: string }): ProjectRecording {
+export function insertRecording(projectId: string, input: { fileId: string; name: string }): ProjectRecording {
   const recording: ProjectRecording = {
     id: `rec-${crypto.randomUUID()}`,
     projectId,
-    sourceRef: input.sourceRef,
+    fileId: input.fileId,
     name: input.name.trim() || 'Recording',
     dateAdded: new Date().toISOString(),
   }

@@ -23,6 +23,7 @@ import {
 } from '@/features/projects'
 import { ApiError } from '@/shared/api'
 import { PageHeader, PendingLines, SHELL_NARROW_QUERY, WorkspacePage } from '@/shared/layout'
+import { fileIdFromSourceRef } from '@/shared/media'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 type JobFilePageProps = {
@@ -61,9 +62,11 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const job = jobQuery.data
   const recording = recordingIdParam
     ? recordingQuery.data ?? undefined
-    : recordings.find((item) => item.jobId === jobIdParam) ??
+    :       recordings.find((item) => item.jobId === jobIdParam) ??
+      recordings.find((item) => job?.fileId && item.fileId === job.fileId) ??
       recordings.find((item) => job?.sourceRef && item.sourceRef === job.sourceRef)
   const sourceRef = job?.sourceRef ?? recording?.sourceRef
+  const fileId = job?.fileId ?? recording?.fileId ?? fileIdFromSourceRef(sourceRef) ?? undefined
   const media = knownMediaName(sourceRef, recording?.name)
   const kind = mediaKindOf(sourceRef, recording?.name)
   const file = job ? filesFromJob(job, media ?? undefined)[0] : undefined
@@ -94,7 +97,8 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const create = useMutation({
     mutationFn: () => {
       if (!recording) throw new Error('Missing recording.')
-      return createJob(token, recording.sourceRef, `ui-${crypto.randomUUID()}`)
+      if (!recording.fileId) throw new Error('This recording has no file id.')
+      return createJob(token, recording.fileId, `ui-${crypto.randomUUID()}`)
     },
     onSuccess: async (created) => {
       await addProjectJob(projectId, created.id)
@@ -172,7 +176,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
             end={
               foreign || pending ? undefined : (
                 <HStack gap={WORKSPACE_GAP.local} vAlign="center">
-                  {sourceRef ? (
+                  {fileId || job ? (
                     <JobOpenIcons
                       kind={kind}
                       hasPipeline={Boolean(pipelineJobId ?? resolvedJobId)}
@@ -242,10 +246,10 @@ export function JobFilePage({ token }: JobFilePageProps) {
           </VStack>
         ) : null}
       </VStack>
-      {!foreign && sourceRef ? (
+      {!foreign && fileId ? (
         <JobPeek
           token={token}
-          video={{ name: videoName, sourceRef }}
+          video={{ name: videoName, fileId }}
           videoOpen={videoOpen}
           onVideoOpenChange={setVideoOpen}
           pipelineJobId={pipelineJobId ?? resolvedJobId}

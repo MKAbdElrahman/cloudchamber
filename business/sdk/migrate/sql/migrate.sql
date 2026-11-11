@@ -126,3 +126,44 @@ CREATE TABLE uploads (
 );
 
 CREATE INDEX uploads_owner_date_idx ON uploads (owner_id, date_created DESC);
+
+-- Version: 1.08
+-- Description: Create table artifacts
+CREATE TABLE artifacts (
+    file_id      UUID        NOT NULL,
+    owner_id     UUID        NOT NULL,
+    bucket       TEXT        NOT NULL,
+    object_key   TEXT        NOT NULL,
+    source_ref   TEXT        NOT NULL,
+    kind         TEXT        NOT NULL,
+    content_type TEXT        NOT NULL DEFAULT '',
+    status       TEXT        NOT NULL,
+    date_created TIMESTAMP   NOT NULL,
+    date_updated TIMESTAMP   NOT NULL,
+
+    PRIMARY KEY (file_id),
+    UNIQUE (source_ref),
+    UNIQUE (object_key),
+    FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX artifacts_owner_date_idx ON artifacts (owner_id, date_created DESC);
+
+INSERT INTO artifacts (
+    file_id, owner_id, bucket, object_key, source_ref, kind, content_type, status, date_created, date_updated
+)
+SELECT
+    split_part(object_key, '/', 3)::uuid,
+    owner_id,
+    bucket,
+    object_key,
+    source_ref,
+    'source',
+    '',
+    'ready',
+    date_created,
+    date_updated
+FROM uploads
+WHERE status = 'ready'
+  AND object_key ~* '^sources/[0-9a-f-]{36}/[0-9a-f-]{36}$'
+ON CONFLICT (file_id) DO NOTHING;

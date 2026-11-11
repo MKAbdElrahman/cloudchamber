@@ -32,6 +32,10 @@ Temporal Service provides durable workflow orchestration for long-running pipeli
 
 Production-like pipelines pass artifact refs/IDs (not large blobs) through workflow history. S3-compatible object storage holds source media, extracted audio, transcripts, key frames, and exported documents. The dev infrastructure uses SeaweedFS (`s3://` API, refs only); production uses an operated S3-compatible store with appropriate durability, security, and lifecycle controls.
 
+Watching a recording does not go back through the upload service. The browser asks with a file id. The API looks up the stored object, checks that the caller owns it, and returns a short-lived URL. The browser then reads the bytes, including range requests, from artifact storage. The `s3://` location stays on the server.
+
+![](embed:WatchArtifactDynamic)
+
 ### Development deployment
 
 Local work targets a small Kubernetes style layout that mirrors how services run together in real environments, not one off scripts per developer.

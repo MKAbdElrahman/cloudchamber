@@ -1,4 +1,6 @@
 export {
+  fileIdFromObjectKey,
+  fileIdFromSourceRef,
   fileNameFromSourceRef,
   objectKeyFromSourceRef,
   playbackUrlForObjectKey,

@@ -21,6 +21,9 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
 	apptemporal "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/extensions/artifactotel"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/stores/artifactdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/extensions/auditotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/stores/auditdb"
@@ -131,12 +134,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Namespace string `conf:"default:default"`
 		}
 		ObjectStore struct {
-			Endpoint     string `conf:"default:http://seaweedfs-service:8333"`
-			Bucket       string `conf:"default:cloudchamber-artifacts"`
-			Region       string `conf:"default:us-east-1"`
-			AccessKey    string `conf:"default:admin,mask"`
-			SecretKey    string `conf:"default:seaweedfs-dev,mask"`
-			UsePathStyle bool   `conf:"default:true"`
+			Endpoint       string `conf:"default:http://seaweedfs-service:8333"`
+			PublicEndpoint string `conf:"default:http://127.0.0.1:8333"`
+			Bucket         string `conf:"default:cloudchamber-artifacts"`
+			Region         string `conf:"default:us-east-1"`
+			AccessKey      string `conf:"default:admin,mask"`
+			SecretKey      string `conf:"default:seaweedfs-dev,mask"`
+			UsePathStyle   bool   `conf:"default:true"`
 		}
 	}{
 		Build: tag,
@@ -306,16 +310,21 @@ func run(ctx context.Context, log *logger.Logger) error {
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	objectStore, err := objectstore.New(ctx, objectstore.Config{
-		Endpoint:     cfg.ObjectStore.Endpoint,
-		Bucket:       cfg.ObjectStore.Bucket,
-		Region:       cfg.ObjectStore.Region,
-		AccessKey:    cfg.ObjectStore.AccessKey,
-		SecretKey:    cfg.ObjectStore.SecretKey,
-		UsePathStyle: cfg.ObjectStore.UsePathStyle,
+		Endpoint:       cfg.ObjectStore.Endpoint,
+		PublicEndpoint: cfg.ObjectStore.PublicEndpoint,
+		Bucket:         cfg.ObjectStore.Bucket,
+		Region:         cfg.ObjectStore.Region,
+		AccessKey:      cfg.ObjectStore.AccessKey,
+		SecretKey:      cfg.ObjectStore.SecretKey,
+		UsePathStyle:   cfg.ObjectStore.UsePathStyle,
 	})
 	if err != nil {
 		return fmt.Errorf("initializing object store: %w", err)
 	}
+
+	artifactOtelExt := artifactotel.NewExtension()
+	artifactStorage := artifactdb.NewStore(log, db)
+	artifactBus := artifactbus.NewBusiness(log, artifactStorage, objectStore, artifactOtelExt)
 
 	cfgMux := mux.Config{
 		Build:  tag,
@@ -330,6 +339,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			VProductBus:    vproductBus,
 			PipelineJobBus: pipelineJobBus,
 			UploadBus:      uploadBus,
+			ArtifactBus:    artifactBus,
 		},
 		CloudChamberConfig: mux.CloudChamberConfig{
 			AuthClient:        authClient,

@@ -87,7 +87,8 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "POST, PATCH, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, traceparent, tracestate")
+		w.Header().Set("Access-Control-Expose-Headers", "traceparent, tracestate")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		// Handle pre-flight by sending a 200 OK response.

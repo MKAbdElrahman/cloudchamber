@@ -3,6 +3,7 @@
 package build
 
 import (
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/artifactapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/auditapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/homeapp"
@@ -43,15 +44,22 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 	pipelinejobapp.Routes(app, pipelinejobapp.Config{
 		Log:               cfg.Log,
 		PipelineJobBus:    cfg.BusConfig.PipelineJobBus,
-		UploadBus:         cfg.BusConfig.UploadBus,
+		ArtifactBus:       cfg.BusConfig.ArtifactBus,
 		AuthClient:        cfg.CloudChamberConfig.AuthClient,
 		TemporalClient:    cfg.CloudChamberConfig.TemporalClient,
 		TemporalNamespace: cfg.CloudChamberConfig.TemporalNamespace,
 	})
 
+	artifactapp.Routes(app, artifactapp.Config{
+		Log:         cfg.Log,
+		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		AuthClient:  cfg.CloudChamberConfig.AuthClient,
+	})
+
 	tusdapp.Routes(app, tusdapp.Config{
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 		UploadBus:   cfg.BusConfig.UploadBus,
+		ArtifactBus: cfg.BusConfig.ArtifactBus,
 		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
 	})
 

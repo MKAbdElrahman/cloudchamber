@@ -6,8 +6,8 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/auth"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mid"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"go.temporal.io/sdk/client"
@@ -17,7 +17,7 @@ import (
 type Config struct {
 	Log               *logger.Logger
 	PipelineJobBus    pipelinejobbus.ExtBusiness
-	UploadBus         uploadbus.ExtBusiness
+	ArtifactBus       artifactbus.ExtBusiness
 	AuthClient        authclient.Authenticator
 	TemporalClient    client.Client
 	TemporalNamespace string
@@ -31,7 +31,7 @@ func Routes(app *web.App, cfg Config) {
 	ruleAny := mid.Authorize(cfg.AuthClient, auth.RuleAny)
 	rulePipelineJob := mid.AuthorizePipeline(cfg.AuthClient, cfg.PipelineJobBus)
 
-	api := newApp(cfg.Log, cfg.PipelineJobBus, cfg.UploadBus, cfg.TemporalClient, cfg.TemporalNamespace)
+	api := newApp(cfg.Log, cfg.PipelineJobBus, cfg.ArtifactBus, cfg.TemporalClient, cfg.TemporalNamespace)
 
 	app.HandlerFunc(http.MethodPost, version, "/pipeline/jobs", api.create, authen, ruleAny)
 	app.HandlerFunc(http.MethodGet, version, "/pipeline/jobs", api.query, authen, ruleAny)

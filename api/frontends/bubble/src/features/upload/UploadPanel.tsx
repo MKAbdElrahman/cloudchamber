@@ -13,7 +13,7 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput'
 import { readTusdEndpoint } from '@/shared/config'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
-import { sourceRefFromUploadUrl } from './sourceRef'
+import { fileIdFromUploadUrl } from './sourceRef'
 
 type Status = 'idle' | 'uploading' | 'success' | 'error'
 
@@ -27,7 +27,7 @@ export function UploadPanel({
   embedded,
 }: {
   token: string
-  onUploaded: (upload: { sourceRef: string; fileName: string }) => void
+  onUploaded: (upload: { fileId: string; fileName: string }) => void
   startConversion: boolean
   onStartConversionChange: (checked: boolean) => void
   onBusyChange?: (busy: boolean) => void
@@ -39,7 +39,6 @@ export function UploadPanel({
   const [status, setStatus] = useState<Status>('idle')
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
-  const [sourceRef, setSourceRef] = useState<string | null>(null)
   const uploadRef = useRef<tus.Upload | null>(null)
   const canStart = useMemo(() => !!file && status !== 'uploading', [file, status])
 
@@ -51,7 +50,6 @@ export function UploadPanel({
     setStatus('idle')
     setProgress(0)
     setMessage(null)
-    setSourceRef(null)
   }
 
   function start() {
@@ -59,7 +57,6 @@ export function UploadPanel({
     setStatus('uploading')
     setProgress(0)
     setMessage(null)
-    setSourceRef(null)
     onUploadingFile?.(file.name)
 
     const upload = new tus.Upload(file, {
@@ -76,13 +73,12 @@ export function UploadPanel({
         if (bytesTotal > 0) setProgress((bytesUploaded / bytesTotal) * 100)
       },
       onSuccess() {
-        const sr = upload.url ? sourceRefFromUploadUrl(upload.url) : null
+        const fileId = upload.url ? fileIdFromUploadUrl(upload.url) : null
         setStatus('success')
         setProgress(100)
-        if (sr) {
-          setSourceRef(sr)
+        if (fileId) {
           setMessage(null)
-          onUploaded({ sourceRef: sr, fileName: file.name })
+          onUploaded({ fileId, fileName: file.name })
         } else {
           setMessage(`Upload complete at ${upload.url ?? '(unknown url)'}, but the recording could not be saved.`)
         }
@@ -139,15 +135,7 @@ export function UploadPanel({
         <Banner
           status={status === 'error' ? 'error' : 'success'}
           title={status === 'error' ? 'Upload failed' : 'Ready'}
-          description={
-            sourceRef ? (
-              <>
-                {message} <Text type="code">{sourceRef}</Text>
-              </>
-            ) : (
-              message
-            )
-          }
+          description={message}
         />
       ) : null}
 

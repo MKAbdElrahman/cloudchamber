@@ -64,7 +64,7 @@ export function getRecording(projectId: string, recordingId: string): Promise<Pr
 
 export function addProjectRecording(
   projectId: string,
-  input: { sourceRef: string; name: string },
+  input: { fileId: string; name: string },
 ): Promise<ProjectRecording> {
   return Promise.resolve(insertRecording(projectId, input))
 }

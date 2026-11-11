@@ -11,6 +11,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/errs"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
@@ -21,13 +22,15 @@ import (
 type app struct {
 	authClient  authclient.Authenticator
 	uploadBus   uploadbus.ExtBusiness
+	artifactBus artifactbus.ExtBusiness
 	objectStore *objectstore.Client
 }
 
-func newApp(authClient authclient.Authenticator, uploadBus uploadbus.ExtBusiness, objectStore *objectstore.Client) *app {
+func newApp(authClient authclient.Authenticator, uploadBus uploadbus.ExtBusiness, artifactBus artifactbus.ExtBusiness, objectStore *objectstore.Client) *app {
 	return &app{
 		authClient:  authClient,
 		uploadBus:   uploadBus,
+		artifactBus: artifactBus,
 		objectStore: objectStore,
 	}
 }
@@ -160,6 +163,29 @@ func (a *app) postFinish(ctx context.Context, req hookRequest) error {
 	}
 	span.End()
 
+	fileID, err := artifactbus.FileIDFromObjectKey(objectKey)
+	if err != nil {
+		return fmt.Errorf("post-finish: file id: %w", err)
+	}
+
+	contentType := ""
+	if req.Event.Upload.MetaData != nil {
+		contentType = req.Event.Upload.MetaData["filetype"]
+	}
+
+	if _, err := a.artifactBus.Register(ctx, artifactbus.NewArtifact{
+		FileID:      fileID,
+		OwnerID:     ownerID,
+		Bucket:      bucket,
+		ObjectKey:   objectKey,
+		SourceRef:   sourceRef,
+		Kind:        artifactbus.MustParseKind(artifactbus.KindSource),
+		ContentType: contentType,
+		Status:      artifactbus.MustParseStatus(artifactbus.StatusReady),
+	}); err != nil {
+		return fmt.Errorf("post-finish: register artifact: %w", err)
+	}
+
 	return nil
 }
 
@@ -187,8 +213,8 @@ func baseObjectID(uploadID string) string {
 	if uploadID == "" {
 		return ""
 	}
-	if i := strings.Index(uploadID, "+"); i >= 0 {
-		return uploadID[:i]
+	if before, _, ok := strings.Cut(uploadID, "+"); ok {
+		return before
 	}
 	return uploadID
 }

@@ -2,6 +2,21 @@ import { env } from '@/shared/config'
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v|mkv|avi|ogv)$/i
 const AUDIO_EXT = /\.(mp3|wav|ogg|m4a|aac|flac)$/i
+const FILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** The last path segment when it is the file id baked into a source object key. */
+export function fileIdFromObjectKey(objectKey: string): string | null {
+  const parts = objectKey.split('/').filter(Boolean)
+  const last = parts[parts.length - 1] ?? ''
+  return FILE_ID.test(last) ? last.toLowerCase() : null
+}
+
+/** File id carried by an older s3:// source ref. New recordings store the id directly. */
+export function fileIdFromSourceRef(sourceRef: string | undefined): string | null {
+  if (!sourceRef) return null
+  const key = objectKeyFromSourceRef(sourceRef) ?? sourceRef
+  return fileIdFromObjectKey(key)
+}
 
 export type SourceMediaKind = 'video' | 'audio' | 'unknown'
 

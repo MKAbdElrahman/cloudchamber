@@ -3,6 +3,7 @@ package projectapp
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/errs"
@@ -74,6 +75,9 @@ func (a *app) delete(ctx context.Context, _ *http.Request) web.Encoder {
 	}
 
 	if err := a.projectBus.Delete(ctx, prj); err != nil {
+		if errors.Is(err, projectbus.ErrNotEmpty) {
+			return errs.New(errs.FailedPrecondition, errors.New("remove the files and jobs in this project first"))
+		}
 		return errs.Errorf(errs.Internal, "delete: projectID[%s]: %s", prj.ID, err)
 	}
 

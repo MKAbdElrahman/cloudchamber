@@ -17,6 +17,7 @@ import (
 // Set of error variables for CRUD operations.
 var (
 	ErrNotFound = errors.New("project not found")
+	ErrNotEmpty = errors.New("project is not empty")
 )
 
 // Storer interface declares the behavior this package needs to persist and

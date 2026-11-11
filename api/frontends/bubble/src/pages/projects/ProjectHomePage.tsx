@@ -107,6 +107,7 @@ function containersFor(projectId: string, jobs: PipelineJob[], files: ProjectFil
         fileName: source.name,
         recordingName: source.name,
         name,
+        href: WORKSPACE_PATHS.file(projectId, source.id),
         date: source.dateCreated,
         detail: media && media !== name ? media : '',
         kind: mediaKindOf(source.name, source.name),

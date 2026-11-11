@@ -8,16 +8,17 @@ Mirrors backend modularity by **feature/domain** modules:
 
 - `src/features/auth` — login / JWT (auth service token or paste token)
 - `src/features/upload` — resumable tus upload to tusd (owner-scoped, verified server-side)
-- `src/features/pipeline` — create pipeline jobs from a verified `sourceRef` and view status
+- `src/features/projects` — projects, and the files in a project
+- `src/features/pipeline` — start a conversion from a file id and follow its status
 - `src/shared` — config/env, API client, session, layout chrome (`AppShell` / `TopNav`)
 - `src/app/AstryxProviders.tsx` — theme + layer providers
 - `references/astryx/` — upstream template mapping + `pnpm astryx` CLI usage
 
 Astryx surfaces in use: resizable job **console** (`Table`, inspector panel), **toasts**, **Stepper** wizard, split **login**, **MetadataList** settings. Legacy shadcn `shared/ui` removed.
 
-## MVP scope
+## Scope
 
-Upload-only (no URL ingest) → create job → view job status. “My uploads” list and export/artifact download are not included (backend endpoints/processing work required).
+A project holds its recordings and documents. An upload names the project. A conversion starts from a file id and writes the document back into that project.
 
 ## Configure
 
@@ -32,4 +33,4 @@ pnpm dev
 
 Build: `pnpm build`. Quality gate: `pnpm check` (lint, unit tests, build, `astryx doctor`).
 
-Routes when signed in: `/overview`, `/pipeline`, `/settings/appearance` (and `account`, `developer`).
+Routes when signed in: `/` for projects, `/p/:projectId` for one project, and `/settings/appearance` (and `account`, `developer`).

@@ -14,6 +14,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb/dialect"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -97,6 +98,10 @@ func (s *Store) Delete(ctx context.Context, prj projectbus.Project) error {
 		project_id = :project_id`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return projectbus.ErrNotEmpty
+		}
 		return fmt.Errorf("namedexeccontext: %w", err)
 	}
 

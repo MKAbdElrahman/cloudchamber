@@ -61,6 +61,7 @@ export function AuthenticatedRoutes() {
       <Route path="/p/:projectId/history/:jobId/read" element={<ProjectReadRedirect />} />
       <Route path="/p/:projectId/history/:jobId" element={<ProjectReadRedirect />} />
       <Route path="/p/:projectId/files/:jobId/:kind" element={<ProjectReadRedirect />} />
+      <Route path="/p/:projectId/files/:fileId" element={<ProjectScreen><JobFilePage token={token} /></ProjectScreen>} />
       <Route path="/p/:projectId/jobs/:jobId" element={<ProjectScreen><JobFilePage token={token} /></ProjectScreen>} />
       <Route path="/p/:projectId/recordings/:recordingId" element={<ProjectScreen><JobFilePage token={token} /></ProjectScreen>} />
       <Route path="/p/:projectId" element={<ProjectScreen><ProjectHomePage token={token} /></ProjectScreen>} />

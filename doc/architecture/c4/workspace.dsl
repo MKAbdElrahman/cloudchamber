@@ -16,36 +16,37 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 adminUI = container "Admin UI" "Optional staff web app (Vue)." "Vue / Vite SPA" "Web Browser"
             }
             group "Application services" {
-                apiService = container "API service" "Primary HTTP API and domain routes; acts as Temporal client for pipeline workflows (planned)." "Go" {
+                apiService = container "API service" "Primary HTTP API and domain routes. Starts and queries pipeline workflows." "Go" {
                     auditapp = component "auditapp" "Audit subdomain (app/domain/auditapp, business/domain/auditbus)." "Go"
                     homeapp = component "homeapp" "Home subdomain (app/domain/homeapp, business/domain/homebus)." "Go"
                     productapp = component "productapp" "Product subdomain (app/domain/productapp, business/domain/productbus)." "Go"
                     userapp = component "userapp" "User subdomain (app/domain/userapp, business/domain/userbus)." "Go"
                     vproductapp = component "vproductapp" "VProduct read-model subdomain (app/domain/vproductapp, business/domain/vproductbus)." "Go"
-                    pipelineapp = component "pipelineapp (planned)" "CloudChamber pipeline subdomain for source submission, workflow orchestration, status/results, and document delivery (planned)." "Go / Temporal client"
-                    tusdapp = component "tusdapp" "Internal tusd hook subdomain (app/domain/tusdapp): pre-create JWT auth and owner-scoped key binding; pre-finish S3-verified, idempotent registration of the owned artifact before tusd confirms the upload." "Go"
+                    projectapp = component "projectapp" "Project subdomain (app/domain/projectapp, business/domain/projectbus). One owner, many files and jobs. A file is recorded only in a project that owner owns." "Go"
+                    pipelineapp = component "pipelineapp" "Starts a conversion from a file id. The job copies the owner and the project from that file; it does not take a project from the client." "Go / Temporal client"
+                    tusdapp = component "tusdapp" "Internal tusd hook subdomain (app/domain/tusdapp). pre-create authenticates the caller and checks they own the project in the upload metadata. pre-finish records the upload and the artifact, in that project, before tusd answers. pre-terminate refuses once the artifact exists. Download is disabled." "Go"
                 }
                 authAPI = container "Auth service" "JWT issue and validation." "Go" {
                     authapp = component "authapp" "Authentication/token HTTP subdomain (app/domain/authapp)." "Go"
                     grpcauthapp = component "grpcauthapp" "gRPC token validation subdomain for peer services (app/domain/grpcauthapp)." "Go"
                     userbus = component "userbus" "Identity/user records subdomain used for authentication (business/domain/userbus)." "Go"
                 }
-                uploadService = container "Upload service (tusd)" "tusd server for resumable video/audio uploads. Stores uploads in artifact storage and uses hooks into the existing API service for auth, owner binding, and artifact registration (planned)." "tusd (Go)" "Service"
+                uploadService = container "Upload service (tusd)" "tusd server for resumable video/audio uploads. Stores bytes in artifact storage. Hooks on the API service check the project, record the artifact, and refuse download. The browser never reads bytes from tusd." "tusd (Go)" "Service"
             }
             group "Pipeline orchestration (Temporal)" {
                 temporalServer = container "Temporal Service" "Durable workflow orchestration cluster/frontend for workflows, task queues, retries, and visibility (dev: auto-setup)." "Temporal" "Service"
                 temporalUI = container "Temporal UI" "Web interface for workflow visibility and operations." "Temporal UI" "Web Browser"
             }
-            group "Pipeline execution (split-ready, planned)" {
-                workflowWorker = container "Workflow worker" "Runs ProcessSourceWorkflow on the workflow task queue (planned)." "Go / Temporal worker" "Service"
-                mediaWorker = container "Media worker" "Source/audio/frame activities on the media task queue (planned)." "Go / Temporal worker" "Service"
-                asrWorker = container "ASR worker" "Transcription activities on the ASR task queue (planned)." "Go / Temporal worker" "Service"
-                renderWorker = container "Render worker" "Compose/export activities on the render task queue (planned)." "Go / Temporal worker" "Service"
+            group "Pipeline execution" {
+                workflowWorker = container "Workflow worker" "Runs ProcessSourceWorkflow on the workflow task queue." "Go / Temporal worker" "Service"
+                mediaWorker = container "Media worker" "Source, audio, and key-frame activities on the media task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
+                asrWorker = container "ASR worker" "Transcription activities on the ASR task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
+                renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
             }
             group "Artifact & data stores" {
                 postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database"
                 temporalPostgres = container "Temporal PostgreSQL" "Persistence and visibility storage for Temporal (physical isolation in dev)." "PostgreSQL" "Database"
-                artifactStore = container "Artifact storage (S3-compatible)" "S3-compatible object storage for source media, audio, transcripts, key frames, and exported documents; workflows pass refs/IDs only. Dev: SeaweedFS." "SeaweedFS (S3-compatible)" "Database"
+                artifactStore = container "Artifact storage (S3-compatible)" "S3-compatible object storage for source media, audio, transcripts, key frames, and exported documents. The durable name is the file id. Each file belongs to one owner and one project. Dev: SeaweedFS." "SeaweedFS (S3-compatible)" "Database"
             }
             group "Observability" {
                 metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go"
@@ -59,7 +60,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         // C2 — containers (container view only; no component endpoints)
         endUser -> cloudchamber.authAPI "Authenticates through" "HTTPS/JSON"
         endUser -> cloudchamber.apiService "Calls business APIs on" "HTTPS/JSON"
-        endUser -> cloudchamber.uploadService "Uploads recordings to, resumably (tus) (planned)" "HTTPS"
+        endUser -> cloudchamber.uploadService "Uploads recordings to, resumably (tus)" "HTTPS"
         operator -> cloudchamber.adminUI "Opens admin UI in" "HTTPS"
         cloudchamber.adminUI -> cloudchamber.authAPI "Authenticates through" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService "Makes API requests to" "HTTPS/JSON"
@@ -70,23 +71,24 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         operator -> cloudchamber.temporalUI "Inspects workflows in" "HTTPS"
         cloudchamber.temporalUI -> cloudchamber.temporalServer "Connects to" "gRPC"
         cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.apiService -> cloudchamber.temporalServer "Starts and queries CloudChamber pipeline workflows via (planned)" "gRPC"
-        cloudchamber.apiService -> cloudchamber.artifactStore "Manages source/document artifact refs via (planned)"
-        endUser -> cloudchamber.artifactStore "Reads an owned artifact through a short-lived URL (planned)" "S3 API"
+        cloudchamber.apiService -> cloudchamber.temporalServer "Starts and queries CloudChamber pipeline workflows via" "gRPC"
+        cloudchamber.apiService -> cloudchamber.artifactStore "Signs a short-lived read URL, and deletes an object the caller owns"
+        endUser -> cloudchamber.artifactStore "Reads an owned file through a short-lived URL" "S3 API"
         cloudchamber.uploadService -> cloudchamber.artifactStore "Stores upload data in" "S3 API"
-        cloudchamber.uploadService -> cloudchamber.apiService "Calls hooks on the existing API service (pre-create, pre-finish) (planned)" "HTTPS/JSON"
+        cloudchamber.uploadService -> cloudchamber.apiService "Calls hooks (pre-create, pre-finish, pre-terminate, post-terminate)" "HTTPS/JSON"
         cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC"
-        cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads/writes source, audio, and key-frame artifacts via (planned)"
+        cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads the source and writes audio and key frames in the same project"
         cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls ASR task queue and executes activities via" "gRPC"
-        cloudchamber.asrWorker -> cloudchamber.artifactStore "Reads audio and writes transcript artifacts via (planned)"
+        cloudchamber.asrWorker -> cloudchamber.artifactStore "Reads audio and writes the transcript in the same project"
         cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls render task queue and executes activities via" "gRPC"
-        cloudchamber.renderWorker -> cloudchamber.artifactStore "Reads refs and writes composed/exported documents via (planned)"
+        cloudchamber.renderWorker -> cloudchamber.artifactStore "Reads the inputs and writes the document in the same project"
 
         // C3 — API service (subdomains aligned to current packages)
         endUser -> cloudchamber.apiService.userapp "Uses user APIs on" "HTTPS/JSON"
         endUser -> cloudchamber.apiService.productapp "Uses product APIs on" "HTTPS/JSON"
-        endUser -> cloudchamber.apiService.pipelineapp "Submits and tracks pipeline jobs via (planned)" "HTTPS/JSON"
+        endUser -> cloudchamber.apiService.projectapp "Creates and opens projects on" "HTTPS/JSON"
+        endUser -> cloudchamber.apiService.pipelineapp "Starts a conversion from a file id on" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService.auditapp "Uses audit APIs on" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService.userapp "Manages users via" "HTTPS/JSON"
         cloudchamber.apiService.auditapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
@@ -94,8 +96,9 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService.productapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.userapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.vproductapp -> cloudchamber.postgres "Reads from" "SQL/TCP"
-        cloudchamber.apiService.pipelineapp -> cloudchamber.temporalServer "Starts and queries workflows via (planned)" "gRPC"
-        cloudchamber.apiService.pipelineapp -> cloudchamber.artifactStore "Manages artifact refs via (planned)"
+        cloudchamber.apiService.projectapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
+        cloudchamber.apiService.pipelineapp -> cloudchamber.postgres "Copies the source file's owner and project onto the job" "SQL/TCP"
+        cloudchamber.apiService.pipelineapp -> cloudchamber.temporalServer "Starts and queries workflows via" "gRPC"
         cloudchamber.apiService -> cloudchamber.authAPI.grpcauthapp "Validates tokens via (service-to-service)" "gRPC"
 
         // C3 — Auth service (subdomains aligned to current packages)
@@ -143,17 +146,17 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                                 containerInstance cloudchamber.artifactStore
                             }
                         }
-                        deploymentNode "Pipeline workers (planned)" "Split-ready capability workers; can run in one process initially." "Workload group" "1" {
-                            deploymentNode "Workload: workflow-worker" "Workflow worker (planned)." "Deployment" "1" {
+                        deploymentNode "Pipeline workers" "One deployment for each task queue. Dev activities are simulated stand-ins." "Workload group" "1" {
+                            deploymentNode "Workload: workflow-worker" "Workflow worker." "Deployment" "1" {
                                 containerInstance cloudchamber.workflowWorker
                             }
-                            deploymentNode "Workload: media-worker" "Media worker (planned)." "Deployment" "1" {
+                            deploymentNode "Workload: media-worker" "Media worker." "Deployment" "1" {
                                 containerInstance cloudchamber.mediaWorker
                             }
-                            deploymentNode "Workload: asr-worker" "ASR worker (planned)." "Deployment" "1" {
+                            deploymentNode "Workload: asr-worker" "ASR worker." "Deployment" "1" {
                                 containerInstance cloudchamber.asrWorker
                             }
-                            deploymentNode "Workload: render-worker" "Render worker (planned)." "Deployment" "1" {
+                            deploymentNode "Workload: render-worker" "Render worker." "Deployment" "1" {
                                 containerInstance cloudchamber.renderWorker
                             }
                         }
@@ -174,7 +177,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     deploymentNode "admin-ui" "Static/admin UI delivery." "Deployment / CDN" "1" {
                         containerInstance cloudchamber.adminUI
                     }
-                    deploymentNode "api-service" "Primary API; Temporal client for pipeline submission/query (planned)." "Deployment (HA)" 1 {
+                    deploymentNode "api-service" "Primary API. Temporal client for pipeline submission and query." "Deployment (HA)" 1 {
                         containerInstance cloudchamber.apiService
                     }
                     deploymentNode "auth-service" "Token issuance/validation." "Deployment (HA)" 1 {
@@ -251,14 +254,14 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             title "Dynamic View: Upload recording"
             description "Resumable upload of a user-provided recording."
 
-            endUser -> cloudchamber.uploadService "Creates an upload"
-            cloudchamber.uploadService -> cloudchamber.apiService "pre-create hook: authenticates the user and binds an owner-scoped key"
+            endUser -> cloudchamber.uploadService "Creates an upload for a project"
+            cloudchamber.uploadService -> cloudchamber.apiService "pre-create: authenticates the caller and checks they own the project"
             cloudchamber.uploadService -> endUser "Returns the upload URL"
             endUser -> cloudchamber.uploadService "Sends the recording data"
             cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording data"
-            cloudchamber.uploadService -> cloudchamber.apiService "pre-finish hook: reports completion before the client is answered"
-            cloudchamber.apiService -> cloudchamber.artifactStore "Verifies the finalized upload"
-            cloudchamber.apiService -> cloudchamber.postgres "Records the owned artifact"
+            cloudchamber.uploadService -> cloudchamber.apiService "pre-finish: reports completion before the client is answered"
+            cloudchamber.apiService -> cloudchamber.artifactStore "Verifies the object is present"
+            cloudchamber.apiService -> cloudchamber.postgres "Records the upload and the artifact in that project"
             cloudchamber.uploadService -> endUser "Confirms the upload is complete"
 
             autoLayout tb
@@ -266,7 +269,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         dynamic cloudchamber "WatchArtifactDynamic" {
             title "Dynamic View: Watch a recording"
-            description "The user opens a recording they own. The API checks the artifact and signs a short-lived URL. Object storage serves the bytes."
+            description "The user opens a file they own. The file id is the durable name. The API checks the owner and signs a short-lived URL. Object storage serves the bytes."
 
             endUser -> cloudchamber.apiService "Asks for a short-lived URL for a file id"
             cloudchamber.apiService -> cloudchamber.postgres "Loads the artifact and checks the owner"
@@ -279,7 +282,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         component cloudchamber.apiService "APIServiceC3" {
             title "Component View: API service"
-            description "Subdomains inside the API service, aligned to current packages: auditapp, homeapp, productapp, userapp, vproductapp, and planned pipelineapp (Temporal client / artifact refs)."
+            description "Subdomains inside the API service. projectapp owns projects. pipelineapp copies a file's project onto a job. tusdapp records the source file in that project."
             include *
             include *?
             include cloudchamber.temporalServer
@@ -299,7 +302,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         deployment * development "DeploymentDevKind" {
             title "Deployment view: Development (Kind)"
-            description "Local Kind layout for cloudchamber-dev (namespace cloudchamber-system), grouped by application, orchestration, artifact/data stores, and planned workers."
+            description "Local Kind layout for cloudchamber-dev (namespace cloudchamber-system), grouped by application, orchestration, artifact/data stores, and workers."
             include *
             autoLayout tb
         }

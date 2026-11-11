@@ -1,18 +1,7 @@
 import { apiFetch } from '@/shared/api'
 
-import {
-  assignJob,
-  linkRecordingJob,
-  readProjectIdForJob,
-  readProjectJobIds,
-  readProjectRecordings,
-  readProjects,
-  readRecording,
-  removeProject,
-  replaceProjectId,
-  insertRecording,
-} from './store'
-import type { Project, ProjectFile, ProjectRecording } from './types'
+import { readProjects, removeProject, replaceProjectId } from './store'
+import type { Project, ProjectFile } from './types'
 
 const MIGRATED_KEY = 'bubble.projects.migrated.v1'
 const PAGE_ROWS = 100
@@ -160,35 +149,3 @@ export function listProjectFiles(token: string, projectId: string) {
   }).then((data) => data.items ?? [])
 }
 
-export function listProjectJobIds(projectId: string): Promise<string[]> {
-  return Promise.resolve(readProjectJobIds(projectId))
-}
-
-export function addProjectJob(projectId: string, jobId: string): Promise<void> {
-  assignJob(projectId, jobId)
-  return Promise.resolve()
-}
-
-export function projectIdForJob(jobId: string): Promise<string | null> {
-  return Promise.resolve(readProjectIdForJob(jobId))
-}
-
-export function listProjectRecordings(projectId: string): Promise<ProjectRecording[]> {
-  return Promise.resolve(readProjectRecordings(projectId))
-}
-
-export function getRecording(projectId: string, recordingId: string): Promise<ProjectRecording | null> {
-  return Promise.resolve(readRecording(projectId, recordingId))
-}
-
-export function addProjectRecording(
-  projectId: string,
-  input: { fileId: string; name: string },
-): Promise<ProjectRecording> {
-  return Promise.resolve(insertRecording(projectId, input))
-}
-
-export function attachRecordingJob(recordingId: string, jobId: string): Promise<void> {
-  linkRecordingJob(recordingId, jobId)
-  return Promise.resolve()
-}

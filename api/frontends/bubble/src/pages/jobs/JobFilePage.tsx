@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useMediaQuery } from '@astryxdesign/core/hooks'
@@ -12,18 +12,13 @@ import { createMarkdownHeadingLinks } from '@astryxdesign/core/Markdown/plugins'
 import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
 import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKindOf, mediaLabel } from '@/features/outputs'
 import { JobOpenIcons, JobPeek, JobStatusLabel, createJob, jobPhase, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
-import {
-  ForeignProjectNotice,
-  ProjectTrail,
-  addProjectJob,
-  attachRecordingJob,
-  useJobOwner,
-  useProjectRecordings,
-  useRecording,
-} from '@/features/projects'
+import { ForeignProjectNotice, ProjectTrail, type ProjectFile } from '@/features/projects'
 import { ApiError } from '@/shared/api'
-import { PageHeader, PendingLines, SHELL_NARROW_QUERY, WorkspacePage } from '@/shared/layout'
+import { PageHeader, PendingLines, SHELL_NARROW_QUERY, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
+
+import { useProjectFiles } from '../projects/useProjectFiles'
+import { useProjectJobs } from '../projects/useProjectJobs'
 
 type JobFilePageProps = {
   token: string
@@ -31,6 +26,11 @@ type JobFilePageProps = {
 
 type StartErrorState = {
   startError?: string
+}
+
+function sourceFile(files: ProjectFile[], id: string | undefined): ProjectFile | undefined {
+  if (!id) return undefined
+  return files.find((file) => file.id === id && file.kind === 'source')
 }
 
 function nearestScrollParent(node: HTMLElement | null): HTMLElement | null {
@@ -45,30 +45,29 @@ function nearestScrollParent(node: HTMLElement | null): HTMLElement | null {
 
 /** One job file. The document is the page. Icons open the video and the pipeline. */
 export function JobFilePage({ token }: JobFilePageProps) {
-  const { projectId = '', jobId: jobIdParam, recordingId: recordingIdParam } = useParams()
+  const { projectId = '', jobId: jobIdParam, recordingId: recordingIdParam, fileId: fileIdParam } = useParams()
+  const sourceId = fileIdParam || recordingIdParam || ''
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const startError = (location.state as StartErrorState | null)?.startError
   const isNarrow = useMediaQuery(SHELL_NARROW_QUERY)
   const queryClient = useQueryClient()
-  const recordingsQuery = useProjectRecordings(projectId)
-  const recordingQuery = useRecording(projectId, recordingIdParam ?? '')
-  const recordings = recordingsQuery.data ?? []
-  const resolvedJobId = jobIdParam || (recordingIdParam ? recordingQuery.data?.jobId : undefined) || null
-  const owner = useJobOwner(resolvedJobId ?? '')
-  const foreign = Boolean(owner.data && owner.data !== projectId)
-  const jobQuery = usePipelineJob(token, foreign ? null : resolvedJobId)
-  const job = jobQuery.data
-  const recording = recordingIdParam
-    ? recordingQuery.data ?? undefined
-    :       recordings.find((item) => item.jobId === jobIdParam) ??
-      recordings.find((item) => job?.fileId && item.fileId === job.fileId)
-  const fileName = job?.fileName || recording?.name
-  const fileId = job?.fileId ?? recording?.fileId
-  const media = knownMediaName(fileName, recording?.name)
-  const kind = mediaKindOf(fileName, recording?.name)
+  const filesQuery = useProjectFiles(token, projectId)
+  const jobsQuery = useProjectJobs(token, projectId)
+  const jobs = jobsQuery.data ?? []
+  const matchedJob = sourceId ? jobs.find((item) => item.fileId === sourceId) : jobs.find((item) => item.id === jobIdParam)
+  const resolvedJobId = jobIdParam || matchedJob?.id || null
+  const jobQuery = usePipelineJob(token, resolvedJobId)
+  const job = jobQuery.data ?? matchedJob
+  const foreign = Boolean(job?.projectId && job.projectId !== projectId)
+  const source = sourceFile(filesQuery.data ?? [], job?.fileId || sourceId)
+  const fileName = job?.fileName || source?.name
+  const fileId = job?.fileId || source?.id
+  const media = knownMediaName(fileName, source?.name)
+  const kind = mediaKindOf(fileName, source?.name)
   const file = job ? filesFromJob(job, media ?? undefined)[0] : undefined
-  const recordedAt = job?.dateUpdated ?? job?.dateCreated ?? recording?.dateAdded
+  const recordedAt = job?.dateUpdated ?? job?.dateCreated ?? source?.dateCreated
   const bodyQuery = useQuery({
     queryKey: ['document-body', file?.fileId],
     queryFn: () => {
@@ -94,22 +93,14 @@ export function JobFilePage({ token }: JobFilePageProps) {
 
   const create = useMutation({
     mutationFn: () => {
-      if (!recording) throw new Error('Missing recording.')
-      if (!recording.fileId) throw new Error('This recording has no file id.')
-      return createJob(token, recording.fileId, `ui-${crypto.randomUUID()}`)
+      if (!fileId) throw new Error('This file has no id.')
+      return createJob(token, fileId, `ui-${crypto.randomUUID()}`)
     },
     onSuccess: async (created) => {
-      await addProjectJob(projectId, created.id)
-      if (recording) await attachRecordingJob(recording.id, created.id)
       queryClient.setQueryData(['pipeline-job', created.id], created)
-      await queryClient.invalidateQueries({ queryKey: ['project-recordings', projectId] })
-      if (recordingIdParam) {
-        await queryClient.invalidateQueries({ queryKey: ['project-recording', projectId, recordingIdParam] })
-      }
       await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
-      await queryClient.invalidateQueries({ queryKey: ['job-project', created.id] })
-      setPipelineJobId(created.id)
-      setPipelineOpen(true)
+      await queryClient.invalidateQueries({ queryKey: ['project-files', projectId] })
+      navigate(WORKSPACE_PATHS.job(projectId, created.id))
     },
   })
 
@@ -126,21 +117,21 @@ export function JobFilePage({ token }: JobFilePageProps) {
   }, [asked, searchParams, setSearchParams])
 
   const pending =
-    (Boolean(recordingIdParam) && recordingQuery.isPending) ||
-    (Boolean(resolvedJobId) && !foreign && jobQuery.isPending && !job) ||
-    (Boolean(resolvedJobId) && owner.isPending)
+    filesQuery.isPending ||
+    jobsQuery.isPending ||
+    (Boolean(resolvedJobId) && jobQuery.isPending && !job)
   const ready = file != null && bodyQuery.data != null
   const title = faceFileName({
     face: file ? 'document' : 'video',
     fileName,
-    recordingName: recording?.name,
+    recordingName: source?.name,
     documentName: file?.name,
     date: recordedAt,
   })
   const videoName = faceFileName({
     face: 'video',
     fileName,
-    recordingName: recording?.name,
+    recordingName: source?.name,
     date: recordedAt,
   })
   const description = foreign
@@ -151,7 +142,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
         : 'The export is not loaded from storage yet.'
       : file && media && media !== title
         ? media
-        : !job && recording
+        : !job && source
           ? `${mediaLabel(kind)} in this project. Create the document when you are ready.`
           : undefined
   const badgeStatus = job ? visibleJobStatus(job) : undefined
@@ -192,7 +183,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
                     />
                   ) : null}
                   {badgeStatus && jobPhase(badgeStatus) !== 'finished' ? <JobStatusLabel status={badgeStatus} /> : null}
-                  {!job && recording ? (
+                  {!job && source ? (
                     <Button
                       label="Create document"
                       variant="primary"
@@ -210,8 +201,8 @@ export function JobFilePage({ token }: JobFilePageProps) {
     >
       <VStack ref={bindArticle} gap={WORKSPACE_GAP.section}>
         {pending ? <PendingLines /> : null}
-        {foreign && owner.data && resolvedJobId ? (
-          <ForeignProjectNotice ownerId={owner.data} jobId={resolvedJobId} />
+        {foreign && job?.projectId && resolvedJobId ? (
+          <ForeignProjectNotice ownerId={job.projectId} jobId={resolvedJobId} />
         ) : null}
         {startError ? <Banner status="error" title="Could not start the conversion" description={startError} /> : null}
         {create.isError ? (
@@ -224,11 +215,11 @@ export function JobFilePage({ token }: JobFilePageProps) {
         {jobQuery.isError ? (
           <Banner status="error" title="Could not load the job" description={(jobQuery.error as Error).message} />
         ) : null}
-        {!pending && !foreign && !recording && !job ? (
+        {!pending && !foreign && !source && !job ? (
           <Banner status="error" title="Missing job" description="This project does not have that job." />
         ) : null}
 
-        {!foreign && !file && recording && !pending ? (
+        {!foreign && !file && source && !pending ? (
           <Text type="supporting">The document is not written yet.</Text>
         ) : null}
 

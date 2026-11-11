@@ -228,3 +228,8 @@ ALTER TABLE pipeline_jobs
 
 CREATE INDEX artifacts_project_date_idx ON artifacts (project_id, date_created DESC);
 CREATE INDEX pipeline_jobs_project_date_idx ON pipeline_jobs (project_id, date_created DESC);
+
+-- Version: 1.13
+-- Description: A file and a job must name their project
+ALTER TABLE artifacts ALTER COLUMN project_id SET NOT NULL;
+ALTER TABLE pipeline_jobs ALTER COLUMN project_id SET NOT NULL;

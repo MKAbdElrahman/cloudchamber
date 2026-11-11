@@ -5,16 +5,19 @@ package sim
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/temporal"
 
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/workflow"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
+	workflow "github.com/MKAbdElrahman/cloudchamber/app/sdk/pipelineworkflow"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -27,13 +30,14 @@ const (
 // Activities implements simulated pipeline activities.
 type Activities struct {
 	artifacts artifactbus.ExtBusiness
+	jobs      pipelinejobbus.ExtBusiness
 	objects   *objectstore.Client
 	tracer    trace.Tracer
 }
 
-// New constructs simulated activities that store objects and register files.
-func New(artifacts artifactbus.ExtBusiness, objects *objectstore.Client, tracer trace.Tracer) *Activities {
-	return &Activities{artifacts: artifacts, objects: objects, tracer: tracer}
+// New constructs simulated activities that store objects, register files, and record those files on the job.
+func New(artifacts artifactbus.ExtBusiness, jobs pipelinejobbus.ExtBusiness, objects *objectstore.Client, tracer trace.Tracer) *Activities {
+	return &Activities{artifacts: artifacts, jobs: jobs, objects: objects, tracer: tracer}
 }
 
 // traced stores the worker tracer the way the HTTP middleware does, so
@@ -43,6 +47,11 @@ func (a *Activities) traced(ctx context.Context) context.Context {
 }
 
 func (a *Activities) ResolveSource(ctx context.Context, in workflow.ResolveSourceInput) (workflow.ResolveSourceOutput, error) {
+	out, err := a.resolveSource(ctx, in)
+	return out, a.finish(ctx, in.JobID, workflow.ActivityResolveSource, err)
+}
+
+func (a *Activities) resolveSource(ctx context.Context, in workflow.ResolveSourceInput) (workflow.ResolveSourceOutput, error) {
 	if err := simulate(ctx, "resolve-source", in.JobID); err != nil {
 		return workflow.ResolveSourceOutput{}, err
 	}
@@ -75,6 +84,11 @@ func (a *Activities) ResolveSource(ctx context.Context, in workflow.ResolveSourc
 }
 
 func (a *Activities) ExtractAudio(ctx context.Context, in workflow.ExtractAudioInput) (workflow.ExtractAudioOutput, error) {
+	out, err := a.extractAudio(ctx, in)
+	return out, a.finish(ctx, in.JobID, workflow.ActivityExtractAudio, err)
+}
+
+func (a *Activities) extractAudio(ctx context.Context, in workflow.ExtractAudioInput) (workflow.ExtractAudioOutput, error) {
 	if err := simulate(ctx, "extract-audio", in.JobID); err != nil {
 		return workflow.ExtractAudioOutput{}, err
 	}
@@ -102,6 +116,11 @@ func (a *Activities) ExtractAudio(ctx context.Context, in workflow.ExtractAudioI
 }
 
 func (a *Activities) Transcribe(ctx context.Context, in workflow.TranscribeInput) (workflow.TranscribeOutput, error) {
+	out, err := a.transcribe(ctx, in)
+	return out, a.finish(ctx, in.JobID, workflow.ActivityTranscribe, err)
+}
+
+func (a *Activities) transcribe(ctx context.Context, in workflow.TranscribeInput) (workflow.TranscribeOutput, error) {
 	if err := simulate(ctx, "transcribe", in.JobID); err != nil {
 		return workflow.TranscribeOutput{}, err
 	}
@@ -127,6 +146,11 @@ func (a *Activities) Transcribe(ctx context.Context, in workflow.TranscribeInput
 }
 
 func (a *Activities) ExtractKeyFrames(ctx context.Context, in workflow.ExtractKeyFramesInput) (workflow.ExtractKeyFramesOutput, error) {
+	out, err := a.extractKeyFrames(ctx, in)
+	return out, a.finish(ctx, in.JobID, workflow.ActivityExtractKeyFrames, err)
+}
+
+func (a *Activities) extractKeyFrames(ctx context.Context, in workflow.ExtractKeyFramesInput) (workflow.ExtractKeyFramesOutput, error) {
 	if err := simulate(ctx, "extract-keyframes", in.JobID); err != nil {
 		return workflow.ExtractKeyFramesOutput{}, err
 	}
@@ -155,6 +179,17 @@ func (a *Activities) ExtractKeyFrames(ctx context.Context, in workflow.ExtractKe
 }
 
 func (a *Activities) ComposeExport(ctx context.Context, in workflow.ComposeExportInput) (workflow.ComposeExportOutput, error) {
+	out, err := a.composeExport(ctx, in)
+	if err != nil {
+		return out, a.finish(ctx, in.JobID, workflow.ActivityComposeExport, err)
+	}
+	if err := a.persistOutcome(ctx, in.JobID, pipelinejobbus.StatusCompleted, "", ""); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (a *Activities) composeExport(ctx context.Context, in workflow.ComposeExportInput) (workflow.ComposeExportOutput, error) {
 	if err := simulate(ctx, "compose-export", in.JobID); err != nil {
 		return workflow.ComposeExportOutput{}, err
 	}
@@ -214,7 +249,218 @@ func (a *Activities) publish(ctx context.Context, jobID string, ownerID, project
 	}); err != nil {
 		return uuid.Nil, fmt.Errorf("register %s: %w", kind, err)
 	}
+	// The object is already stored. Record it on the job even if this activity is canceling,
+	// then surface the cancellation so the workflow does not schedule the next step.
+	if err := a.recordFile(context.WithoutCancel(ctx), jobID, kind, fileID); err != nil {
+		return uuid.Nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return uuid.Nil, err
+	}
 	return fileID, nil
+}
+
+// recordFile stores the file a step registered on the pipeline job.
+func (a *Activities) recordFile(ctx context.Context, jobID, kind string, fileID uuid.UUID) error {
+	id, err := uuid.Parse(jobID)
+	if err != nil {
+		return invalidInput(ctx, "job id", err)
+	}
+	if a.jobs == nil {
+		return fmt.Errorf("record %s: pipeline jobs not configured", kind)
+	}
+
+	job, err := a.jobs.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pipelinejobbus.ErrNotFound) {
+			return invalidInput(ctx, "job id", err)
+		}
+		return fmt.Errorf("record %s: %w", kind, err)
+	}
+
+	uj, changed, err := fileUpdate(job, kind, fileID)
+	if err != nil {
+		return invalidInput(ctx, "kind", err)
+	}
+	if !changed {
+		return nil
+	}
+	if _, err := a.jobs.Update(ctx, job, uj); err != nil {
+		return fmt.Errorf("record %s: %w", kind, err)
+	}
+	return nil
+}
+
+// fileUpdate sets the job column for one registered file. An id already stored is left as it is.
+func fileUpdate(job pipelinejobbus.Job, kind string, fileID uuid.UUID) (pipelinejobbus.UpdateJob, bool, error) {
+	switch kind {
+	case artifactbus.KindAudio:
+		if job.AudioFileID == fileID {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{AudioFileID: new(fileID)}, true, nil
+	case artifactbus.KindTranscript:
+		if job.TranscriptFileID == fileID {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{TranscriptFileID: new(fileID)}, true, nil
+	case artifactbus.KindFrames:
+		if job.KeyFramesFileID == fileID {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{KeyFramesFileID: new(fileID)}, true, nil
+	case artifactbus.KindDocument:
+		if job.DocumentFileID == fileID {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{DocumentFileID: new(fileID)}, true, nil
+	default:
+		return pipelinejobbus.UpdateJob{}, false, fmt.Errorf("unknown kind %q", kind)
+	}
+}
+
+// MarkCanceled stores a cancel that landed after one step returned and before the next was scheduled.
+func (a *Activities) MarkCanceled(ctx context.Context, in workflow.MarkCanceledInput) error {
+	return a.persistOutcome(ctx, in.JobID, pipelinejobbus.StatusCanceled, in.Step, "")
+}
+
+// finish stores a terminal outcome for the activity that just ran.
+// The run-ending error is returned only after that write lands. An earlier retryable attempt leaves the job running.
+func (a *Activities) finish(ctx context.Context, jobID, step string, err error) error {
+	if err == nil {
+		return nil
+	}
+	switch {
+	case canceled(ctx, err):
+		if recErr := a.persistOutcome(ctx, jobID, pipelinejobbus.StatusCanceled, step, ""); recErr != nil {
+			return recErr
+		}
+		return err
+	case recordFailure(ctx, err):
+		if recErr := a.persistOutcome(ctx, jobID, pipelinejobbus.StatusFailed, step, failureMessage(err)); recErr != nil {
+			return recErr
+		}
+		return err
+	default:
+		return err
+	}
+}
+
+// persistOutcome writes the closed job. A retryable failure is tried again until the activity deadline.
+// The caller returns the run-ending error only after this returns nil.
+func (a *Activities) persistOutcome(ctx context.Context, jobID, status, step, message string) error {
+	wait := time.Second
+	var err error
+	for {
+		err = a.recordOutcome(ctx, jobID, status, step, message)
+		if err == nil || !retryableOutcome(err) || !activity.IsActivity(ctx) {
+			return err
+		}
+		deadline := activity.GetInfo(ctx).Deadline
+		if deadline.IsZero() || time.Until(deadline) < wait+time.Second {
+			return err
+		}
+		activity.RecordHeartbeat(ctx, "record outcome")
+		time.Sleep(wait)
+		if wait < 10*time.Second {
+			wait *= 2
+		}
+	}
+}
+
+func retryableOutcome(err error) bool {
+	appErr, ok := errors.AsType[*temporal.ApplicationError](err)
+	return !ok || !appErr.NonRetryable()
+}
+
+func canceled(ctx context.Context, err error) bool {
+	return errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled) || temporal.IsCanceledError(err)
+}
+
+func recordFailure(ctx context.Context, err error) bool {
+	if appErr, ok := errors.AsType[*temporal.ApplicationError](err); ok && appErr.NonRetryable() {
+		return true
+	}
+	if !activity.IsActivity(ctx) {
+		return false
+	}
+	info := activity.GetInfo(ctx)
+	if info.RetryPolicy == nil || info.RetryPolicy.MaximumAttempts <= 0 {
+		return false
+	}
+	return info.Attempt >= info.RetryPolicy.MaximumAttempts
+}
+
+func failureMessage(err error) string {
+	if appErr, ok := errors.AsType[*temporal.ApplicationError](err); ok {
+		if msg := strings.TrimSpace(appErr.Message()); msg != "" {
+			return msg
+		}
+	}
+	return strings.TrimSpace(err.Error())
+}
+
+func (a *Activities) recordOutcome(ctx context.Context, jobID, status, step, message string) error {
+	id, err := uuid.Parse(jobID)
+	if err != nil {
+		return invalidInput(ctx, "job id", err)
+	}
+	st, err := pipelinejobbus.ParseStatus(status)
+	if err != nil {
+		return invalidInput(ctx, "status", err)
+	}
+	if a.jobs == nil {
+		return fmt.Errorf("record outcome: pipeline jobs not configured")
+	}
+
+	ctx = context.WithoutCancel(a.traced(ctx))
+	job, err := a.jobs.QueryByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pipelinejobbus.ErrNotFound) {
+			return invalidInput(ctx, "job id", err)
+		}
+		return fmt.Errorf("record outcome: %w", err)
+	}
+
+	uj, changed, err := outcomeUpdate(job, st, step, message)
+	if err != nil {
+		return invalidInput(ctx, "status", err)
+	}
+	if !changed {
+		return nil
+	}
+	if _, err := a.jobs.Update(ctx, job, uj); err != nil {
+		return fmt.Errorf("record outcome: %w", err)
+	}
+	return nil
+}
+
+// outcomeUpdate sets the closed status and the step that stopped. A job that already stores that outcome is left as it is.
+func outcomeUpdate(job pipelinejobbus.Job, status pipelinejobbus.Status, step, message string) (pipelinejobbus.UpdateJob, bool, error) {
+	step = strings.TrimSpace(step)
+	message = strings.TrimSpace(message)
+	switch status.String() {
+	case pipelinejobbus.StatusCompleted:
+		if job.Status.Equal(status) && job.ErrorMessage == nil && job.StoppedStep == "" {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{Status: new(status), ClearError: true, StoppedStep: new("")}, true, nil
+	case pipelinejobbus.StatusCanceled:
+		if job.Status.Equal(status) && job.ErrorMessage == nil && job.StoppedStep == step {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{Status: new(status), ClearError: true, StoppedStep: new(step)}, true, nil
+	case pipelinejobbus.StatusFailed:
+		if message == "" {
+			message = status.String()
+		}
+		if job.Status.Equal(status) && job.ErrorMessage != nil && *job.ErrorMessage == message && job.StoppedStep == step {
+			return pipelinejobbus.UpdateJob{}, false, nil
+		}
+		return pipelinejobbus.UpdateJob{Status: new(status), ErrorMessage: new(message), StoppedStep: new(step)}, true, nil
+	default:
+		return pipelinejobbus.UpdateJob{}, false, fmt.Errorf("outcome %s", status)
+	}
 }
 
 func stem(name string) string {

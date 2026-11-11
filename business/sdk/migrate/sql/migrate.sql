@@ -242,3 +242,9 @@ DROP TABLE homes;
 -- Description: Drop the unused products table and view
 DROP VIEW view_products;
 DROP TABLE products;
+
+-- Version: 1.16
+-- Description: Record the step a job stopped on. Execution-only statuses are not stored.
+ALTER TABLE pipeline_jobs ADD COLUMN stopped_step TEXT NOT NULL DEFAULT '';
+UPDATE pipeline_jobs SET status = 'canceled' WHERE status IN ('timed_out', 'terminated');
+UPDATE pipeline_jobs SET status = 'failed' WHERE status = 'unknown';

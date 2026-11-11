@@ -9,28 +9,22 @@ import (
 
 // Set of known pipeline job statuses.
 const (
-	StatusSubmitted  = "submitted"
-	StatusRunning    = "running"
-	StatusCompleted  = "completed"
-	StatusFailed     = "failed"
-	StatusCanceled   = "canceled"
-	StatusTimedOut   = "timed_out"
-	StatusTerminated = "terminated"
-	StatusUnknown    = "unknown"
+	StatusSubmitted = "submitted"
+	StatusRunning   = "running"
+	StatusCompleted = "completed"
+	StatusFailed    = "failed"
+	StatusCanceled  = "canceled"
 )
 
 var validStatuses = map[string]struct{}{
-	StatusSubmitted:  {},
-	StatusRunning:    {},
-	StatusCompleted:  {},
-	StatusFailed:     {},
-	StatusCanceled:   {},
-	StatusTimedOut:   {},
-	StatusTerminated: {},
-	StatusUnknown:    {},
+	StatusSubmitted: {},
+	StatusRunning:   {},
+	StatusCompleted: {},
+	StatusFailed:    {},
+	StatusCanceled:  {},
 }
 
-// Status represents the reconciled state of a pipeline job.
+// Status is the stored state of a pipeline job.
 type Status struct {
 	value string
 }
@@ -70,7 +64,7 @@ func (s Status) MarshalText() ([]byte, error) {
 // IsTerminal reports whether the status is a terminal state.
 func (s Status) IsTerminal() bool {
 	switch s.value {
-	case StatusCompleted, StatusFailed, StatusCanceled, StatusTimedOut, StatusTerminated:
+	case StatusCompleted, StatusFailed, StatusCanceled:
 		return true
 	default:
 		return false
@@ -88,6 +82,7 @@ type Job struct {
 	IdempotencyKeyHash *string
 	Status             Status
 	ErrorMessage       *string
+	StoppedStep        string
 	AudioFileID        uuid.UUID
 	TranscriptFileID   uuid.UUID
 	KeyFramesFileID    uuid.UUID
@@ -114,6 +109,7 @@ type UpdateJob struct {
 	Status           *Status
 	ErrorMessage     *string
 	ClearError       bool
+	StoppedStep      *string
 	AudioFileID      *uuid.UUID
 	TranscriptFileID *uuid.UUID
 	KeyFramesFileID  *uuid.UUID

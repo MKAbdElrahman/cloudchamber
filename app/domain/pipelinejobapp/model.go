@@ -22,9 +22,10 @@ type Job struct {
 	FileName     string  `json:"fileName,omitempty"`
 	Status       string  `json:"status"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
-	// Activity is the activity the open execution is in. A closed job leaves this empty;
-	// the stored error message carries the activity name.
-	Activity         string `json:"activity,omitempty"`
+	// Activity is the activity the open execution is in. A closed job leaves this empty.
+	Activity string `json:"activity,omitempty"`
+	// StoppedStep is the activity a worker stored when the job closed.
+	StoppedStep      string `json:"stoppedStep,omitempty"`
 	AudioFileID      string `json:"audioFileId,omitempty"`
 	TranscriptFileID string `json:"transcriptFileId,omitempty"`
 	KeyFramesFileID  string `json:"keyFramesFileId,omitempty"`
@@ -51,6 +52,7 @@ func toAppJob(bus pipelinejobbus.Job, names map[uuid.UUID]string) Job {
 		FileName:         names[bus.InputFileID],
 		Status:           bus.Status.String(),
 		ErrorMessage:     bus.ErrorMessage,
+		StoppedStep:      bus.StoppedStep,
 		AudioFileID:      fileIDString(bus.AudioFileID),
 		TranscriptFileID: fileIDString(bus.TranscriptFileID),
 		KeyFramesFileID:  fileIDString(bus.KeyFramesFileID),

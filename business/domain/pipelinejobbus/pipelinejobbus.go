@@ -35,6 +35,8 @@ type Storer interface {
 // ExtBusiness interface provides support for extensions that wrap extra functionality
 // around the core business logic.
 type ExtBusiness interface {
+	// NewWithTx returns a transaction-bound copy. Extensions must bind their
+	// dependencies to the transaction and wrap the returned business themselves.
 	NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error)
 	Create(ctx context.Context, nj NewJob) (Job, error)
 	Update(ctx context.Context, job Job, uj UpdateJob) (Job, error)
@@ -84,6 +86,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error) {
 		return nil, err
 	}
 
+	// Each extension rebuilds its own wrapper in NewWithTx.
 	return newBusiness(b.log, storer), nil
 }
 
@@ -124,6 +127,9 @@ func (b *Business) Update(ctx context.Context, job Job, uj UpdateJob) (Job, erro
 	}
 	if uj.ErrorMessage != nil {
 		job.ErrorMessage = uj.ErrorMessage
+	}
+	if uj.StoppedStep != nil {
+		job.StoppedStep = *uj.StoppedStep
 	}
 	if uj.AudioFileID != nil {
 		job.AudioFileID = *uj.AudioFileID

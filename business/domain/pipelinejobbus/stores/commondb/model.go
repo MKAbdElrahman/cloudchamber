@@ -20,6 +20,7 @@ type Job struct {
 	IdempotencyKeyHash *string       `db:"idempotency_key_hash"`
 	Status             string        `db:"status"`
 	ErrorMessage       *string       `db:"error_message"`
+	StoppedStep        string        `db:"stopped_step"`
 	AudioFileID        uuid.NullUUID `db:"audio_file_id"`
 	TranscriptFileID   uuid.NullUUID `db:"transcript_file_id"`
 	KeyFramesFileID    uuid.NullUUID `db:"key_frames_file_id"`
@@ -40,6 +41,7 @@ func ToDBJob(bus pipelinejobbus.Job) Job {
 		IdempotencyKeyHash: bus.IdempotencyKeyHash,
 		Status:             bus.Status.String(),
 		ErrorMessage:       bus.ErrorMessage,
+		StoppedStep:        bus.StoppedStep,
 		AudioFileID:        nullFileID(bus.AudioFileID),
 		TranscriptFileID:   nullFileID(bus.TranscriptFileID),
 		KeyFramesFileID:    nullFileID(bus.KeyFramesFileID),
@@ -67,6 +69,7 @@ func ToBusJob(db Job) (pipelinejobbus.Job, error) {
 		IdempotencyKeyHash: db.IdempotencyKeyHash,
 		Status:             status,
 		ErrorMessage:       db.ErrorMessage,
+		StoppedStep:        db.StoppedStep,
 		AudioFileID:        db.AudioFileID.UUID,
 		TranscriptFileID:   db.TranscriptFileID.UUID,
 		KeyFramesFileID:    db.KeyFramesFileID.UUID,

@@ -21,7 +21,6 @@ import (
 
 // TestRecordProcessSourceBaseline runs ProcessSourceWorkflow against the
 // Temporal dev server and writes the history file the replay test keeps.
-// Later slices must keep that file replaying.
 func TestRecordProcessSourceBaseline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 4*time.Minute)
 	defer cancel()
@@ -59,12 +58,8 @@ func TestRecordProcessSourceBaseline(t *testing.T) {
 		t.Fatalf("start workflow: %v", err)
 	}
 
-	var got ProcessSourceResult
-	if err := run.Get(ctx, &got); err != nil {
+	if err := run.Get(ctx, nil); err != nil {
 		t.Fatalf("workflow result: %v", err)
-	}
-	if got.DocumentFileID != baselineDocumentID {
-		t.Fatalf("document file id = %s", got.DocumentFileID)
 	}
 
 	hist := readHistory(t, ctx, c, run.GetID(), run.GetRunID())

@@ -55,10 +55,10 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (pipelinejobbus.Storer, err
 func (s *Store) Create(ctx context.Context, job pipelinejobbus.Job) error {
 	const q = `
 	INSERT INTO pipeline_jobs
-		(job_id, owner_id, project_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message,
+		(job_id, owner_id, project_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message, stopped_step,
 		 audio_file_id, transcript_file_id, key_frames_file_id, document_file_id, date_created, date_updated)
 	VALUES
-		(:job_id, :owner_id, :project_id, :workflow_id, :run_id, :input_file_id, :idempotency_key_hash, :status, :error_message,
+		(:job_id, :owner_id, :project_id, :workflow_id, :run_id, :input_file_id, :idempotency_key_hash, :status, :error_message, :stopped_step,
 		 :audio_file_id, :transcript_file_id, :key_frames_file_id, :document_file_id, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, commondb.ToDBJob(job)); err != nil {
@@ -80,6 +80,7 @@ func (s *Store) Update(ctx context.Context, job pipelinejobbus.Job) error {
 		idempotency_key_hash = :idempotency_key_hash,
 		status = :status,
 		error_message = :error_message,
+		stopped_step = :stopped_step,
 		audio_file_id = :audio_file_id,
 		transcript_file_id = :transcript_file_id,
 		key_frames_file_id = :key_frames_file_id,
@@ -121,7 +122,7 @@ func (s *Store) Query(ctx context.Context, filter pipelinejobbus.QueryFilter, or
 
 	const q = `
 	SELECT
-		job_id, owner_id, project_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message,
+		job_id, owner_id, project_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message, stopped_step,
 		audio_file_id, transcript_file_id, key_frames_file_id, document_file_id, date_created, date_updated
 	FROM
 		pipeline_jobs`
@@ -174,7 +175,7 @@ func (s *Store) QueryByID(ctx context.Context, jobID uuid.UUID) (pipelinejobbus.
 
 	const q = `
 	SELECT
-		job_id, owner_id, project_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message,
+		job_id, owner_id, project_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message, stopped_step,
 		audio_file_id, transcript_file_id, key_frames_file_id, document_file_id, date_created, date_updated
 	FROM
 		pipeline_jobs

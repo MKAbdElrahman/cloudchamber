@@ -12,7 +12,7 @@ import { jobPhase, type JobPhase } from './jobStatus'
 
 export type JobStageId = 'source' | 'audio' | 'transcript' | 'keyframes' | 'document'
 
-export type JobStageState = 'done' | 'current' | 'upcoming' | 'failed' | 'paused' | 'canceled'
+export type JobStageState = 'done' | 'current' | 'upcoming' | 'failed' | 'canceled'
 
 export type JobStageView = {
   id: JobStageId
@@ -43,10 +43,12 @@ export type JobProgressInput = {
   keyFramesFileId?: string | null
   documentFileId?: string | null
   documentName?: string | null
-  /** Workflow failure text. Names the activity when the server recorded one. */
+  /** Failure text stored with the job. Empty when the job was canceled. */
   errorMessage?: string | null
   /** Activity the open execution reported. Empty once the job is closed. */
   activity?: string | null
+  /** Activity stored when the job closed. */
+  stoppedStep?: string | null
 }
 
 const STAGE_IDS: JobStageId[] = ['source', 'audio', 'transcript', 'keyframes', 'document']
@@ -85,8 +87,6 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
       switch (state) {
         case 'current':
           return 'The media worker is loading the recording and checking the file.'
-        case 'paused':
-          return 'Paused while the recording was being checked.'
         case 'canceled':
           return 'This step did not write.'
         case 'failed':
@@ -99,8 +99,6 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
       switch (state) {
         case 'current':
           return 'The media worker is writing the audio track.'
-        case 'paused':
-          return 'Paused while the audio track was being written.'
         case 'canceled':
           return 'This step did not write.'
         case 'failed':
@@ -113,8 +111,6 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
       switch (state) {
         case 'current':
           return 'The ASR worker is writing the transcript.'
-        case 'paused':
-          return 'Paused while the transcript was being written.'
         case 'canceled':
           return 'This step did not write.'
         case 'failed':
@@ -129,8 +125,6 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
           return audioOnly
             ? 'This recording is audio, so the frames worker records that there are no frames.'
             : 'The frames worker is writing a key frame.'
-        case 'paused':
-          return 'Paused while a key frame was being written.'
         case 'canceled':
           return 'This step did not write.'
         case 'failed':
@@ -145,8 +139,6 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
       switch (state) {
         case 'current':
           return 'The render worker is writing one document into this project.'
-        case 'paused':
-          return 'Paused while the document was being written.'
         case 'canceled':
           return 'This step did not write.'
         case 'failed':
@@ -181,10 +173,14 @@ function stepNamedIn(message: string | null | undefined): number {
 }
 
 function failureReason(message: string | null | undefined): string {
-  if (!message) return ''
-  if (message.includes('SourceNotFound')) return 'The recording was not found. '
-  if (message.includes('InvalidInput')) return 'The file id was not accepted. '
-  return ''
+  switch (message?.trim()) {
+    case 'load source':
+      return 'The recording was not found. '
+    case 'file id':
+      return 'The file id was not accepted. '
+    default:
+      return ''
+  }
 }
 
 /** The persistent message for a job that stopped. A running job has none. */
@@ -194,7 +190,7 @@ export function conversionNotice(
   errorMessage?: string | null,
 ): ConversionNotice | null {
   const stopped = stages.find(
-    (stage) => stage.state === 'failed' || stage.state === 'canceled' || stage.state === 'paused',
+    (stage) => stage.state === 'failed' || stage.state === 'canceled',
   )
   const name = stopped?.label ?? 'This step'
   switch (phase) {
@@ -221,12 +217,6 @@ export function conversionNotice(
         title: 'Canceled',
         description: `Canceled during ${name}. That step did not write. Files already in the project stay there.`,
       }
-    case 'paused':
-      return {
-        status: 'warning',
-        title: 'Paused',
-        description: `Paused on ${name}.`,
-      }
     case 'waiting':
     case 'running':
     case 'finished':
@@ -245,7 +235,6 @@ function headlineFor(phase: JobPhase, stages: JobStageView[], errorMessage?: str
       return live?.detail ?? ''
     case 'waiting':
       return 'This job is in the queue.'
-    case 'paused':
     case 'failed':
     case 'canceled':
       return ''
@@ -270,7 +259,7 @@ function stepWrote(job: JobProgressInput, id: JobStageId): boolean {
 function namedStep(job: JobProgressInput): number {
   const fromActivity = stepNamedIn(job.activity)
   if (fromActivity >= 0) return fromActivity
-  return stepNamedIn(job.errorMessage)
+  return stepNamedIn(job.stoppedStep)
 }
 
 export function progressFromJob(job: JobProgressInput): JobProgress {
@@ -294,8 +283,8 @@ export function progressFromJob(job: JobProgressInput): JobProgress {
   } else if (named >= 0) {
     doneThrough = named - 1
     currentIndex = named
-    if (phase === 'paused' || phase === 'failed' || phase === 'canceled') held = phase
-  } else if (phase === 'paused' || phase === 'failed' || phase === 'canceled') {
+    if (phase === 'failed' || phase === 'canceled') held = phase
+  } else if (phase === 'failed' || phase === 'canceled') {
     const stopAt = flags.indexOf(false)
     doneThrough = stopAt === -1 ? STAGE_IDS.length - 1 : stopAt - 1
     if (stopAt !== -1) {

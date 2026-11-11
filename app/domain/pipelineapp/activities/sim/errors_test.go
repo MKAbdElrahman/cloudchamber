@@ -38,8 +38,7 @@ func TestLoadSourceNotFoundIsPermanent(t *testing.T) {
 func TestLoadSourceDBErrorStaysRetryable(t *testing.T) {
 	err := loadSourceFailure(context.Background(), errors.New("connection reset"))
 
-	var appErr *temporal.ApplicationError
-	if errors.As(err, &appErr) {
+	if appErr, ok := errors.AsType[*temporal.ApplicationError](err); ok {
 		t.Fatalf("transient load error became %s nonRetryable=%v", appErr.Type(), appErr.NonRetryable())
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -11,7 +12,7 @@ import (
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 
-	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/workflow"
+	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/sdk/pipelineworkflow"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
@@ -28,22 +29,24 @@ func main() {
 		},
 	}
 
-	traceIDFn := func(ctx context.Context) string {
-		return otel.GetTraceID(ctx)
-	}
-
-	log = logger.NewWithEvents(os.Stdout, logger.LevelInfo, "PIPELINE-WORKFLOW", traceIDFn, events)
+	log = logger.NewWithEvents(os.Stdout, logger.LevelInfo, "PIPELINE-WORKFLOW", otel.GetTraceID, events)
 
 	ctx := context.Background()
 
 	if err := run(ctx, log); err != nil {
-		log.Error(ctx, "startup", "msg", "startup failed", "err", err)
+		log.Error(ctx, "startup", "err", err)
 		os.Exit(1)
 	}
 }
 
 func run(ctx context.Context, log *logger.Logger) error {
+	// -------------------------------------------------------------------------
+	// GOMAXPROCS
+
 	log.Info(ctx, "startup", "GOMAXPROCS", runtime.GOMAXPROCS(0), "build", build)
+
+	// -------------------------------------------------------------------------
+	// Configuration
 
 	cfg := struct {
 		conf.Version
@@ -57,21 +60,38 @@ func run(ctx context.Context, log *logger.Logger) error {
 			Probability float64 `conf:"default:1.0"`
 		}
 	}{
-		Version: conf.Version{
-			Build: build,
-			Desc:  "CloudChamber pipeline workflow worker",
-		},
+		Build: build,
+		Desc:  "CloudChamber pipeline workflow worker",
 	}
 
 	const prefix = "PIPELINE"
 	help, err := conf.Parse(prefix, &cfg)
 	if err != nil {
-		if err == conf.ErrHelpWanted {
+		if errors.Is(err, conf.ErrHelpWanted) {
 			fmt.Println(help)
 			return nil
 		}
 		return fmt.Errorf("parsing config: %w", err)
 	}
+
+	// -------------------------------------------------------------------------
+	// App Starting
+
+	log.Info(ctx, "starting service", "version", cfg.Build)
+	defer log.Info(ctx, "shutdown complete")
+
+	out, err := conf.String(&cfg)
+	if err != nil {
+		return fmt.Errorf("generating config for output: %w", err)
+	}
+	log.Info(ctx, "startup", "config", out)
+
+	log.BuildInfo(ctx)
+
+	// -------------------------------------------------------------------------
+	// Start Tracing Support
+
+	log.Info(ctx, "startup", "status", "initializing tracing support")
 
 	traceProvider, teardown, err := otel.InitTracing(otel.Config{
 		ServiceName: cfg.Tempo.ServiceName,

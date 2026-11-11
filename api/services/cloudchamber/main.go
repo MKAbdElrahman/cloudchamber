@@ -28,6 +28,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/extensions/auditotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/stores/auditdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/extensions/pipelinejobotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/stores/pipelinejobpg"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/extensions/projectotel"
@@ -205,8 +206,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	projectStorage := projectdb.NewStore(log, db)
 	projectBus := projectbus.NewBusiness(projectStorage, projectOtelExt)
 
+	pipelineJobOtelExt := pipelinejobotel.NewExtension()
 	pipelineJobStorage := pipelinejobpg.NewStore(log, db)
-	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelineJobStorage)
+	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelineJobStorage, pipelineJobOtelExt)
 
 	uploadStorage := uploaddb.NewStore(log, db)
 	uploadBus := uploadbus.NewBusiness(log, uploadStorage)

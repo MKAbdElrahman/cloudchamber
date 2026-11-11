@@ -9,7 +9,7 @@ import (
 
 	"go.temporal.io/sdk/client"
 
-	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/workflow"
+	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/sdk/pipelineworkflow"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
 )
 
@@ -47,12 +47,10 @@ func main() {
 
 	fmt.Printf("started workflowID=%s runID=%s jobID=%s\n", run.GetID(), run.GetRunID(), *jobID)
 
-	var result pipelinewf.ProcessSourceResult
-	if err := run.Get(context.Background(), &result); err != nil {
+	if err := run.Get(context.Background(), nil); err != nil {
 		fmt.Fprintf(os.Stderr, "workflow result: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("completed jobID=%s audio=%s transcript=%s frames=%s document=%s\n",
-		result.JobID, result.AudioFileID, result.TranscriptFileID, result.KeyFramesFileID, result.DocumentFileID)
+	fmt.Printf("completed workflowID=%s runID=%s jobID=%s\n", run.GetID(), run.GetRunID(), *jobID)
 }

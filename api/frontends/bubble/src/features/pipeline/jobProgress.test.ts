@@ -127,7 +127,7 @@ describe('progressFromJob', () => {
     const after = progressFromJob(
       {
         status: 'canceled',
-        errorMessage: 'pipeline.Transcribe',
+        stoppedStep: 'pipeline.Transcribe',
         audioFileId: 'audio-1',
         transcriptFileId: 'transcript-1',
       },
@@ -145,28 +145,13 @@ describe('progressFromJob', () => {
     )
   })
 
-  it('holds a paused job on the next unfinished stage and does not walk the clock', () => {
-    const progress = progressFromJob(
-      { status: 'paused', dateCreated: started, audioFileId: 'audio-1' },
-    )
-    expect(progress.phase).toBe('paused')
-    expect(progress.stages.map((stage) => stage.state)).toEqual([
-      'done',
-      'done',
-      'paused',
-      'upcoming',
-      'upcoming',
-    ])
-    expect(progress.headline).toBe('Paused on Transcribe.')
-    expect(progress.estimated).toBe(false)
-  })
-
   it('stops on the activity named in the failure', () => {
     const failed = progressFromJob(
       {
         status: 'failed',
         dateCreated: started,
-        errorMessage: 'activity error (type: pipeline.ResolveSource): load source (type: SourceNotFound, retryable: false)',
+        stoppedStep: 'pipeline.ResolveSource',
+        errorMessage: 'load source',
       },
     )
     expect(failed.stages.map((stage) => stage.state)).toEqual(['failed', 'upcoming', 'upcoming', 'upcoming', 'upcoming'])

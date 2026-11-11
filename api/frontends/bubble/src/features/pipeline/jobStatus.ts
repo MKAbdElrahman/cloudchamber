@@ -4,7 +4,7 @@ import type { TokenColor } from '@astryxdesign/core/Token'
 export type JobStatusIntent = 'success' | 'info' | 'warning' | 'error' | 'neutral'
 
 /** Where a job sits. The page stays the same; this is what changes on it. */
-export type JobPhase = 'waiting' | 'running' | 'paused' | 'finished' | 'failed' | 'canceled'
+export type JobPhase = 'waiting' | 'running' | 'finished' | 'failed' | 'canceled'
 
 const TOKEN_COLOR = {
   success: 'green',
@@ -21,14 +21,10 @@ export function jobPhase(status: string | undefined): JobPhase {
     case 'running':
     case 'submitted':
       return 'running'
-    case 'paused':
-      return 'paused'
     case 'failed':
       return 'failed'
     case 'canceled':
     case 'cancelled':
-    case 'timed_out':
-    case 'terminated':
       return 'canceled'
     default:
       return 'waiting'
@@ -40,10 +36,6 @@ export function jobPhaseLabel(status: string | undefined): string {
   switch (status) {
     case 'uploading':
       return 'Uploading'
-    case 'timed_out':
-      return 'Timed out'
-    case 'terminated':
-      return 'Terminated'
     case 'cancelled':
       return 'Canceled'
     default:
@@ -52,8 +44,6 @@ export function jobPhaseLabel(status: string | undefined): string {
           return 'Waiting'
         case 'running':
           return 'Running'
-        case 'paused':
-          return 'Paused'
         case 'finished':
           return 'Finished'
         case 'failed':
@@ -73,7 +63,6 @@ export function jobStatusIntent(status: string | undefined): JobStatusIntent {
       return 'info'
     case 'failed':
       return 'error'
-    case 'paused':
     case 'canceled':
       return 'warning'
     case 'waiting':
@@ -89,7 +78,6 @@ export function isTerminalJobStatus(status: string | undefined): boolean {
       return true
     case 'waiting':
     case 'running':
-    case 'paused':
       return false
   }
 }
@@ -126,7 +114,6 @@ export function visibleJobStatus(job: { status: string; documentFileId?: string 
     case 'waiting':
       if (hasDocument) return 'completed'
       return job.status
-    case 'paused':
     case 'finished':
     case 'failed':
     case 'canceled':
@@ -134,13 +121,11 @@ export function visibleJobStatus(job: { status: string; documentFileId?: string 
   }
 }
 
-/** Banner for a job that is paused, failed, or canceled. A running job has none. */
+/** Banner for a job that failed or was canceled. A running job has none. */
 export function jobOutcomeBanner(status: string): { status: 'warning' | 'error'; title: string } | null {
   switch (jobPhase(status)) {
     case 'failed':
       return { status: 'error', title: 'Failed' }
-    case 'paused':
-      return { status: 'warning', title: 'Paused' }
     case 'canceled':
       return { status: 'warning', title: jobPhaseLabel(status) }
     case 'waiting':

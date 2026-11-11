@@ -7,12 +7,11 @@ import { conversionNotice, type JobProgress, type JobStageView } from './jobProg
 import type { JobPhase } from './jobStatus'
 
 function stepStatus(stage: JobStageView, phase: JobPhase): 'error' | 'warning' | undefined {
-  if (stage.state !== 'failed' && stage.state !== 'canceled' && stage.state !== 'paused') return undefined
+  if (stage.state !== 'failed' && stage.state !== 'canceled') return undefined
   switch (phase) {
     case 'failed':
       return 'error'
     case 'canceled':
-    case 'paused':
       return 'warning'
     case 'waiting':
     case 'running':

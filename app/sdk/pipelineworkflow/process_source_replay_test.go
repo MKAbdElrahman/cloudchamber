@@ -87,16 +87,6 @@ func executeProcessSource(t *testing.T) []activityStep {
 		t.Fatalf("workflow error: %v", err)
 	}
 
-	var got ProcessSourceResult
-	if err := env.GetWorkflowResult(&got); err != nil {
-		t.Fatalf("workflow result: %v", err)
-	}
-	if got.JobID != baselineJobID || got.FileID != baselineFileID ||
-		got.AudioFileID != baselineAudioID || got.TranscriptFileID != baselineTranscriptID ||
-		got.KeyFramesFileID != baselineFramesID || got.DocumentFileID != baselineDocumentID {
-		t.Fatalf("result ids = %+v", got)
-	}
-
 	return started
 }
 

@@ -359,12 +359,20 @@ dev-restart:
 	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
 	kubectl rollout restart deployment $(CLOUDCHAMBER_APP) --namespace=$(NAMESPACE)
 
+# Workers keep the image tag 0.0.1, so loading a new image does not replace a
+# running pod. Restart the five deployments and wait for them.
+dev-restart-workers:
+	kubectl rollout restart deployment/pipeline-workflow deployment/pipeline-media deployment/pipeline-asr deployment/pipeline-frames deployment/pipeline-render --namespace=$(NAMESPACE)
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-workflow
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-media
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-asr
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-frames
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-render
+
 dev-run: build dev-up dev-load dev-apply
 
-dev-update: build dev-load dev-restart
+dev-update: build dev-load dev-restart dev-restart-workers
 
-# Workers keep the image tag 0.0.1, so loading a new image does not replace a
-# running pod. Apply the worker manifests, then restart the five deployments.
 dev-update-workers: pipeline-workers
 	kind load docker-image $(PIPELINE_WORKFLOW_IMAGE) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(PIPELINE_MEDIA_IMAGE) --name $(KIND_CLUSTER) & \
@@ -373,12 +381,7 @@ dev-update-workers: pipeline-workers
 	kind load docker-image $(PIPELINE_RENDER_IMAGE) --name $(KIND_CLUSTER) & \
 	wait
 	kustomize build zarf/k8s/dev/pipeline-workers | kubectl apply -f -
-	kubectl rollout restart deployment/pipeline-workflow deployment/pipeline-media deployment/pipeline-asr deployment/pipeline-frames deployment/pipeline-render --namespace=$(NAMESPACE)
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-workflow
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-media
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-asr
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-frames
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-render
+	$(MAKE) dev-restart-workers
 
 dev-update-apply: build dev-load dev-apply
 
@@ -770,6 +773,7 @@ help:
 	@echo "  dev-load                Load the containers into KIND"
 	@echo "  dev-apply               Apply the manifests to KIND"
 	@echo "  dev-restart             Restart the deployments"
+	@echo "  dev-restart-workers     Restart the pipeline workers"
 	@echo "  dev-run              	 Build, up, load, and apply the deployments"
 	@echo "  dev-update              Build, load, and restart the deployments"
 	@echo "  dev-update-apply        Build, load, and apply the deployments"

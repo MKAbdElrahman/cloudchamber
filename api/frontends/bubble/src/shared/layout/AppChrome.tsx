@@ -1,18 +1,10 @@
 import type { ReactNode } from 'react'
 
 import { AppShell } from '@astryxdesign/core/AppShell'
-import { HStack, Layout, LayoutContent } from '@astryxdesign/core/Layout'
-import {
-  SideNav,
-  SideNavCollapseButton,
-  SideNavHeading,
-  SideNavItem,
-  SideNavSection,
-} from '@astryxdesign/core/SideNav'
+import { Layout, LayoutContent } from '@astryxdesign/core/Layout'
+import { SideNav, SideNavHeading, SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav'
 import { FolderIcon } from '@heroicons/react/24/outline'
 import { FolderIcon as FolderSolid } from '@heroicons/react/24/solid'
-
-import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { AccountMenu } from './AccountMenu'
 import type { WorkspaceSection } from './workspace'
@@ -27,6 +19,7 @@ type AppChromeProps = {
 
 /**
  * One bar. The product name lives in the side nav; there is no top bar.
+ * Collapse is the built-in footer control, under the account button.
  *   >= md (768)   SideNav, resizable 200–400, default 260
  *   < md          that nav becomes the mobile bar and drawer
  * Settings drops its own start panel at lg (1024); see SHELL_NARROW_QUERY.
@@ -41,19 +34,14 @@ export function AppChrome({ children, section, accountName, onSignOut }: AppChro
       sideNav={
         <SideNav
           aria-label="Workspace navigation"
-          collapsible={{ hasButton: false }}
+          collapsible
           resizable={{
             defaultWidth: 260,
             minWidth: 200,
             maxWidth: 400,
             autoSaveId: 'bubble.shell-sidenav',
           }}
-          header={
-            <HStack gap={WORKSPACE_GAP.local} vAlign="center" justify="between" width="100%">
-              <SideNavHeading heading="CloudChamber" headingHref={WORKSPACE_PATHS.home} />
-              <SideNavCollapseButton size="sm" />
-            </HStack>
-          }
+          header={<SideNavHeading heading="CloudChamber" headingHref={WORKSPACE_PATHS.home} />}
           footer={<AccountMenu accountName={accountName} onSignOut={onSignOut} />}
         >
           <SideNavSection title="Workspace">

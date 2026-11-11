@@ -9,7 +9,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
 )
@@ -33,7 +32,6 @@ const (
 	userKey
 	pipelineJobKey
 	projectKey
-	trKey
 )
 
 func setClaims(ctx context.Context, claims auth.Claims) context.Context {
@@ -112,20 +110,6 @@ func GetProject(ctx context.Context) (projectbus.Project, error) {
 	v, ok := ctx.Value(projectKey).(projectbus.Project)
 	if !ok {
 		return projectbus.Project{}, errors.New("project not found in context")
-	}
-
-	return v, nil
-}
-
-func setTran(ctx context.Context, tx sqldb.CommitRollbacker) context.Context {
-	return context.WithValue(ctx, trKey, tx)
-}
-
-// GetTran retrieves the value that can manage a transaction.
-func GetTran(ctx context.Context) (sqldb.CommitRollbacker, error) {
-	v, ok := ctx.Value(trKey).(sqldb.CommitRollbacker)
-	if !ok {
-		return nil, errors.New("transaction not found in context")
 	}
 
 	return v, nil

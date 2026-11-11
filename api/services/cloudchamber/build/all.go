@@ -1,5 +1,3 @@
-//go:build !crud && !reporting
-
 // Package build manages different build options.
 package build
 

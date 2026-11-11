@@ -11,7 +11,7 @@ export function AppearancePanel() {
   const { themeId, colorMode, setColorMode } = useThemePreference()
 
   return (
-    <VStack gap={WORKSPACE_GAP.group}>
+    <VStack gap={WORKSPACE_GAP.group} width="100%">
       <VStack gap={WORKSPACE_GAP.local}>
         <Text type="label">Color theme</Text>
         <Text type="supporting">Applies to this browser only.</Text>

@@ -105,7 +105,7 @@ export function ColorModeChoiceCards({
       aria-label="Color mode"
       columns={{ minWidth: 96, max: 3 }}
       gap={WORKSPACE_GAP.group}
-      maxWidth="30rem"
+      width="100%"
     >
       {COLOR_MODE_CHOICES.map((choice) => {
         const selected = value === choice.value

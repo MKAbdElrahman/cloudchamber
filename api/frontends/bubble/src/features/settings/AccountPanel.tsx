@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { Avatar } from '@astryxdesign/core/Avatar'
 import { HStack, VStack } from '@astryxdesign/core/Layout'
+import { List } from '@astryxdesign/core/List'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { CalendarIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
@@ -10,7 +11,7 @@ import { accountDisplayLabel, isUserUuid, parseServiceJwt, roleLabel, useSession
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { fetchAccount, type AccountUser } from './accountApi'
-import { SettingsCard, SettingsRow } from './SettingsFormLayout'
+import { SettingsRow } from './SettingsFormLayout'
 
 function rolesLine(roles: string[]): string {
   if (roles.length === 0) return 'Member'
@@ -45,7 +46,7 @@ export function AccountPanel() {
   const roles = account?.roles ?? claims?.roles ?? []
 
   return (
-    <VStack gap={WORKSPACE_GAP.section} width="100%">
+    <VStack gap={WORKSPACE_GAP.group} width="100%">
       <HStack gap={WORKSPACE_GAP.group} vAlign="center">
         <Avatar name={name} size="lg" />
         <VStack gap={0}>
@@ -58,7 +59,7 @@ export function AccountPanel() {
         </VStack>
       </HStack>
 
-      <SettingsCard>
+      <List density="spacious" hasDividers aria-label="Account">
         <SettingsRow
           title="Email"
           icon={EnvelopeIcon}
@@ -74,7 +75,7 @@ export function AccountPanel() {
             detail={<Timestamp value={account.dateCreated} format="relative" />}
           />
         ) : null}
-      </SettingsCard>
+      </List>
 
       {account && !account.enabled ? (
         <Text type="supporting" color="secondary">

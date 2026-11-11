@@ -11,7 +11,7 @@ import { FileInput } from '@astryxdesign/core/FileInput'
 import { ProgressBar } from '@astryxdesign/core/ProgressBar'
 import { Banner } from '@astryxdesign/core/Banner'
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput'
-import { readTusdEndpoint } from '@/shared/config'
+import { env } from '@/shared/config'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { fileIdFromUploadUrl } from './sourceRef'
 
@@ -62,7 +62,7 @@ export function UploadPanel({
     onUploadingFile?.(file.name)
 
     const upload = new tus.Upload(file, {
-      endpoint: readTusdEndpoint(),
+      endpoint: env.tusdEndpoint,
       retryDelays: [0, 1000, 3000, 5000, 10000],
       metadata: {
         filename: file.name,

@@ -19,11 +19,6 @@ const INDEX: SettingsSearchHit[] = [
     label: 'Account',
     description: 'Name, email, and role',
   },
-  {
-    id: 'developer',
-    label: 'Developer',
-    description: 'API bases, Astryx references, environment',
-  },
 ]
 
 function matchesQuery(hit: SettingsSearchHit, query: string) {

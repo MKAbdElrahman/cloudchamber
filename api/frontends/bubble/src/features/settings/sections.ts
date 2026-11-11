@@ -1,4 +1,4 @@
-export const SETTINGS_SECTION_IDS = ['appearance', 'account', 'developer'] as const
+export const SETTINGS_SECTION_IDS = ['appearance', 'account'] as const
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number]
 

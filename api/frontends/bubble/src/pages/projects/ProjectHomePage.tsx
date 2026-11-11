@@ -18,7 +18,7 @@ import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type
 import { ProjectTrail, useProject, useProjectRecordings, type ProjectRecording } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
 import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
-import { fileIdFromSourceRef, type SourceMediaKind } from '@/shared/media'
+import type { SourceMediaKind } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
@@ -45,7 +45,7 @@ type LibraryEntry = {
   id: string
   jobId?: string
   fileId?: string
-  sourceRef: string
+  fileName?: string
   recordingName?: string
   name: string
   href?: string
@@ -60,26 +60,22 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
   const recordingByJob = new Map(
     recordings.flatMap((recording) => (recording.jobId ? [[recording.jobId, recording] as const] : [])),
   )
-  const recordingBySource = new Map(
-    recordings.flatMap((recording) => (recording.sourceRef ? [[recording.sourceRef, recording] as const] : [])),
-  )
   const recordingByFile = new Map(
     recordings.flatMap((recording) => (recording.fileId ? [[recording.fileId, recording] as const] : [])),
   )
   const linked = new Set<string>()
   const fromJobs = jobs.map((job) => {
     const recording =
-      recordingByJob.get(job.id) ??
-      (job.fileId ? recordingByFile.get(job.fileId) : undefined) ??
-      recordingBySource.get(job.sourceRef)
+      recordingByJob.get(job.id) ?? (job.fileId ? recordingByFile.get(job.fileId) : undefined)
     if (recording) linked.add(recording.id)
-    const media = knownMediaName(job.sourceRef, recording?.name)
+    const fileName = job.fileName || recording?.name
+    const media = knownMediaName(fileName, recording?.name)
     const document = filesFromJob(job, media ?? undefined)[0]
     const date = job.dateUpdated ?? recording?.dateAdded
     const status = visibleJobStatus(job)
     const name = faceFileName({
       face: 'library',
-      sourceRef: job.sourceRef,
+      fileName,
       recordingName: recording?.name,
       documentName: document?.name,
       date,
@@ -87,14 +83,14 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
     return {
       id: job.id,
       jobId: job.id,
-      fileId: job.fileId ?? recording?.fileId ?? fileIdFromSourceRef(job.sourceRef) ?? undefined,
-      sourceRef: job.sourceRef,
+      fileId: job.fileId ?? recording?.fileId,
+      fileName,
       recordingName: recording?.name,
       name,
       href: WORKSPACE_PATHS.job(projectId, job.id),
       date,
       detail: media && media !== name ? media : '',
-      kind: mediaKindOf(job.sourceRef, recording?.name),
+      kind: mediaKindOf(fileName, recording?.name),
       status,
       showStatus: jobPhase(status) !== 'finished',
     }
@@ -102,23 +98,23 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
   const drafts = recordings
     .filter((recording) => !recording.jobId && !linked.has(recording.id))
     .map((recording) => {
-      const media = knownMediaName(recording.sourceRef, recording.name)
+      const media = knownMediaName(recording.name, recording.name)
       const name = faceFileName({
         face: 'video',
-        sourceRef: recording.sourceRef,
+        fileName: recording.name,
         recordingName: recording.name,
         date: recording.dateAdded,
       })
       return {
         id: recording.id,
-        fileId: recording.fileId ?? fileIdFromSourceRef(recording.sourceRef) ?? undefined,
-        sourceRef: recording.sourceRef ?? '',
+        fileId: recording.fileId,
+        fileName: recording.name,
         recordingName: recording.name,
         name,
         href: WORKSPACE_PATHS.recording(projectId, recording.id),
         date: recording.dateAdded,
         detail: media && media !== name ? media : '',
-        kind: mediaKindOf(recording.sourceRef, recording.name),
+        kind: mediaKindOf(recording.name, recording.name),
         showStatus: false,
       }
     })
@@ -128,7 +124,7 @@ function containersFor(projectId: string, jobs: PipelineJob[], recordings: Proje
 function uploadingEntry(fileName: string): LibraryEntry {
   return {
     id: 'upload-in-progress',
-    sourceRef: '',
+    fileName,
     recordingName: fileName,
     name: fileName,
     detail: '',
@@ -162,7 +158,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
       setVideo({
         name: faceFileName({
           face: 'video',
-          sourceRef: entry.sourceRef,
+          fileName: entry.fileName,
           recordingName: entry.recordingName,
           date: entry.date,
         }),

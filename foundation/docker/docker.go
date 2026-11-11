@@ -31,9 +31,15 @@ func StartContainer(image string, name string, port string, dockerArgs []string,
 		return c, nil
 	}
 
+	// A stopped container still owns the name. Remove it so a new one can
+	// be created. A running container belongs to another test process.
+	if err := removeStopped(name); err != nil {
+		return Container{}, err
+	}
+
 	// Try to start the container.
-	c, err := dockerRun(image, name, port, dockerArgs, appArgs)
-	if err == nil {
+	c, runErr := dockerRun(image, name, port, dockerArgs, appArgs)
+	if runErr == nil {
 		return c, nil
 	}
 
@@ -48,7 +54,7 @@ func StartContainer(image string, name string, port string, dockerArgs []string,
 		}
 	}
 
-	return Container{}, fmt.Errorf("could not start or find container %s", name)
+	return Container{}, fmt.Errorf("could not start or find container %s: %w", name, runErr)
 }
 
 // StopContainer stops and removes the specified container.
@@ -77,19 +83,19 @@ func DumpContainerLogs(id string) []byte {
 // =============================================================================
 
 func dockerRun(image string, name string, port string, dockerArgs []string, appArgs []string) (Container, error) {
-	arg := []string{"run", "-P", "-d", "--name", name}
+	arg := []string{"run", "--rm", "-P", "-d", "--name", name}
 	arg = append(arg, dockerArgs...)
 	arg = append(arg, image)
 	arg = append(arg, appArgs...)
 
-	var out bytes.Buffer
+	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("docker", arg...)
-	cmd.Stdout = &out
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return Container{}, fmt.Errorf("could not start container %s: %w", image, err)
+		return Container{}, fmt.Errorf("could not start container %s: %w: %s", image, err, bytes.TrimSpace(stderr.Bytes()))
 	}
-
-	id := out.String()[:12]
+	id := stdout.String()[:12]
 	hostIP, hostPort, err := extractIPPort(id, port)
 	if err != nil {
 		StopContainer(id)
@@ -102,6 +108,24 @@ func dockerRun(image string, name string, port string, dockerArgs []string, appA
 	}
 
 	return c, nil
+}
+
+// removeStopped deletes a container that owns the name and is not running.
+// Missing and running containers are left alone.
+func removeStopped(name string) error {
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", name).Output()
+	if err != nil {
+		return nil
+	}
+	if strings.TrimSpace(string(out)) == "running" {
+		return nil
+	}
+
+	if err := exec.Command("docker", "rm", "-f", name).Run(); err != nil {
+		return fmt.Errorf("remove stopped container %s: %w", name, err)
+	}
+
+	return nil
 }
 
 func exists(name string, port string) (Container, error) {

@@ -75,7 +75,6 @@ type Upload struct {
 	OwnerID      uuid.UUID
 	Bucket       string
 	ObjectKeyRef string
-	SourceRef    string
 	SizeBytes    int64
 	ETag         *string
 	Status       Status
@@ -90,7 +89,6 @@ type NewUpload struct {
 	OwnerID      uuid.UUID
 	Bucket       string
 	ObjectKeyRef string
-	SourceRef    string
 	SizeBytes    int64
 	ETag         *string
 	Status       Status
@@ -104,5 +102,4 @@ type UpdateUpload struct {
 	ClearETag    bool
 	Status       *Status
 	TusdUploadID *string
-	SourceRef    *string
 }

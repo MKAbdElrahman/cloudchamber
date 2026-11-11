@@ -18,10 +18,10 @@ const (
 
 // ProcessSourceWorkflow orchestrates the CloudChamber happy path. It is
 // deterministic: no I/O, no wall clock/randomness outside Temporal APIs, and
-// only artifact refs/IDs flow through workflow history.
+// only file ids flow through workflow history.
 func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*ProcessSourceResult, error) {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("process source workflow started", "jobID", in.JobID, "sourceRef", in.SourceRef)
+	logger.Info("process source workflow started", "jobID", in.JobID, "fileID", in.FileID, "ownerID", in.OwnerID)
 
 	retry := &temporal.RetryPolicy{
 		InitialInterval:    time.Second,
@@ -62,7 +62,7 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 	if err := workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, mediaOpts),
 		ActivityExtractAudio,
-		ExtractAudioInput{JobID: in.JobID, ResolvedRef: resolved.ResolvedRef},
+		ExtractAudioInput{JobID: in.JobID, OwnerID: resolved.OwnerID, Name: resolved.Name},
 	).Get(ctx, &audio); err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 	if err := workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, asrOpts),
 		ActivityTranscribe,
-		TranscribeInput{JobID: in.JobID, AudioRef: audio.AudioRef},
+		TranscribeInput{JobID: in.JobID, OwnerID: audio.OwnerID, FileID: audio.FileID, Name: audio.Name},
 	).Get(ctx, &transcript); err != nil {
 		return nil, err
 	}
@@ -81,9 +81,10 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 		workflow.WithActivityOptions(ctx, mediaOpts),
 		ActivityExtractKeyFrames,
 		ExtractKeyFramesInput{
-			JobID:         in.JobID,
-			ResolvedRef:   resolved.ResolvedRef,
-			TranscriptRef: transcript.TranscriptRef,
+			JobID:       in.JobID,
+			OwnerID:     resolved.OwnerID,
+			Name:        resolved.Name,
+			ContentType: resolved.ContentType,
 		},
 	).Get(ctx, &frames); err != nil {
 		return nil, err
@@ -94,24 +95,26 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 		workflow.WithActivityOptions(ctx, renderOpts),
 		ActivityComposeExport,
 		ComposeExportInput{
-			JobID:         in.JobID,
-			SourceRef:     in.SourceRef,
-			TranscriptRef: transcript.TranscriptRef,
-			KeyFramesRef:  frames.KeyFramesRef,
+			JobID:            in.JobID,
+			OwnerID:          resolved.OwnerID,
+			FileID:           in.FileID,
+			Name:             resolved.Name,
+			TranscriptFileID: transcript.FileID,
+			KeyFramesFileID:  frames.FileID,
 		},
 	).Get(ctx, &doc); err != nil {
 		return nil, err
 	}
 
 	result := &ProcessSourceResult{
-		JobID:        in.JobID,
-		SourceRef:    in.SourceRef,
-		AudioRef:     audio.AudioRef,
-		Transcript:   transcript.TranscriptRef,
-		KeyFramesRef: frames.KeyFramesRef,
-		DocumentRef:  doc.DocumentRef,
+		JobID:            in.JobID,
+		FileID:           in.FileID,
+		AudioFileID:      audio.FileID,
+		TranscriptFileID: transcript.FileID,
+		KeyFramesFileID:  frames.FileID,
+		DocumentFileID:   doc.FileID,
 	}
 
-	logger.Info("process source workflow completed", "jobID", in.JobID, "documentRef", result.DocumentRef)
+	logger.Info("process source workflow completed", "jobID", in.JobID, "documentFileID", result.DocumentFileID)
 	return result, nil
 }

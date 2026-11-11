@@ -15,7 +15,6 @@ type Upload struct {
 	OwnerID      uuid.UUID `db:"owner_id"`
 	Bucket       string    `db:"bucket"`
 	ObjectKeyRef string    `db:"object_key_ref"`
-	SourceRef    string    `db:"source_ref"`
 	SizeBytes    int64     `db:"size_bytes"`
 	ETag         *string   `db:"etag"`
 	Status       string    `db:"status"`
@@ -31,7 +30,6 @@ func ToDBUpload(bus uploadbus.Upload) Upload {
 		OwnerID:      bus.OwnerID,
 		Bucket:       bus.Bucket,
 		ObjectKeyRef: bus.ObjectKeyRef,
-		SourceRef:    bus.SourceRef,
 		SizeBytes:    bus.SizeBytes,
 		ETag:         bus.ETag,
 		Status:       bus.Status.String(),
@@ -53,7 +51,6 @@ func ToBusUpload(db Upload) (uploadbus.Upload, error) {
 		OwnerID:      db.OwnerID,
 		Bucket:       db.Bucket,
 		ObjectKeyRef: db.ObjectKeyRef,
-		SourceRef:    db.SourceRef,
 		SizeBytes:    db.SizeBytes,
 		ETag:         db.ETag,
 		Status:       status,

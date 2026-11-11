@@ -23,14 +23,14 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     userapp = component "userapp" "User subdomain (app/domain/userapp, business/domain/userbus)." "Go"
                     vproductapp = component "vproductapp" "VProduct read-model subdomain (app/domain/vproductapp, business/domain/vproductbus)." "Go"
                     pipelineapp = component "pipelineapp (planned)" "CloudChamber pipeline subdomain for source submission, workflow orchestration, status/results, and document delivery (planned)." "Go / Temporal client"
-                    tusdapp = component "tusdapp" "Internal tusd hook subdomain (app/domain/tusdapp): pre-create JWT auth and owner-scoped key binding; post-finish S3-verified, idempotent finalize recording the owned sourceRef." "Go"
+                    tusdapp = component "tusdapp" "Internal tusd hook subdomain (app/domain/tusdapp): pre-create JWT auth and owner-scoped key binding; pre-finish S3-verified, idempotent registration of the owned artifact before tusd confirms the upload." "Go"
                 }
                 authAPI = container "Auth service" "JWT issue and validation." "Go" {
                     authapp = component "authapp" "Authentication/token HTTP subdomain (app/domain/authapp)." "Go"
                     grpcauthapp = component "grpcauthapp" "gRPC token validation subdomain for peer services (app/domain/grpcauthapp)." "Go"
                     userbus = component "userbus" "Identity/user records subdomain used for authentication (business/domain/userbus)." "Go"
                 }
-                uploadService = container "Upload service (tusd)" "tusd server for resumable video/audio uploads. Stores uploads in artifact storage and uses hooks into the existing API service for auth, owner binding, and sourceRef finalization (planned)." "tusd (Go)" "Service"
+                uploadService = container "Upload service (tusd)" "tusd server for resumable video/audio uploads. Stores uploads in artifact storage and uses hooks into the existing API service for auth, owner binding, and artifact registration (planned)." "tusd (Go)" "Service"
             }
             group "Pipeline orchestration (Temporal)" {
                 temporalServer = container "Temporal Service" "Durable workflow orchestration cluster/frontend for workflows, task queues, retries, and visibility (dev: auto-setup)." "Temporal" "Service"
@@ -74,7 +74,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService -> cloudchamber.artifactStore "Manages source/document artifact refs via (planned)"
         endUser -> cloudchamber.artifactStore "Reads an owned artifact through a short-lived URL (planned)" "S3 API"
         cloudchamber.uploadService -> cloudchamber.artifactStore "Stores upload data in" "S3 API"
-        cloudchamber.uploadService -> cloudchamber.apiService "Calls hooks on the existing API service (pre-create, post-finish) (planned)" "HTTPS/JSON"
+        cloudchamber.uploadService -> cloudchamber.apiService "Calls hooks on the existing API service (pre-create, pre-finish) (planned)" "HTTPS/JSON"
         cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads/writes source, audio, and key-frame artifacts via (planned)"
@@ -256,10 +256,10 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             cloudchamber.uploadService -> endUser "Returns the upload URL"
             endUser -> cloudchamber.uploadService "Sends the recording data"
             cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording data"
-            cloudchamber.uploadService -> endUser "Confirms the upload is complete"
-            cloudchamber.uploadService -> cloudchamber.apiService "post-finish hook: reports completion"
+            cloudchamber.uploadService -> cloudchamber.apiService "pre-finish hook: reports completion before the client is answered"
             cloudchamber.apiService -> cloudchamber.artifactStore "Verifies the finalized upload"
-            cloudchamber.apiService -> cloudchamber.postgres "Records the owned sourceRef"
+            cloudchamber.apiService -> cloudchamber.postgres "Records the owned artifact"
+            cloudchamber.uploadService -> endUser "Confirms the upload is complete"
 
             autoLayout tb
         }

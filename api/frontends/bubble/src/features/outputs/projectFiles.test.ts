@@ -11,8 +11,9 @@ describe('filesFromJob', () => {
     const files = filesFromJob(
       job({
         id: 'job-1',
-        sourceRef: 's3://cloudchamber-artifacts/uploads/week-03.mp4',
-        documentRef: 's3://cloudchamber-artifacts/jobs/job-1/exports/document.md',
+        fileName: 'week-03.mp4',
+        documentFileId: 'file-1',
+        documentName: 'week-03.md',
         dateUpdated: '2026-11-10T18:00:00Z',
       }),
     )
@@ -23,7 +24,7 @@ describe('filesFromJob', () => {
         kind: 'markdown',
         name: 'week-03.md',
         sourceName: 'week-03.mp4',
-        ref: 's3://cloudchamber-artifacts/jobs/job-1/exports/document.md',
+        fileId: 'file-1',
         dateUpdated: '2026-11-10T18:00:00Z',
       },
     ])
@@ -33,8 +34,9 @@ describe('filesFromJob', () => {
     const files = filesFromJob(
       job({
         id: 'job-pdf',
-        sourceRef: 's3://bucket/uploads/week-03.mp4',
-        documentRef: 's3://bucket/jobs/job-pdf/exports/document.pdf',
+        fileName: 'week-03.mp4',
+        documentFileId: 'file-pdf',
+        documentName: 'week-03.pdf',
       }),
     )
     expect(files.map((file) => file.kind)).toEqual(['pdf'])
@@ -45,8 +47,9 @@ describe('filesFromJob', () => {
     const files = filesFromJob(
       job({
         id: 'job-3',
-        sourceRef: 's3://bucket/uploads/04595d1b-6c37-4fdb-959a-a326597a82d4',
-        documentRef: 's3://bucket/jobs/job-3/exports/document.md',
+        fileName: '04595d1b-6c37-4fdb-959a-a326597a82d4',
+        documentFileId: 'file-3',
+        documentName: 'document.md',
       }),
     )
     expect(files.map((file) => file.name)).toEqual(['document.md'])
@@ -62,12 +65,14 @@ describe('filesFromJobs', () => {
     const files = filesFromJobs([
       job({
         id: 'older',
-        documentRef: 's3://bucket/jobs/older/exports/document.md',
+        documentFileId: 'file-older',
+        documentName: 'document.md',
         dateUpdated: '2026-11-10T12:00:00Z',
       }),
       job({
         id: 'newer',
-        documentRef: 's3://bucket/jobs/newer/exports/document.md',
+        documentFileId: 'file-newer',
+        documentName: 'document.md',
         dateUpdated: '2026-11-10T18:00:00Z',
       }),
     ])

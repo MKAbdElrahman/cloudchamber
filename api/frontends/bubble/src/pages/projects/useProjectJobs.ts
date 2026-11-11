@@ -6,7 +6,7 @@ import { claimUnassignedJobs, DEFAULT_PROJECT_ID, listProjectJobIds } from '@/fe
 const POLL_MS = 3_000
 
 function needsReconcile(job: PipelineJob): boolean {
-  return !isTerminalJobStatus(job.status) && !job.documentRef?.trim()
+  return !isTerminalJobStatus(job.status) && !job.documentFileId?.trim()
 }
 
 /** Ask for each open job. The list endpoint does not reconcile a finished workflow. */

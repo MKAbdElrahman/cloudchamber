@@ -1,10 +1,12 @@
+import { apiFetch } from '@/shared/api'
+
 import type { ProjectFile, ProjectFileKind } from './projectFiles'
 
 export type DocumentBody = {
   format: ProjectFileKind
   markdown: string
-  /** True until a content API can serve the export bytes. */
-  mocked: true
+  /** True when the export file is not available and the page shows the stand-in notes. */
+  mocked: boolean
 }
 
 /** Heading shown while reading. A generic export name stays "Document". */
@@ -39,8 +41,18 @@ export function mockDocumentMarkdown(input: { title: string; sourceLabel: string
 `
 }
 
-/** Loads one document. Swap this function when storage can return the export. */
-export async function loadDocumentBody(file: Pick<ProjectFile, 'name' | 'kind' | 'sourceName'>): Promise<DocumentBody> {
+/** Loads the document the pipeline stored. Older jobs without a file keep the stand-in notes. */
+export async function loadDocumentBody(
+  token: string,
+  file: Pick<ProjectFile, 'name' | 'kind' | 'sourceName' | 'fileId'>,
+): Promise<DocumentBody> {
+  if (file.fileId) {
+    const signed = await apiFetch<{ url: string }>(`/v1/files/${encodeURIComponent(file.fileId)}/url`, { token })
+    const res = await fetch(signed.url)
+    if (res.ok) {
+      return { format: file.kind, markdown: await res.text(), mocked: false }
+    }
+  }
   return {
     format: file.kind,
     markdown: mockDocumentMarkdown({

@@ -56,8 +56,8 @@ describe('jobStatusIntent', () => {
   })
 
   it('stops calling a job running once the document is written', () => {
-    expect(visibleJobStatus({ status: 'running', documentRef: 's3://bucket/exports/document.md' })).toBe('completed')
+    expect(visibleJobStatus({ status: 'running', documentFileId: 'doc-1' })).toBe('completed')
     expect(visibleJobStatus({ status: 'running' })).toBe('running')
-    expect(visibleJobStatus({ status: 'failed', documentRef: 's3://bucket/exports/document.md' })).toBe('failed')
+    expect(visibleJobStatus({ status: 'failed', documentFileId: 'doc-1' })).toBe('failed')
   })
 })

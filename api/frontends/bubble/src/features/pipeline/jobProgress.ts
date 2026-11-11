@@ -37,11 +37,12 @@ export type JobProgress = {
 export type JobProgressInput = {
   status: string
   dateCreated?: string
-  sourceRef?: string
-  audioRef?: string | null
-  transcriptRef?: string | null
-  keyFramesRef?: string | null
-  documentRef?: string | null
+  fileName?: string
+  audioFileId?: string | null
+  transcriptFileId?: string | null
+  keyFramesFileId?: string | null
+  documentFileId?: string | null
+  documentName?: string | null
 }
 
 const STAGE_IDS: JobStageId[] = ['input', 'audio', 'transcript', 'keyframes', 'compose', 'export']
@@ -60,12 +61,12 @@ function hasRef(ref: string | null | undefined): boolean {
 }
 
 function provenFlags(job: JobProgressInput): boolean[] {
-  const document = hasRef(job.documentRef)
+  const document = hasRef(job.documentFileId)
   return [
     true,
-    hasRef(job.audioRef),
-    hasRef(job.transcriptRef),
-    hasRef(job.keyFramesRef),
+    hasRef(job.audioFileId),
+    hasRef(job.transcriptFileId),
+    hasRef(job.keyFramesFileId),
     document,
     document,
   ]
@@ -80,9 +81,9 @@ function clockCursor(job: JobProgressInput, now: number): number {
 
 function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput): string {
   if (state === 'upcoming') return 'Waiting.'
-  const audioOnly = sourceMediaKind(job.sourceRef ?? '') === 'audio'
-  const documentRef = job.documentRef?.trim().toLowerCase() ?? ''
-  const pdf = documentRef.endsWith('.pdf')
+  const audioOnly = sourceMediaKind(job.fileName ?? '') === 'audio'
+  const documentName = job.documentName?.trim().toLowerCase() ?? ''
+  const pdf = documentName.endsWith('.pdf')
 
   switch (id) {
     case 'input':
@@ -172,7 +173,7 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
         case 'failed':
           return 'The document could not be written.'
         case 'done':
-          if (!documentRef) return 'This conversion finished.'
+          if (!hasRef(job.documentFileId)) return 'This conversion finished.'
           return pdf ? 'A PDF is in this project.' : 'A Markdown document is in this project.'
       }
       break

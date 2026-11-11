@@ -41,22 +41,22 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (artifactbus.Storer, error)
 }
 
 const artifactColumns = `
-	file_id, owner_id, bucket, object_key, source_ref, kind, content_type, status, date_created, date_updated`
+	file_id, owner_id, bucket, object_key, kind, content_type, name, status, date_created, date_updated`
 
 // Upsert inserts or replaces an artifact by file id.
 func (s *Store) Upsert(ctx context.Context, art artifactbus.Artifact) error {
 	const q = `
 	INSERT INTO artifacts
-		(file_id, owner_id, bucket, object_key, source_ref, kind, content_type, status, date_created, date_updated)
+		(file_id, owner_id, bucket, object_key, kind, content_type, name, status, date_created, date_updated)
 	VALUES
-		(:file_id, :owner_id, :bucket, :object_key, :source_ref, :kind, :content_type, :status, :date_created, :date_updated)
+		(:file_id, :owner_id, :bucket, :object_key, :kind, :content_type, :name, :status, :date_created, :date_updated)
 	ON CONFLICT (file_id) DO UPDATE SET
 		owner_id = EXCLUDED.owner_id,
 		bucket = EXCLUDED.bucket,
 		object_key = EXCLUDED.object_key,
-		source_ref = EXCLUDED.source_ref,
 		kind = EXCLUDED.kind,
 		content_type = EXCLUDED.content_type,
+		name = EXCLUDED.name,
 		status = EXCLUDED.status,
 		date_updated = EXCLUDED.date_updated`
 
@@ -88,16 +88,16 @@ func (s *Store) QueryByFileID(ctx context.Context, fileID uuid.UUID) (artifactbu
 	return toBusArtifact(row)
 }
 
-// QueryBySourceRefs retrieves artifacts for the given source refs.
-func (s *Store) QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]artifactbus.Artifact, error) {
-	if len(sourceRefs) == 0 {
+// QueryByFileIDs retrieves artifacts for the given file ids.
+func (s *Store) QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]artifactbus.Artifact, error) {
+	if len(fileIDs) == 0 {
 		return nil, nil
 	}
 
 	data := map[string]any{
-		"source_refs": sourceRefs,
+		"file_ids": fileIDs,
 	}
-	q := `SELECT ` + artifactColumns + ` FROM artifacts WHERE source_ref IN (:source_refs)`
+	q := `SELECT ` + artifactColumns + ` FROM artifacts WHERE file_id IN (:file_ids)`
 
 	var rows []artifactDB
 	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &rows); err != nil {

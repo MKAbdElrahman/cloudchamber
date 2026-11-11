@@ -13,6 +13,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
@@ -24,14 +25,16 @@ type app struct {
 	uploadBus   uploadbus.ExtBusiness
 	artifactBus artifactbus.ExtBusiness
 	objectStore *objectstore.Client
+	db          sqldb.Beginner
 }
 
-func newApp(authClient authclient.Authenticator, uploadBus uploadbus.ExtBusiness, artifactBus artifactbus.ExtBusiness, objectStore *objectstore.Client) *app {
+func newApp(authClient authclient.Authenticator, uploadBus uploadbus.ExtBusiness, artifactBus artifactbus.ExtBusiness, objectStore *objectstore.Client, db sqldb.Beginner) *app {
 	return &app{
 		authClient:  authClient,
 		uploadBus:   uploadBus,
 		artifactBus: artifactBus,
 		objectStore: objectStore,
+		db:          db,
 	}
 }
 
@@ -52,8 +55,8 @@ func (a *app) handle(ctx context.Context, r *http.Request) web.Encoder {
 	case "pre-create":
 		return a.preCreate(ctx, req)
 
-	case "post-finish":
-		if err := a.postFinish(ctx, req); err != nil {
+	case "pre-finish":
+		if err := a.preFinish(ctx, req); err != nil {
 			return errs.New(errs.Internal, err)
 		}
 		return hookResponse{}
@@ -89,7 +92,7 @@ func (a *app) preCreate(ctx context.Context, req hookRequest) web.Encoder {
 	}
 }
 
-func (a *app) postFinish(ctx context.Context, req hookRequest) error {
+func (a *app) preFinish(ctx context.Context, req hookRequest) error {
 	if a.uploadBus == nil || a.objectStore == nil {
 		return fmt.Errorf("upload finalize dependencies not configured")
 	}
@@ -99,7 +102,7 @@ func (a *app) postFinish(ctx context.Context, req hookRequest) error {
 		objectKey = baseObjectID(req.Event.Upload.ID)
 	}
 	if objectKey == "" {
-		return fmt.Errorf("post-finish: missing object key")
+		return fmt.Errorf("pre-finish: missing object key")
 	}
 
 	bucket := req.Event.Upload.Storage.Bucket
@@ -109,7 +112,11 @@ func (a *app) postFinish(ctx context.Context, req hookRequest) error {
 
 	ownerID, err := parseOwnerID(objectKey)
 	if err != nil {
-		return fmt.Errorf("post-finish: %w", err)
+		return fmt.Errorf("pre-finish: %w", err)
+	}
+
+	if err := a.authorizeOwner(ctx, req, ownerID); err != nil {
+		return err
 	}
 
 	tracer := trace.SpanFromContext(ctx).TracerProvider().Tracer("app.domain.tusdapp")
@@ -122,15 +129,14 @@ func (a *app) postFinish(ctx context.Context, req hookRequest) error {
 	info, err := a.objectStore.HeadObject(ctx, bucket, objectKey)
 	if err != nil {
 		span.End()
-		return fmt.Errorf("post-finish: verify object: %w", err)
+		return fmt.Errorf("pre-finish: verify object: %w", err)
 	}
 	span.End()
 
 	if req.Event.Upload.Size > 0 && info.Size != req.Event.Upload.Size {
-		return fmt.Errorf("post-finish: size mismatch: storage=%d hook=%d", info.Size, req.Event.Upload.Size)
+		return fmt.Errorf("pre-finish: size mismatch: storage=%d hook=%d", info.Size, req.Event.Upload.Size)
 	}
 
-	sourceRef := fmt.Sprintf("s3://%s/%s", bucket, objectKey)
 	tusdID := req.Event.Upload.ID
 
 	var etag *string
@@ -144,48 +150,89 @@ func (a *app) postFinish(ctx context.Context, req hookRequest) error {
 		OwnerID:      ownerID,
 		Bucket:       bucket,
 		ObjectKeyRef: objectKey,
-		SourceRef:    sourceRef,
 		SizeBytes:    info.Size,
 		ETag:         etag,
 		Status:       uploadbus.MustParseStatus(uploadbus.StatusReady),
 		TusdUploadID: &tusdID,
 	}
 
-	ctx, span = tracer.Start(ctx, "app.domain.tusdapp.record_owned_source_ref",
-		trace.WithAttributes(
-			attribute.String("object_key", objectKey),
-			attribute.String("source_ref", sourceRef),
-		),
-	)
-	if _, err := a.uploadBus.UpsertReady(ctx, nu); err != nil {
-		span.End()
-		return fmt.Errorf("post-finish: upsert ready: %w", err)
-	}
-	span.End()
-
 	fileID, err := artifactbus.FileIDFromObjectKey(objectKey)
 	if err != nil {
-		return fmt.Errorf("post-finish: file id: %w", err)
+		return fmt.Errorf("pre-finish: file id: %w", err)
 	}
 
 	contentType := ""
+	name := ""
 	if req.Event.Upload.MetaData != nil {
 		contentType = req.Event.Upload.MetaData["filetype"]
+		name = req.Event.Upload.MetaData["filename"]
 	}
 
-	if _, err := a.artifactBus.Register(ctx, artifactbus.NewArtifact{
+	ctx, span = tracer.Start(ctx, "app.domain.tusdapp.record_artifact",
+		trace.WithAttributes(
+			attribute.String("object_key", objectKey),
+			attribute.String("file_id", fileID.String()),
+		),
+	)
+	defer span.End()
+
+	if a.db == nil {
+		return fmt.Errorf("pre-finish: database not configured")
+	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		return fmt.Errorf("pre-finish: begin: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	uploadBus, err := a.uploadBus.NewWithTx(tx)
+	if err != nil {
+		return fmt.Errorf("pre-finish: upload tx: %w", err)
+	}
+	artifactBus, err := a.artifactBus.NewWithTx(tx)
+	if err != nil {
+		return fmt.Errorf("pre-finish: artifact tx: %w", err)
+	}
+	if _, err := uploadBus.UpsertReady(ctx, nu); err != nil {
+		return fmt.Errorf("pre-finish: upsert ready: %w", err)
+	}
+	if _, err := artifactBus.Register(ctx, artifactbus.NewArtifact{
 		FileID:      fileID,
 		OwnerID:     ownerID,
 		Bucket:      bucket,
 		ObjectKey:   objectKey,
-		SourceRef:   sourceRef,
 		Kind:        artifactbus.MustParseKind(artifactbus.KindSource),
 		ContentType: contentType,
+		Name:        name,
 		Status:      artifactbus.MustParseStatus(artifactbus.StatusReady),
 	}); err != nil {
-		return fmt.Errorf("post-finish: register artifact: %w", err)
+		return fmt.Errorf("pre-finish: register artifact: %w", err)
 	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("pre-finish: commit: %w", err)
+	}
+	committed = true
 
+	return nil
+}
+
+func (a *app) authorizeOwner(ctx context.Context, req hookRequest, ownerID uuid.UUID) error {
+	authorization := headerValue(req.Event.HTTPRequest.Header, "Authorization")
+	if authorization == "" {
+		return fmt.Errorf("pre-finish: missing authorization")
+	}
+	resp, err := a.authClient.Authenticate(ctx, authorization)
+	if err != nil {
+		return fmt.Errorf("pre-finish: authenticate: %w", err)
+	}
+	if resp.UserID != ownerID {
+		return fmt.Errorf("pre-finish: caller is not the owner")
+	}
 	return nil
 }
 

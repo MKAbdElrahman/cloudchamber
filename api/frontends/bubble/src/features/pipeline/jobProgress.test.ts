@@ -7,7 +7,7 @@ const at = (ms: number) => Date.parse(started) + ms
 
 describe('progressFromJob', () => {
   it('starts a running job on audio extraction after the recording is in', () => {
-    const progress = progressFromJob({ status: 'running', dateCreated: started, sourceRef: 'week-03.mp4' }, at(0))
+    const progress = progressFromJob({ status: 'running', dateCreated: started, fileName: 'week-03.mp4' }, at(0))
     expect(progress.stages.map((stage) => stage.state)).toEqual([
       'done',
       'current',
@@ -53,7 +53,8 @@ describe('progressFromJob', () => {
       {
         status: 'running',
         dateCreated: started,
-        documentRef: 's3://cloudchamber-artifacts/jobs/1/exports/document.md',
+        documentFileId: 'doc-1',
+        documentName: 'document.md',
       },
       at(0),
     )
@@ -65,7 +66,7 @@ describe('progressFromJob', () => {
 
   it('names a PDF export when the document ref is a PDF', () => {
     const progress = progressFromJob(
-      { status: 'completed', documentRef: 's3://bucket/exports/week-03.pdf' },
+      { status: 'completed', documentFileId: 'doc-pdf', documentName: 'week-03.pdf' },
       at(0),
     )
     expect(progress.headline).toBe('A PDF is in this project.')
@@ -73,7 +74,7 @@ describe('progressFromJob', () => {
 
   it('stops on the first stage that never produced a ref', () => {
     const failed = progressFromJob(
-      { status: 'failed', dateCreated: started, audioRef: 's3://bucket/audio.wav' },
+      { status: 'failed', dateCreated: started, audioFileId: 'audio-1' },
       at(0),
     )
     expect(failed.stages.map((stage) => stage.state)).toEqual([
@@ -98,7 +99,7 @@ describe('progressFromJob', () => {
 
   it('holds a paused job on the next unfinished stage and does not walk the clock', () => {
     const progress = progressFromJob(
-      { status: 'paused', dateCreated: started, audioRef: 's3://bucket/audio.wav' },
+      { status: 'paused', dateCreated: started, audioFileId: 'audio-1' },
       at(60_000),
     )
     expect(progress.phase).toBe('paused')
@@ -118,8 +119,9 @@ describe('progressFromJob', () => {
     const progress = progressFromJob(
       {
         status: 'completed',
-        sourceRef: 's3://bucket/uploads/lecture.mp3',
-        documentRef: 's3://bucket/exports/document.md',
+        fileName: 'lecture.mp3',
+        documentFileId: 'doc-audio',
+        documentName: 'lecture.md',
       },
       at(0),
     )

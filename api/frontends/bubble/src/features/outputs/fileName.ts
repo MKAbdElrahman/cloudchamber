@@ -1,4 +1,4 @@
-import { fileNameFromSourceRef, sourceMediaKind, type SourceMediaKind } from '@/shared/media'
+import { sourceMediaKind, type SourceMediaKind } from '@/shared/media'
 
 const MEDIA_FILE = /\.(mp4|webm|mov|m4v|mkv|avi|ogv|mp3|wav|ogg|m4a|aac|flac)$/i
 const GENERIC_DOCUMENT = /^document\.(md|pdf)$/i
@@ -14,18 +14,18 @@ export function mediaLabel(kind: SourceMediaKind): string {
   }
 }
 
-export function mediaKindOf(sourceRef: string | undefined, recordingName?: string): SourceMediaKind {
+export function mediaKindOf(fileName: string | undefined, recordingName?: string): SourceMediaKind {
   const fromName = sourceMediaKind(recordingName ?? '')
   if (fromName !== 'unknown') return fromName
-  return sourceMediaKind(sourceRef ?? '')
+  return sourceMediaKind(fileName ?? '')
 }
 
 /** A recording filename we can show. Opaque upload ids are not one. */
-export function knownMediaName(sourceRef: string | undefined, recordingName?: string): string | null {
+export function knownMediaName(fileName: string | undefined, recordingName?: string): string | null {
   const named = recordingName?.trim() ?? ''
   if (MEDIA_FILE.test(named)) return named
-  const fromRef = sourceRef?.trim() ? fileNameFromSourceRef(sourceRef) : ''
-  if (MEDIA_FILE.test(fromRef)) return fromRef
+  const fromFile = fileName?.trim() ?? ''
+  if (MEDIA_FILE.test(fromFile)) return fromFile
   return null
 }
 
@@ -47,12 +47,12 @@ export type FileFace = 'video' | 'document' | 'pipeline' | 'library'
 /** The name of the face that is open. The library names the document, which is what the row opens. */
 export function faceFileName(input: {
   face: FileFace
-  sourceRef?: string
+  fileName?: string
   recordingName?: string
   documentName?: string
   date?: string
 }): string {
-  const media = knownMediaName(input.sourceRef, input.recordingName)
+  const media = knownMediaName(input.fileName, input.recordingName)
   const stamp = unnamedFileStamp(input.date)
   const documentName = input.documentName?.trim() ?? ''
   const namedDocument = documentName.length > 0 && !GENERIC_DOCUMENT.test(documentName) ? documentName : null

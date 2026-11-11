@@ -13,9 +13,9 @@ type artifactDB struct {
 	OwnerID     uuid.UUID `db:"owner_id"`
 	Bucket      string    `db:"bucket"`
 	ObjectKey   string    `db:"object_key"`
-	SourceRef   string    `db:"source_ref"`
 	Kind        string    `db:"kind"`
 	ContentType string    `db:"content_type"`
+	Name        string    `db:"name"`
 	Status      string    `db:"status"`
 	DateCreated time.Time `db:"date_created"`
 	DateUpdated time.Time `db:"date_updated"`
@@ -27,9 +27,9 @@ func toDBArtifact(bus artifactbus.Artifact) artifactDB {
 		OwnerID:     bus.OwnerID,
 		Bucket:      bus.Bucket,
 		ObjectKey:   bus.ObjectKey,
-		SourceRef:   bus.SourceRef,
 		Kind:        bus.Kind.String(),
 		ContentType: bus.ContentType,
+		Name:        bus.Name,
 		Status:      bus.Status.String(),
 		DateCreated: bus.DateCreated.UTC(),
 		DateUpdated: bus.DateUpdated.UTC(),
@@ -51,9 +51,9 @@ func toBusArtifact(row artifactDB) (artifactbus.Artifact, error) {
 		OwnerID:     row.OwnerID,
 		Bucket:      row.Bucket,
 		ObjectKey:   row.ObjectKey,
-		SourceRef:   row.SourceRef,
 		Kind:        kind,
 		ContentType: row.ContentType,
+		Name:        row.Name,
 		Status:      status,
 		DateCreated: row.DateCreated.In(time.Local),
 		DateUpdated: row.DateUpdated.In(time.Local),

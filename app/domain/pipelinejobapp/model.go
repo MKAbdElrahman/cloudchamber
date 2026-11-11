@@ -8,24 +8,26 @@ import (
 
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/errs"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
+	"github.com/google/uuid"
 )
 
 // Job represents a pipeline job returned to clients.
 type Job struct {
-	ID            string  `json:"id"`
-	OwnerID       string  `json:"ownerId"`
-	WorkflowID    string  `json:"workflowId"`
-	RunID         string  `json:"runId"`
-	FileID        string  `json:"fileId,omitempty"`
-	SourceRef     string  `json:"sourceRef"`
-	Status        string  `json:"status"`
-	ErrorMessage  *string `json:"errorMessage,omitempty"`
-	AudioRef      *string `json:"audioRef,omitempty"`
-	TranscriptRef *string `json:"transcriptRef,omitempty"`
-	KeyFramesRef  *string `json:"keyFramesRef,omitempty"`
-	DocumentRef   *string `json:"documentRef,omitempty"`
-	DateCreated   string  `json:"dateCreated"`
-	DateUpdated   string  `json:"dateUpdated"`
+	ID               string  `json:"id"`
+	OwnerID          string  `json:"ownerId"`
+	WorkflowID       string  `json:"workflowId"`
+	RunID            string  `json:"runId"`
+	FileID           string  `json:"fileId,omitempty"`
+	FileName         string  `json:"fileName,omitempty"`
+	Status           string  `json:"status"`
+	ErrorMessage     *string `json:"errorMessage,omitempty"`
+	AudioFileID      string  `json:"audioFileId,omitempty"`
+	TranscriptFileID string  `json:"transcriptFileId,omitempty"`
+	KeyFramesFileID  string  `json:"keyFramesFileId,omitempty"`
+	DocumentFileID   string  `json:"documentFileId,omitempty"`
+	DocumentName     string  `json:"documentName,omitempty"`
+	DateCreated      string  `json:"dateCreated"`
+	DateUpdated      string  `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -34,29 +36,37 @@ func (j Job) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-func toAppJob(bus pipelinejobbus.Job, fileID string) Job {
+func toAppJob(bus pipelinejobbus.Job, names map[uuid.UUID]string) Job {
 	return Job{
-		ID:            bus.ID.String(),
-		OwnerID:       bus.OwnerID.String(),
-		WorkflowID:    bus.WorkflowID,
-		RunID:         bus.RunID,
-		FileID:        fileID,
-		SourceRef:     bus.SourceRef,
-		Status:        bus.Status.String(),
-		ErrorMessage:  bus.ErrorMessage,
-		AudioRef:      bus.AudioRef,
-		TranscriptRef: bus.TranscriptRef,
-		KeyFramesRef:  bus.KeyFramesRef,
-		DocumentRef:   bus.DocumentRef,
-		DateCreated:   bus.DateCreated.Format(time.RFC3339),
-		DateUpdated:   bus.DateUpdated.Format(time.RFC3339),
+		ID:               bus.ID.String(),
+		OwnerID:          bus.OwnerID.String(),
+		WorkflowID:       bus.WorkflowID,
+		RunID:            bus.RunID,
+		FileID:           fileIDString(bus.InputFileID),
+		FileName:         names[bus.InputFileID],
+		Status:           bus.Status.String(),
+		ErrorMessage:     bus.ErrorMessage,
+		AudioFileID:      fileIDString(bus.AudioFileID),
+		TranscriptFileID: fileIDString(bus.TranscriptFileID),
+		KeyFramesFileID:  fileIDString(bus.KeyFramesFileID),
+		DocumentFileID:   fileIDString(bus.DocumentFileID),
+		DocumentName:     names[bus.DocumentFileID],
+		DateCreated:      bus.DateCreated.Format(time.RFC3339),
+		DateUpdated:      bus.DateUpdated.Format(time.RFC3339),
 	}
 }
 
-func toAppJobs(jobs []pipelinejobbus.Job, fileIDs map[string]string) []Job {
+func fileIDString(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+	return id.String()
+}
+
+func toAppJobs(jobs []pipelinejobbus.Job, names map[uuid.UUID]string) []Job {
 	app := make([]Job, len(jobs))
 	for i, job := range jobs {
-		app[i] = toAppJob(job, fileIDs[job.SourceRef])
+		app[i] = toAppJob(job, names)
 	}
 	return app
 }

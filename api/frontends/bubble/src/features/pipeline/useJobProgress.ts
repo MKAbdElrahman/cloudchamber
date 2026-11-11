@@ -8,7 +8,7 @@ const TICK_MS = 1_000
 /** Recompute the conversion while the job is still running. */
 export function useJobProgress(job: JobProgressInput | undefined): JobProgress | null {
   const [now, setNow] = useState(() => Date.now())
-  const live = job != null && jobPhase(job.status) === 'running' && !job.documentRef?.trim()
+  const live = job != null && jobPhase(job.status) === 'running' && !job.documentFileId?.trim()
 
   useEffect(() => {
     if (!live) return undefined

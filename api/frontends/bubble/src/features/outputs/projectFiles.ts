@@ -1,13 +1,12 @@
-import { fileNameFromSourceRef } from '@/shared/media'
-
 import { knownMediaName } from './fileName'
 
-/** The refs a job may have. The project lists the document only. */
+/** The files a job may have produced. The project lists the document only. */
 export type JobArtifacts = {
   id: string
-  sourceRef?: string
+  fileName?: string
   dateUpdated?: string
-  documentRef?: string | null
+  documentFileId?: string | null
+  documentName?: string | null
 }
 
 /** The export a person reads. Transcript, audio, and frames stay on the job. */
@@ -21,39 +20,41 @@ export type ProjectFile = {
   name: string
   /** Recording this document was composed from, when the job recorded one. */
   sourceName?: string
-  ref: string
+  fileId: string
   dateUpdated?: string
 }
 
-export function documentFormat(ref: string): ProjectFileKind {
-  return fileNameFromSourceRef(ref).toLowerCase().endsWith('.pdf') ? 'pdf' : 'markdown'
+export function documentFormat(documentName: string | null | undefined): ProjectFileKind {
+  return documentName?.trim().toLowerCase().endsWith('.pdf') ? 'pdf' : 'markdown'
 }
 
 /**
  * File name for the project. A recording named week-03.mp4 becomes week-03.md.
- * An opaque upload id keeps the export's own name, document.md.
+ * An opaque upload id keeps the export's own name.
  */
-export function documentFileName(sourceRef: string | undefined, documentRef: string, mediaName?: string): string {
-  const extension = documentFormat(documentRef) === 'pdf' ? 'pdf' : 'md'
-  const media = knownMediaName(sourceRef, mediaName)
+export function documentFileName(fileName: string | undefined, documentName: string | undefined, mediaName?: string): string {
+  const extension = documentFormat(documentName) === 'pdf' ? 'pdf' : 'md'
+  const media = knownMediaName(fileName, mediaName)
   if (media) return `${media.replace(/\.[^.]+$/, '')}.${extension}`
-  return fileNameFromSourceRef(documentRef)
+  const stored = documentName?.trim()
+  if (stored) return stored
+  return `document.${extension}`
 }
 
 /** The document a job has written. A job with no export contributes nothing. */
 export function filesFromJob(job: JobArtifacts, mediaName?: string): ProjectFile[] {
-  const ref = job.documentRef?.trim()
-  if (!ref) return []
+  const fileId = job.documentFileId?.trim()
+  if (!fileId) return []
   const named = knownMediaName(undefined, mediaName) ?? undefined
-  const sourceName = named ?? (job.sourceRef?.trim() ? fileNameFromSourceRef(job.sourceRef) : undefined)
+  const sourceName = named ?? knownMediaName(job.fileName) ?? undefined
   return [
     {
       id: `${job.id}:document`,
       jobId: job.id,
-      kind: documentFormat(ref),
-      name: documentFileName(job.sourceRef, ref, named),
+      kind: documentFormat(job.documentName),
+      name: documentFileName(job.fileName, job.documentName ?? undefined, named),
       sourceName,
-      ref,
+      fileId,
       dateUpdated: job.dateUpdated,
     },
   ]

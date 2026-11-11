@@ -1,82 +1,93 @@
 package workflow
 
-// ProcessSourceInput is the workflow input. It carries refs/IDs only, never blobs.
+// ProcessSourceInput is the workflow input. It carries file ids, never blobs or storage locations.
 type ProcessSourceInput struct {
-	JobID     string `json:"job_id"`
-	SourceRef string `json:"source_ref"`
+	JobID   string `json:"job_id"`
+	OwnerID string `json:"owner_id"`
+	FileID  string `json:"file_id"`
 }
 
-// ProcessSourceResult is the workflow output. It carries refs/IDs only.
+// ProcessSourceResult is the workflow output. Each output is a file id, empty when that step produced nothing.
 type ProcessSourceResult struct {
-	JobID        string `json:"job_id"`
-	SourceRef    string `json:"source_ref"`
-	AudioRef     string `json:"audio_ref"`
-	Transcript   string `json:"transcript_ref"`
-	KeyFramesRef string `json:"key_frames_ref"`
-	DocumentRef  string `json:"document_ref"`
+	JobID            string `json:"job_id"`
+	FileID           string `json:"file_id"`
+	AudioFileID      string `json:"audio_file_id"`
+	TranscriptFileID string `json:"transcript_file_id"`
+	KeyFramesFileID  string `json:"key_frames_file_id"`
+	DocumentFileID   string `json:"document_file_id"`
 }
 
 // ResolveSourceInput is the input for source resolution.
 type ResolveSourceInput struct {
-	JobID     string `json:"job_id"`
-	SourceRef string `json:"source_ref"`
+	JobID   string `json:"job_id"`
+	OwnerID string `json:"owner_id"`
+	FileID  string `json:"file_id"`
 }
 
-// ResolveSourceOutput is the output for source resolution.
+// ResolveSourceOutput describes the source file the later steps read.
 type ResolveSourceOutput struct {
-	JobID         string `json:"job_id"`
-	ResolvedRef   string `json:"resolved_ref"`
-	SourceType    string `json:"source_type"`
-	DurationHints string `json:"duration_hints"`
+	JobID       string `json:"job_id"`
+	OwnerID     string `json:"owner_id"`
+	FileID      string `json:"file_id"`
+	Name        string `json:"name"`
+	ContentType string `json:"content_type"`
 }
 
 // ExtractAudioInput is the input for audio extraction.
 type ExtractAudioInput struct {
-	JobID       string `json:"job_id"`
-	ResolvedRef string `json:"resolved_ref"`
+	JobID   string `json:"job_id"`
+	OwnerID string `json:"owner_id"`
+	Name    string `json:"name"`
 }
 
-// ExtractAudioOutput is the output for audio extraction.
+// ExtractAudioOutput is the audio file the speech step reads.
 type ExtractAudioOutput struct {
-	JobID    string `json:"job_id"`
-	AudioRef string `json:"audio_ref"`
+	JobID   string `json:"job_id"`
+	OwnerID string `json:"owner_id"`
+	FileID  string `json:"file_id"`
+	Name    string `json:"name"`
 }
 
 // TranscribeInput is the input for transcription.
 type TranscribeInput struct {
-	JobID    string `json:"job_id"`
-	AudioRef string `json:"audio_ref"`
+	JobID   string `json:"job_id"`
+	OwnerID string `json:"owner_id"`
+	FileID  string `json:"file_id"`
+	Name    string `json:"name"`
 }
 
-// TranscribeOutput is the output for transcription.
+// TranscribeOutput is the transcript file.
 type TranscribeOutput struct {
-	JobID         string `json:"job_id"`
-	TranscriptRef string `json:"transcript_ref"`
+	JobID  string `json:"job_id"`
+	FileID string `json:"file_id"`
 }
 
 // ExtractKeyFramesInput is the input for key-frame extraction.
 type ExtractKeyFramesInput struct {
-	JobID         string `json:"job_id"`
-	ResolvedRef   string `json:"resolved_ref"`
-	TranscriptRef string `json:"transcript_ref"`
-}
-
-// ExtractKeyFramesOutput is the output for key-frame extraction.
-type ExtractKeyFramesOutput struct {
-	JobID        string `json:"job_id"`
-	KeyFramesRef string `json:"key_frames_ref"`
-}
-
-// ComposeExportInput is the input for document composition/export.
-type ComposeExportInput struct {
-	JobID         string `json:"job_id"`
-	SourceRef     string `json:"source_ref"`
-	TranscriptRef string `json:"transcript_ref"`
-	KeyFramesRef  string `json:"key_frames_ref"`
-}
-
-// ComposeExportOutput is the output for document composition/export.
-type ComposeExportOutput struct {
 	JobID       string `json:"job_id"`
-	DocumentRef string `json:"document_ref"`
+	OwnerID     string `json:"owner_id"`
+	Name        string `json:"name"`
+	ContentType string `json:"content_type"`
+}
+
+// ExtractKeyFramesOutput is the frame file. FileID is empty for audio.
+type ExtractKeyFramesOutput struct {
+	JobID  string `json:"job_id"`
+	FileID string `json:"file_id"`
+}
+
+// ComposeExportInput is the input for document composition.
+type ComposeExportInput struct {
+	JobID            string `json:"job_id"`
+	OwnerID          string `json:"owner_id"`
+	FileID           string `json:"file_id"`
+	Name             string `json:"name"`
+	TranscriptFileID string `json:"transcript_file_id"`
+	KeyFramesFileID  string `json:"key_frames_file_id"`
+}
+
+// ComposeExportOutput is the document file.
+type ComposeExportOutput struct {
+	JobID  string `json:"job_id"`
+	FileID string `json:"file_id"`
 }

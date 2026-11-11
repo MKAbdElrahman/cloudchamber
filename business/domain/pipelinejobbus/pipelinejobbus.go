@@ -96,7 +96,7 @@ func (b *Business) Create(ctx context.Context, nj NewJob) (Job, error) {
 		OwnerID:            nj.OwnerID,
 		WorkflowID:         nj.WorkflowID,
 		RunID:              nj.RunID,
-		SourceRef:          nj.SourceRef,
+		InputFileID:        nj.InputFileID,
 		IdempotencyKeyHash: nj.IdempotencyKeyHash,
 		Status:             nj.Status,
 		DateCreated:        now,
@@ -124,17 +124,17 @@ func (b *Business) Update(ctx context.Context, job Job, uj UpdateJob) (Job, erro
 	if uj.ErrorMessage != nil {
 		job.ErrorMessage = uj.ErrorMessage
 	}
-	if uj.AudioRef != nil {
-		job.AudioRef = uj.AudioRef
+	if uj.AudioFileID != nil {
+		job.AudioFileID = *uj.AudioFileID
 	}
-	if uj.TranscriptRef != nil {
-		job.TranscriptRef = uj.TranscriptRef
+	if uj.TranscriptFileID != nil {
+		job.TranscriptFileID = *uj.TranscriptFileID
 	}
-	if uj.KeyFramesRef != nil {
-		job.KeyFramesRef = uj.KeyFramesRef
+	if uj.KeyFramesFileID != nil {
+		job.KeyFramesFileID = *uj.KeyFramesFileID
 	}
-	if uj.DocumentRef != nil {
-		job.DocumentRef = uj.DocumentRef
+	if uj.DocumentFileID != nil {
+		job.DocumentFileID = *uj.DocumentFileID
 	}
 
 	job.DateUpdated = time.Now().UTC()

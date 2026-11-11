@@ -4,14 +4,15 @@ export type PipelineJob = {
   workflowId?: string
   runId?: string | null
   fileId?: string
-  sourceRef: string
+  fileName?: string
   status: string
   errorMessage?: string | null
-  /** Produced artifacts. Absent until that stage of the job has finished. */
-  audioRef?: string | null
-  transcriptRef?: string | null
-  keyFramesRef?: string | null
-  documentRef?: string | null
+  /** Produced files. Absent until that stage of the job has finished. */
+  audioFileId?: string | null
+  transcriptFileId?: string | null
+  keyFramesFileId?: string | null
+  documentFileId?: string | null
+  documentName?: string | null
   dateCreated?: string
   dateUpdated?: string
 }

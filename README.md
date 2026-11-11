@@ -54,12 +54,7 @@ go install honnef.co/go/tools/cmd/staticcheck@master
 make test
 ```
 
-Integration tests start Docker Postgres (`servicetest`). If a previous run left a **stopped** container with that name, remove it first:
-
-```bash
-make test-down
-# or: docker rm -f servicetest
-```
+Integration tests start Docker Postgres (`servicetest`) and reuse it while it is running. The container is removed when it stops. `make test-down` removes it and its data.
 
 Run only unit/integration tests without lint/vuln:
 

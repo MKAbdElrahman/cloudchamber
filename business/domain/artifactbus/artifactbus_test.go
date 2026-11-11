@@ -88,7 +88,7 @@ func (f *fakeStore) QueryByFileID(_ context.Context, fileID uuid.UUID) (Artifact
 	return art, nil
 }
 
-func (f *fakeStore) QueryBySourceRefs(context.Context, []string) ([]Artifact, error) {
+func (f *fakeStore) QueryByFileIDs(context.Context, []uuid.UUID) ([]Artifact, error) {
 	return nil, nil
 }
 

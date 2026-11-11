@@ -13,6 +13,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 )
 
@@ -61,6 +62,7 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 		UploadBus:   cfg.BusConfig.UploadBus,
 		ArtifactBus: cfg.BusConfig.ArtifactBus,
 		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
+		DB:          sqldb.NewBeginner(cfg.DB),
 	})
 
 	tranapp.Routes(app, tranapp.Config{

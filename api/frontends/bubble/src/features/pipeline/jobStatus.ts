@@ -119,8 +119,8 @@ export function jobStatusBannerStatus(status: string): 'success' | 'info' | 'war
  * Status the badge should read. A document means the conversion finished,
  * even when the list still has the status from the moment the job was created.
  */
-export function visibleJobStatus(job: { status: string; documentRef?: string | null }): string {
-  const hasDocument = Boolean(job.documentRef?.trim())
+export function visibleJobStatus(job: { status: string; documentFileId?: string | null }): string {
+  const hasDocument = Boolean(job.documentFileId?.trim())
   switch (jobPhase(job.status)) {
     case 'running':
     case 'waiting':

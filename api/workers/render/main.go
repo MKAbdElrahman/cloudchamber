@@ -104,7 +104,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	defer c.Close()
 
-	acts := pipelinesim.New()
+	acts, err := pipelinesim.Open(ctx, log)
+	if err != nil {
+		return err
+	}
 	w := worker.New(c, pipelinewf.TaskQueueRender, worker.Options{
 		Interceptors: []interceptor.WorkerInterceptor{tracingInterceptor},
 	})

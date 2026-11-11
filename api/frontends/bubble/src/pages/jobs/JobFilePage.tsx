@@ -23,7 +23,6 @@ import {
 } from '@/features/projects'
 import { ApiError } from '@/shared/api'
 import { PageHeader, PendingLines, SHELL_NARROW_QUERY, WorkspacePage } from '@/shared/layout'
-import { fileIdFromSourceRef } from '@/shared/media'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 type JobFilePageProps = {
@@ -63,19 +62,18 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const recording = recordingIdParam
     ? recordingQuery.data ?? undefined
     :       recordings.find((item) => item.jobId === jobIdParam) ??
-      recordings.find((item) => job?.fileId && item.fileId === job.fileId) ??
-      recordings.find((item) => job?.sourceRef && item.sourceRef === job.sourceRef)
-  const sourceRef = job?.sourceRef ?? recording?.sourceRef
-  const fileId = job?.fileId ?? recording?.fileId ?? fileIdFromSourceRef(sourceRef) ?? undefined
-  const media = knownMediaName(sourceRef, recording?.name)
-  const kind = mediaKindOf(sourceRef, recording?.name)
+      recordings.find((item) => job?.fileId && item.fileId === job.fileId)
+  const fileName = job?.fileName || recording?.name
+  const fileId = job?.fileId ?? recording?.fileId
+  const media = knownMediaName(fileName, recording?.name)
+  const kind = mediaKindOf(fileName, recording?.name)
   const file = job ? filesFromJob(job, media ?? undefined)[0] : undefined
   const recordedAt = job?.dateUpdated ?? job?.dateCreated ?? recording?.dateAdded
   const bodyQuery = useQuery({
-    queryKey: ['document-body', file?.ref],
+    queryKey: ['document-body', file?.fileId],
     queryFn: () => {
       if (!file) throw new Error('missing document')
-      return loadDocumentBody(file)
+      return loadDocumentBody(token, file)
     },
     enabled: file != null,
   })
@@ -134,14 +132,14 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const ready = file != null && bodyQuery.data != null
   const title = faceFileName({
     face: file ? 'document' : 'video',
-    sourceRef,
+    fileName,
     recordingName: recording?.name,
     documentName: file?.name,
     date: recordedAt,
   })
   const videoName = faceFileName({
     face: 'video',
-    sourceRef,
+    fileName,
     recordingName: recording?.name,
     date: recordedAt,
   })

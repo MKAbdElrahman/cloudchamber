@@ -43,7 +43,6 @@ type ExtBusiness interface {
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Upload, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
 	QueryByObjectKey(ctx context.Context, objectKey string) (Upload, error)
-	QueryBySourceRef(ctx context.Context, sourceRef string) (Upload, error)
 	UpsertReady(ctx context.Context, nu NewUpload) (Upload, error)
 	MarkTerminated(ctx context.Context, objectKey string) error
 }
@@ -100,7 +99,6 @@ func (b *Business) Create(ctx context.Context, nu NewUpload) (Upload, error) {
 		OwnerID:      nu.OwnerID,
 		Bucket:       nu.Bucket,
 		ObjectKeyRef: nu.ObjectKeyRef,
-		SourceRef:    nu.SourceRef,
 		SizeBytes:    nu.SizeBytes,
 		ETag:         nu.ETag,
 		Status:       nu.Status,
@@ -132,9 +130,6 @@ func (b *Business) Update(ctx context.Context, up Upload, uu UpdateUpload) (Uplo
 	}
 	if uu.TusdUploadID != nil {
 		up.TusdUploadID = uu.TusdUploadID
-	}
-	if uu.SourceRef != nil {
-		up.SourceRef = *uu.SourceRef
 	}
 
 	up.DateUpdated = time.Now().UTC()
@@ -177,18 +172,6 @@ func (b *Business) QueryByObjectKey(ctx context.Context, objectKey string) (Uplo
 	return up, nil
 }
 
-// QueryBySourceRef finds an upload by its source reference.
-func (b *Business) QueryBySourceRef(ctx context.Context, sourceRef string) (Upload, error) {
-	ups, err := b.storer.Query(ctx, QueryFilter{SourceRef: &sourceRef}, DefaultOrderBy, page.MustParse("1", "1"))
-	if err != nil {
-		return Upload{}, fmt.Errorf("query: sourceRef[%s]: %w", sourceRef, err)
-	}
-	if len(ups) == 0 {
-		return Upload{}, fmt.Errorf("query: sourceRef[%s]: %w", sourceRef, ErrNotFound)
-	}
-	return ups[0], nil
-}
-
 // UpsertReady records a verified, finalized upload as ready (idempotent).
 func (b *Business) UpsertReady(ctx context.Context, nu NewUpload) (Upload, error) {
 	now := time.Now().UTC()
@@ -203,7 +186,6 @@ func (b *Business) UpsertReady(ctx context.Context, nu NewUpload) (Upload, error
 		OwnerID:      nu.OwnerID,
 		Bucket:       nu.Bucket,
 		ObjectKeyRef: nu.ObjectKeyRef,
-		SourceRef:    nu.SourceRef,
 		SizeBytes:    nu.SizeBytes,
 		ETag:         nu.ETag,
 		Status:       status,

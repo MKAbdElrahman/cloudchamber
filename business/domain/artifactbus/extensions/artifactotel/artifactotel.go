@@ -71,10 +71,10 @@ func (ext *Extension) QueryByFileID(ctx context.Context, fileID uuid.UUID) (arti
 	return ext.bus.QueryByFileID(ctx, fileID)
 }
 
-// QueryBySourceRefs applies otel to a lookup of several source refs.
-func (ext *Extension) QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]artifactbus.Artifact, error) {
-	ctx, span := otel.AddSpan(ctx, "business.artifactbus.querybysourcerefs")
+// QueryByFileIDs applies otel to a lookup of several file ids.
+func (ext *Extension) QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]artifactbus.Artifact, error) {
+	ctx, span := otel.AddSpan(ctx, "business.artifactbus.querybyfileids")
 	defer span.End()
 
-	return ext.bus.QueryBySourceRefs(ctx, sourceRefs)
+	return ext.bus.QueryByFileIDs(ctx, fileIDs)
 }

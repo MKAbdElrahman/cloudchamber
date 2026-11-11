@@ -7,6 +7,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 )
 
@@ -16,13 +17,14 @@ type Config struct {
 	UploadBus   uploadbus.ExtBusiness
 	ArtifactBus artifactbus.ExtBusiness
 	ObjectStore *objectstore.Client
+	DB          sqldb.Beginner
 }
 
 // Routes adds specific routes for this group.
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	api := newApp(cfg.AuthClient, cfg.UploadBus, cfg.ArtifactBus, cfg.ObjectStore)
+	api := newApp(cfg.AuthClient, cfg.UploadBus, cfg.ArtifactBus, cfg.ObjectStore, cfg.DB)
 
 	app.HandlerFuncNoMid(http.MethodPost, version, "/internal/tusd/hooks", api.handle)
 }

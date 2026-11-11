@@ -26,7 +26,7 @@ type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	Upsert(ctx context.Context, art Artifact) error
 	QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifact, error)
-	QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]Artifact, error)
+	QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]Artifact, error)
 }
 
 // Presigner signs a short-lived read of one object. It does not fetch the bytes.
@@ -42,7 +42,7 @@ type ExtBusiness interface {
 	Register(ctx context.Context, na NewArtifact) (Artifact, error)
 	ReadURL(ctx context.Context, ownerID, fileID uuid.UUID) (Playback, error)
 	QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifact, error)
-	QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]Artifact, error)
+	QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]Artifact, error)
 }
 
 // Extension wraps a new layer of business logic around the existing logic.
@@ -98,9 +98,9 @@ func (b *Business) Register(ctx context.Context, na NewArtifact) (Artifact, erro
 		OwnerID:     na.OwnerID,
 		Bucket:      na.Bucket,
 		ObjectKey:   na.ObjectKey,
-		SourceRef:   na.SourceRef,
 		Kind:        na.Kind,
 		ContentType: na.ContentType,
+		Name:        na.Name,
 		Status:      na.Status,
 		DateCreated: now,
 		DateUpdated: now,
@@ -143,11 +143,11 @@ func (b *Business) QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifac
 	return art, nil
 }
 
-// QueryBySourceRefs returns the artifacts stored at those source refs.
-func (b *Business) QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]Artifact, error) {
-	arts, err := b.storer.QueryBySourceRefs(ctx, sourceRefs)
+// QueryByFileIDs returns the artifacts for those file ids.
+func (b *Business) QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]Artifact, error) {
+	arts, err := b.storer.QueryByFileIDs(ctx, fileIDs)
 	if err != nil {
-		return nil, fmt.Errorf("query by source refs: %w", err)
+		return nil, fmt.Errorf("query by file ids: %w", err)
 	}
 	return arts, nil
 }

@@ -83,14 +83,14 @@ type Job struct {
 	OwnerID            uuid.UUID
 	WorkflowID         string
 	RunID              string
-	SourceRef          string
+	InputFileID        uuid.UUID
 	IdempotencyKeyHash *string
 	Status             Status
 	ErrorMessage       *string
-	AudioRef           *string
-	TranscriptRef      *string
-	KeyFramesRef       *string
-	DocumentRef        *string
+	AudioFileID        uuid.UUID
+	TranscriptFileID   uuid.UUID
+	KeyFramesFileID    uuid.UUID
+	DocumentFileID     uuid.UUID
 	DateCreated        time.Time
 	DateUpdated        time.Time
 }
@@ -101,19 +101,19 @@ type NewJob struct {
 	OwnerID            uuid.UUID
 	WorkflowID         string
 	RunID              string
-	SourceRef          string
+	InputFileID        uuid.UUID
 	IdempotencyKeyHash *string
 	Status             Status
 }
 
 // UpdateJob contains information that can be updated for a pipeline job.
 type UpdateJob struct {
-	RunID         *string
-	Status        *Status
-	ErrorMessage  *string
-	ClearError    bool
-	AudioRef      *string
-	TranscriptRef *string
-	KeyFramesRef  *string
-	DocumentRef   *string
+	RunID            *string
+	Status           *Status
+	ErrorMessage     *string
+	ClearError       bool
+	AudioFileID      *uuid.UUID
+	TranscriptFileID *uuid.UUID
+	KeyFramesFileID  *uuid.UUID
+	DocumentFileID   *uuid.UUID
 }

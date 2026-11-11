@@ -7,5 +7,4 @@ type QueryFilter struct {
 	ObjectKey *string
 	OwnerID   *uuid.UUID
 	Status    *Status
-	SourceRef *string
 }

@@ -111,9 +111,9 @@ type Artifact struct {
 	OwnerID     uuid.UUID
 	Bucket      string
 	ObjectKey   string
-	SourceRef   string
 	Kind        Kind
 	ContentType string
+	Name        string
 	Status      Status
 	DateCreated time.Time
 	DateUpdated time.Time
@@ -125,9 +125,9 @@ type NewArtifact struct {
 	OwnerID     uuid.UUID
 	Bucket      string
 	ObjectKey   string
-	SourceRef   string
 	Kind        Kind
 	ContentType string
+	Name        string
 	Status      Status
 }
 

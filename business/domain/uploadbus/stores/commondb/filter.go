@@ -26,11 +26,6 @@ func ApplyFilter(filter uploadbus.QueryFilter, data map[string]any, buf *bytes.B
 		wc = append(wc, "status = :status")
 	}
 
-	if filter.SourceRef != nil {
-		data["source_ref"] = *filter.SourceRef
-		wc = append(wc, "source_ref = :source_ref")
-	}
-
 	if len(wc) > 0 {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wc, " AND "))

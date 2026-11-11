@@ -17,7 +17,8 @@ func main() {
 	hostPort := flag.String("host", "localhost:7233", "Temporal frontend host:port")
 	namespace := flag.String("namespace", "default", "Temporal namespace")
 	jobID := flag.String("job", fmt.Sprintf("job-%d", time.Now().Unix()), "Pipeline job ID")
-	source := flag.String("source", "https://www.youtube.com/watch?v=ciRTdOIhNCc", "Source reference URL/path")
+	fileID := flag.String("file", "", "Input file id")
+	ownerID := flag.String("owner", "", "Owner id")
 	flag.Parse()
 
 	c, err := temporalclient.NewClient(temporalclient.Config{
@@ -35,8 +36,9 @@ func main() {
 		ID:        workflowID,
 		TaskQueue: pipelinewf.TaskQueueWorkflow,
 	}, pipelinewf.ProcessSourceWorkflow, pipelinewf.ProcessSourceInput{
-		JobID:     *jobID,
-		SourceRef: *source,
+		JobID:   *jobID,
+		OwnerID: *ownerID,
+		FileID:  *fileID,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "start workflow: %v\n", err)
@@ -52,5 +54,5 @@ func main() {
 	}
 
 	fmt.Printf("completed jobID=%s audio=%s transcript=%s frames=%s document=%s\n",
-		result.JobID, result.AudioRef, result.Transcript, result.KeyFramesRef, result.DocumentRef)
+		result.JobID, result.AudioFileID, result.TranscriptFileID, result.KeyFramesFileID, result.DocumentFileID)
 }

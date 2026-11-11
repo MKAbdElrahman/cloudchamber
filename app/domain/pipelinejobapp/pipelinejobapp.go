@@ -71,8 +71,6 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 	case art.OwnerID != ownerID, !ready:
 		return errs.NewFieldErrors("fileId", errors.New("fileId must reference a ready file you own"))
 	}
-	sourceRef := art.SourceRef
-
 	key := strings.TrimSpace(app.IdempotencyKey)
 	if key == "" {
 		key = strings.TrimSpace(r.Header.Get("Idempotency-Key"))
@@ -112,7 +110,7 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 		ID:                 jobID,
 		OwnerID:            ownerID,
 		WorkflowID:         workflowID,
-		SourceRef:          sourceRef,
+		InputFileID:        art.FileID,
 		IdempotencyKeyHash: idempotencyHash,
 		Status:             status,
 	}
@@ -141,8 +139,9 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	run, err := a.temporal.ExecuteWorkflow(ctx, opts, workflow.ProcessSourceWorkflow, workflow.ProcessSourceInput{
-		JobID:     jobID.String(),
-		SourceRef: sourceRef,
+		JobID:   jobID.String(),
+		OwnerID: ownerID.String(),
+		FileID:  art.FileID.String(),
 	})
 	if err != nil {
 		msg := err.Error()
@@ -218,7 +217,7 @@ func (a *app) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppJobs(jobs, a.fileIDs(ctx, jobs)), total, pg)
+	return query.NewResult(toAppJobs(jobs, a.fileNames(ctx, jobs)), total, pg)
 }
 
 func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
@@ -256,33 +255,43 @@ func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
 }
 
 func (a *app) appJob(ctx context.Context, job pipelinejobbus.Job) Job {
-	return toAppJob(job, a.fileID(ctx, job.SourceRef))
+	return toAppJob(job, a.fileNames(ctx, []pipelinejobbus.Job{job}))
 }
 
-func (a *app) fileID(ctx context.Context, sourceRef string) string {
-	ids := a.fileIDs(ctx, []pipelinejobbus.Job{{SourceRef: sourceRef}})
-	return ids[sourceRef]
+func parseFileID(raw string) (uuid.UUID, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return uuid.Nil, false
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil || id == uuid.Nil {
+		return uuid.Nil, false
+	}
+	return id, true
 }
 
-func (a *app) fileIDs(ctx context.Context, jobs []pipelinejobbus.Job) map[string]string {
-	refs := make([]string, 0, len(jobs))
+func (a *app) fileNames(ctx context.Context, jobs []pipelinejobbus.Job) map[uuid.UUID]string {
+	ids := make([]uuid.UUID, 0, len(jobs))
 	for _, job := range jobs {
-		if job.SourceRef != "" {
-			refs = append(refs, job.SourceRef)
+		if job.InputFileID != uuid.Nil {
+			ids = append(ids, job.InputFileID)
+		}
+		if job.DocumentFileID != uuid.Nil {
+			ids = append(ids, job.DocumentFileID)
 		}
 	}
 
-	found, err := a.artifactBus.QueryBySourceRefs(ctx, refs)
+	found, err := a.artifactBus.QueryByFileIDs(ctx, ids)
 	if err != nil {
-		a.log.Error(ctx, "pipelinejob.file-ids", "err", err)
-		return map[string]string{}
+		a.log.Error(ctx, "pipelinejob.file-names", "err", err)
+		return map[uuid.UUID]string{}
 	}
 
-	ids := make(map[string]string, len(found))
+	names := make(map[uuid.UUID]string, len(found))
 	for _, art := range found {
-		ids[art.SourceRef] = art.FileID.String()
+		names[art.FileID] = art.Name
 	}
-	return ids
+	return names
 }
 
 func (a *app) reconcile(ctx context.Context, job pipelinejobbus.Job) (pipelinejobbus.Job, error) {
@@ -317,24 +326,20 @@ func (a *app) reconcile(ctx context.Context, job pipelinejobbus.Job) (pipelinejo
 		var result workflow.ProcessSourceResult
 		run := a.temporal.GetWorkflow(ctx, job.WorkflowID, job.RunID)
 		if err := run.Get(ctx, &result); err == nil {
-			if result.AudioRef != "" {
-				v := result.AudioRef
-				uj.AudioRef = &v
+			if id, ok := parseFileID(result.AudioFileID); ok {
+				uj.AudioFileID = &id
 				changed = true
 			}
-			if result.Transcript != "" {
-				v := result.Transcript
-				uj.TranscriptRef = &v
+			if id, ok := parseFileID(result.TranscriptFileID); ok {
+				uj.TranscriptFileID = &id
 				changed = true
 			}
-			if result.KeyFramesRef != "" {
-				v := result.KeyFramesRef
-				uj.KeyFramesRef = &v
+			if id, ok := parseFileID(result.KeyFramesFileID); ok {
+				uj.KeyFramesFileID = &id
 				changed = true
 			}
-			if result.DocumentRef != "" {
-				v := result.DocumentRef
-				uj.DocumentRef = &v
+			if id, ok := parseFileID(result.DocumentFileID); ok {
+				uj.DocumentFileID = &id
 				changed = true
 			}
 		}

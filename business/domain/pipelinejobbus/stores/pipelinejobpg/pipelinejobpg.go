@@ -55,11 +55,11 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (pipelinejobbus.Storer, err
 func (s *Store) Create(ctx context.Context, job pipelinejobbus.Job) error {
 	const q = `
 	INSERT INTO pipeline_jobs
-		(job_id, owner_id, workflow_id, run_id, source_ref, idempotency_key_hash, status, error_message,
-		 audio_ref, transcript_ref, key_frames_ref, document_ref, date_created, date_updated)
+		(job_id, owner_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message,
+		 audio_file_id, transcript_file_id, key_frames_file_id, document_file_id, date_created, date_updated)
 	VALUES
-		(:job_id, :owner_id, :workflow_id, :run_id, :source_ref, :idempotency_key_hash, :status, :error_message,
-		 :audio_ref, :transcript_ref, :key_frames_ref, :document_ref, :date_created, :date_updated)`
+		(:job_id, :owner_id, :workflow_id, :run_id, :input_file_id, :idempotency_key_hash, :status, :error_message,
+		 :audio_file_id, :transcript_file_id, :key_frames_file_id, :document_file_id, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, commondb.ToDBJob(job)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -75,14 +75,14 @@ func (s *Store) Update(ctx context.Context, job pipelinejobbus.Job) error {
 	SET
 		workflow_id = :workflow_id,
 		run_id = :run_id,
-		source_ref = :source_ref,
+		input_file_id = :input_file_id,
 		idempotency_key_hash = :idempotency_key_hash,
 		status = :status,
 		error_message = :error_message,
-		audio_ref = :audio_ref,
-		transcript_ref = :transcript_ref,
-		key_frames_ref = :key_frames_ref,
-		document_ref = :document_ref,
+		audio_file_id = :audio_file_id,
+		transcript_file_id = :transcript_file_id,
+		key_frames_file_id = :key_frames_file_id,
+		document_file_id = :document_file_id,
 		date_updated = :date_updated
 	WHERE
 		job_id = :job_id`
@@ -120,8 +120,8 @@ func (s *Store) Query(ctx context.Context, filter pipelinejobbus.QueryFilter, or
 
 	const q = `
 	SELECT
-		job_id, owner_id, workflow_id, run_id, source_ref, idempotency_key_hash, status, error_message,
-		audio_ref, transcript_ref, key_frames_ref, document_ref, date_created, date_updated
+		job_id, owner_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message,
+		audio_file_id, transcript_file_id, key_frames_file_id, document_file_id, date_created, date_updated
 	FROM
 		pipeline_jobs`
 
@@ -173,8 +173,8 @@ func (s *Store) QueryByID(ctx context.Context, jobID uuid.UUID) (pipelinejobbus.
 
 	const q = `
 	SELECT
-		job_id, owner_id, workflow_id, run_id, source_ref, idempotency_key_hash, status, error_message,
-		audio_ref, transcript_ref, key_frames_ref, document_ref, date_created, date_updated
+		job_id, owner_id, workflow_id, run_id, input_file_id, idempotency_key_hash, status, error_message,
+		audio_file_id, transcript_file_id, key_frames_file_id, document_file_id, date_created, date_updated
 	FROM
 		pipeline_jobs
 	WHERE

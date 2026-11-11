@@ -55,9 +55,9 @@ func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (uploadbus.Storer, error) {
 func (s *Store) Create(ctx context.Context, up uploadbus.Upload) error {
 	const q = `
 	INSERT INTO uploads
-		(object_key, owner_id, bucket, object_key_ref, source_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated)
+		(object_key, owner_id, bucket, object_key_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated)
 	VALUES
-		(:object_key, :owner_id, :bucket, :object_key_ref, :source_ref, :size_bytes, :etag, :status, :tusd_upload_id, :date_created, :date_updated)`
+		(:object_key, :owner_id, :bucket, :object_key_ref, :size_bytes, :etag, :status, :tusd_upload_id, :date_created, :date_updated)`
 
 	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, commondb.ToDBUpload(up)); err != nil {
 		return fmt.Errorf("namedexeccontext: %w", err)
@@ -74,7 +74,6 @@ func (s *Store) Update(ctx context.Context, up uploadbus.Upload) error {
 		owner_id = :owner_id,
 		bucket = :bucket,
 		object_key_ref = :object_key_ref,
-		source_ref = :source_ref,
 		size_bytes = :size_bytes,
 		etag = :etag,
 		status = :status,
@@ -94,14 +93,13 @@ func (s *Store) Update(ctx context.Context, up uploadbus.Upload) error {
 func (s *Store) Upsert(ctx context.Context, up uploadbus.Upload) error {
 	const q = `
 	INSERT INTO uploads
-		(object_key, owner_id, bucket, object_key_ref, source_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated)
+		(object_key, owner_id, bucket, object_key_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated)
 	VALUES
-		(:object_key, :owner_id, :bucket, :object_key_ref, :source_ref, :size_bytes, :etag, :status, :tusd_upload_id, :date_created, :date_updated)
+		(:object_key, :owner_id, :bucket, :object_key_ref, :size_bytes, :etag, :status, :tusd_upload_id, :date_created, :date_updated)
 	ON CONFLICT (object_key) DO UPDATE SET
 		owner_id = EXCLUDED.owner_id,
 		bucket = EXCLUDED.bucket,
 		object_key_ref = EXCLUDED.object_key_ref,
-		source_ref = EXCLUDED.source_ref,
 		size_bytes = EXCLUDED.size_bytes,
 		etag = EXCLUDED.etag,
 		status = EXCLUDED.status,
@@ -168,7 +166,7 @@ func (s *Store) Query(ctx context.Context, filter uploadbus.QueryFilter, orderBy
 
 	const q = `
 	SELECT
-		object_key, owner_id, bucket, object_key_ref, source_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated
+		object_key, owner_id, bucket, object_key_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated
 	FROM
 		uploads`
 
@@ -220,7 +218,7 @@ func (s *Store) QueryByObjectKey(ctx context.Context, objectKey string) (uploadb
 
 	const q = `
 	SELECT
-		object_key, owner_id, bucket, object_key_ref, source_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated
+		object_key, owner_id, bucket, object_key_ref, size_bytes, etag, status, tusd_upload_id, date_created, date_updated
 	FROM
 		uploads
 	WHERE

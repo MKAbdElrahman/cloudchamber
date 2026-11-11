@@ -167,3 +167,32 @@ FROM uploads
 WHERE status = 'ready'
   AND object_key ~* '^sources/[0-9a-f-]{36}/[0-9a-f-]{36}$'
 ON CONFLICT (file_id) DO NOTHING;
+
+-- Version: 1.09
+-- Description: Name each artifact and point a job at its input file
+ALTER TABLE artifacts ADD COLUMN name TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE pipeline_jobs ADD COLUMN input_file_id UUID NULL REFERENCES artifacts(file_id);
+
+UPDATE pipeline_jobs AS job
+SET input_file_id = artifact.file_id
+FROM artifacts AS artifact
+WHERE artifact.source_ref = job.source_ref
+  AND job.input_file_id IS NULL;
+
+-- Version: 1.10
+-- Description: Keep bucket and object key on the artifact, and point a job at output files
+ALTER TABLE pipeline_jobs
+    ADD COLUMN audio_file_id UUID NULL REFERENCES artifacts(file_id),
+    ADD COLUMN transcript_file_id UUID NULL REFERENCES artifacts(file_id),
+    ADD COLUMN key_frames_file_id UUID NULL REFERENCES artifacts(file_id),
+    ADD COLUMN document_file_id UUID NULL REFERENCES artifacts(file_id);
+
+ALTER TABLE pipeline_jobs DROP COLUMN audio_ref;
+ALTER TABLE pipeline_jobs DROP COLUMN transcript_ref;
+ALTER TABLE pipeline_jobs DROP COLUMN key_frames_ref;
+ALTER TABLE pipeline_jobs DROP COLUMN document_ref;
+ALTER TABLE pipeline_jobs DROP COLUMN source_ref;
+
+ALTER TABLE artifacts DROP COLUMN source_ref;
+ALTER TABLE uploads DROP COLUMN source_ref;

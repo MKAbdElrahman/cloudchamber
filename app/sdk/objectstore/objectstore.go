@@ -2,6 +2,7 @@
 package objectstore
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -116,6 +117,33 @@ func (c *Client) HeadObject(ctx context.Context, bucket, key string) (info Info,
 
 	span.SetAttributes(attribute.Int64("object.size", size))
 	return Info{Size: size, ETag: etag}, nil
+}
+
+// PutObject writes one object. The caller registers the artifact after this returns.
+func (c *Client) PutObject(ctx context.Context, bucket, key, contentType string, body []byte) (err error) {
+	if bucket == "" {
+		bucket = c.bucket
+	}
+
+	ctx, span := startSpan(ctx, "objectstore.put_object",
+		attribute.String("object.bucket", bucket),
+		attribute.String("object.key", key),
+		attribute.String("object.content_type", contentType),
+		attribute.Int("object.size", len(body)),
+	)
+	defer func() { endSpan(span, err) }()
+
+	_, err = c.svc.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(body),
+		ContentType: aws.String(contentType),
+	})
+	if err != nil {
+		return fmt.Errorf("put object bucket[%s] key[%s]: %w", bucket, key, err)
+	}
+
+	return nil
 }
 
 // Bucket returns the configured default bucket.

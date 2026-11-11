@@ -11,20 +11,20 @@ import (
 
 // Job represents a pipeline job row in the database.
 type Job struct {
-	ID                 uuid.UUID `db:"job_id"`
-	OwnerID            uuid.UUID `db:"owner_id"`
-	WorkflowID         string    `db:"workflow_id"`
-	RunID              string    `db:"run_id"`
-	SourceRef          string    `db:"source_ref"`
-	IdempotencyKeyHash *string   `db:"idempotency_key_hash"`
-	Status             string    `db:"status"`
-	ErrorMessage       *string   `db:"error_message"`
-	AudioRef           *string   `db:"audio_ref"`
-	TranscriptRef      *string   `db:"transcript_ref"`
-	KeyFramesRef       *string   `db:"key_frames_ref"`
-	DocumentRef        *string   `db:"document_ref"`
-	DateCreated        time.Time `db:"date_created"`
-	DateUpdated        time.Time `db:"date_updated"`
+	ID                 uuid.UUID     `db:"job_id"`
+	OwnerID            uuid.UUID     `db:"owner_id"`
+	WorkflowID         string        `db:"workflow_id"`
+	RunID              string        `db:"run_id"`
+	InputFileID        uuid.NullUUID `db:"input_file_id"`
+	IdempotencyKeyHash *string       `db:"idempotency_key_hash"`
+	Status             string        `db:"status"`
+	ErrorMessage       *string       `db:"error_message"`
+	AudioFileID        uuid.NullUUID `db:"audio_file_id"`
+	TranscriptFileID   uuid.NullUUID `db:"transcript_file_id"`
+	KeyFramesFileID    uuid.NullUUID `db:"key_frames_file_id"`
+	DocumentFileID     uuid.NullUUID `db:"document_file_id"`
+	DateCreated        time.Time     `db:"date_created"`
+	DateUpdated        time.Time     `db:"date_updated"`
 }
 
 // ToDBJob converts a business pipeline job to a database model.
@@ -34,14 +34,14 @@ func ToDBJob(bus pipelinejobbus.Job) Job {
 		OwnerID:            bus.OwnerID,
 		WorkflowID:         bus.WorkflowID,
 		RunID:              bus.RunID,
-		SourceRef:          bus.SourceRef,
+		InputFileID:        nullFileID(bus.InputFileID),
 		IdempotencyKeyHash: bus.IdempotencyKeyHash,
 		Status:             bus.Status.String(),
 		ErrorMessage:       bus.ErrorMessage,
-		AudioRef:           bus.AudioRef,
-		TranscriptRef:      bus.TranscriptRef,
-		KeyFramesRef:       bus.KeyFramesRef,
-		DocumentRef:        bus.DocumentRef,
+		AudioFileID:        nullFileID(bus.AudioFileID),
+		TranscriptFileID:   nullFileID(bus.TranscriptFileID),
+		KeyFramesFileID:    nullFileID(bus.KeyFramesFileID),
+		DocumentFileID:     nullFileID(bus.DocumentFileID),
 		DateCreated:        bus.DateCreated.UTC(),
 		DateUpdated:        bus.DateUpdated.UTC(),
 	}
@@ -60,14 +60,14 @@ func ToBusJob(db Job) (pipelinejobbus.Job, error) {
 		OwnerID:            db.OwnerID,
 		WorkflowID:         db.WorkflowID,
 		RunID:              db.RunID,
-		SourceRef:          db.SourceRef,
+		InputFileID:        db.InputFileID.UUID,
 		IdempotencyKeyHash: db.IdempotencyKeyHash,
 		Status:             status,
 		ErrorMessage:       db.ErrorMessage,
-		AudioRef:           db.AudioRef,
-		TranscriptRef:      db.TranscriptRef,
-		KeyFramesRef:       db.KeyFramesRef,
-		DocumentRef:        db.DocumentRef,
+		AudioFileID:        db.AudioFileID.UUID,
+		TranscriptFileID:   db.TranscriptFileID.UUID,
+		KeyFramesFileID:    db.KeyFramesFileID.UUID,
+		DocumentFileID:     db.DocumentFileID.UUID,
 		DateCreated:        db.DateCreated.In(time.Local),
 		DateUpdated:        db.DateUpdated.In(time.Local),
 	}
@@ -86,4 +86,8 @@ func ToBusJobs(dbs []Job) ([]pipelinejobbus.Job, error) {
 		}
 	}
 	return bus, nil
+}
+
+func nullFileID(id uuid.UUID) uuid.NullUUID {
+	return uuid.NullUUID{UUID: id, Valid: id != uuid.Nil}
 }

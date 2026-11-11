@@ -12,6 +12,6 @@ export const env = {
   authKid: (import.meta.env.VITE_AUTH_KID as string | undefined) ?? '54bb2165-71e1-41a6-af3e-7da4a0e1e2c1',
   /** tusd endpoint, e.g. http://localhost:8180/files/ */
   tusdEndpoint: (import.meta.env.VITE_TUSD_ENDPOINT as string | undefined) ?? 'http://localhost:8180/files/',
-  /** S3-compatible artifacts bucket (used to derive canonical sourceRef client-side) */
+  /** S3-compatible artifacts bucket shown in settings. The browser does not build storage locations. */
   artifactsBucket: (import.meta.env.VITE_ARTIFACTS_BUCKET as string | undefined) ?? 'cloudchamber-artifacts',
 }

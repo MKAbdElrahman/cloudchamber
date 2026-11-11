@@ -11,7 +11,7 @@ import { Text } from '@astryxdesign/core/Text'
 import { createMarkdownHeadingLinks } from '@astryxdesign/core/Markdown/plugins'
 import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
 import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKindOf, mediaLabel } from '@/features/outputs'
-import { JobOpenIcons, JobPeek, JobStatusLabel, createJob, jobPhase, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
+import { JobOpenIcons, JobPeek, JobStages, JobStatusLabel, cancelJob, createJob, isTerminalJobStatus, jobPhase, useJobProgress, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
 import { ForeignProjectNotice, ProjectTrail, type ProjectFile } from '@/features/projects'
 import { ApiError } from '@/shared/api'
 import { PageHeader, PendingLines, SHELL_NARROW_QUERY, TEXT_CONTENT_WIDTH, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
@@ -60,6 +60,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const resolvedJobId = jobIdParam || matchedJob?.id || null
   const jobQuery = usePipelineJob(token, resolvedJobId)
   const job = jobQuery.data ?? matchedJob
+  const progress = useJobProgress(job)
   const foreign = Boolean(job?.projectId && job.projectId !== projectId)
   const source = sourceFile(filesQuery.data ?? [], job?.fileId || sourceId)
   const fileName = job?.fileName || source?.name
@@ -101,6 +102,18 @@ export function JobFilePage({ token }: JobFilePageProps) {
       await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
       await queryClient.invalidateQueries({ queryKey: ['project-files', projectId] })
       navigate(WORKSPACE_PATHS.job(projectId, created.id))
+    },
+  })
+
+  const canCancel = Boolean(job && !foreign && !isTerminalJobStatus(visibleJobStatus(job)))
+  const cancel = useMutation({
+    mutationFn: () => {
+      if (!job) throw new Error('This conversion is not open.')
+      return cancelJob(token, job.id)
+    },
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({ queryKey: ['pipeline-job', updated.id] })
+      await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs'] })
     },
   })
 
@@ -185,6 +198,16 @@ export function JobFilePage({ token }: JobFilePageProps) {
                       }}
                     />
                   ) : null}
+                  {canCancel ? (
+                    <Button
+                      label={cancel.isSuccess ? 'Canceling' : 'Cancel conversion'}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => cancel.mutate()}
+                      isLoading={cancel.isPending || cancel.isSuccess}
+                      isDisabled={cancel.isPending || cancel.isSuccess}
+                    />
+                  ) : null}
                   {badgeStatus && jobPhase(badgeStatus) !== 'finished' ? <JobStatusLabel status={badgeStatus} /> : null}
                   {!job && source ? (
                     <Button
@@ -215,6 +238,13 @@ export function JobFilePage({ token }: JobFilePageProps) {
             description={create.error instanceof ApiError ? create.error.message : (create.error as Error).message}
           />
         ) : null}
+        {cancel.isError ? (
+          <Banner
+            status="error"
+            title="Could not cancel the conversion"
+            description={cancel.error instanceof ApiError ? cancel.error.message : (cancel.error as Error).message}
+          />
+        ) : null}
         {jobQuery.isError ? (
           <Banner status="error" title="Could not load the job" description={(jobQuery.error as Error).message} />
         ) : null}
@@ -222,9 +252,10 @@ export function JobFilePage({ token }: JobFilePageProps) {
           <Banner status="error" title="Missing job" description="This project does not have that job." />
         ) : null}
 
-        {!foreign && !file && source && !pending ? (
+        {!foreign && !file && !progress && source && !pending ? (
           <Text type="supporting">The document is not written yet.</Text>
         ) : null}
+        {!foreign && !file && progress && !pending ? <JobStages progress={progress} /> : null}
 
         {!foreign && file ? (
           <VStack gap={WORKSPACE_GAP.group}>

@@ -49,14 +49,14 @@ func (a *Activities) ResolveSource(ctx context.Context, in workflow.ResolveSourc
 
 	fileID, err := uuid.Parse(in.FileID)
 	if err != nil {
-		return workflow.ResolveSourceOutput{}, fmt.Errorf("file id: %w", err)
+		return workflow.ResolveSourceOutput{}, invalidInput(ctx, "file id", err)
 	}
 	art, err := a.artifacts.QueryByFileID(a.traced(ctx), fileID)
 	if err != nil {
-		return workflow.ResolveSourceOutput{}, fmt.Errorf("load source: %w", err)
+		return workflow.ResolveSourceOutput{}, loadSourceFailure(ctx, err)
 	}
 	if _, err := a.objects.HeadObject(ctx, art.Bucket, art.ObjectKey); err != nil {
-		return workflow.ResolveSourceOutput{}, fmt.Errorf("head source: %w", err)
+		return workflow.ResolveSourceOutput{}, headSourceFailure(ctx, err)
 	}
 
 	name := art.Name
@@ -81,10 +81,10 @@ func (a *Activities) ExtractAudio(ctx context.Context, in workflow.ExtractAudioI
 
 	ownerID, err := uuid.Parse(in.OwnerID)
 	if err != nil {
-		return workflow.ExtractAudioOutput{}, fmt.Errorf("owner id: %w", err)
+		return workflow.ExtractAudioOutput{}, invalidInput(ctx, "owner id", err)
 	}
 	name := stem(in.Name) + ".wav"
-	projectID, err := parseProjectID(in.ProjectID)
+	projectID, err := parseProjectID(ctx, in.ProjectID)
 	if err != nil {
 		return workflow.ExtractAudioOutput{}, err
 	}
@@ -108,13 +108,13 @@ func (a *Activities) Transcribe(ctx context.Context, in workflow.TranscribeInput
 
 	ownerID, err := uuid.Parse(in.OwnerID)
 	if err != nil {
-		return workflow.TranscribeOutput{}, fmt.Errorf("owner id: %w", err)
+		return workflow.TranscribeOutput{}, invalidInput(ctx, "owner id", err)
 	}
 	body, err := json.Marshal(transcript(in.Name))
 	if err != nil {
 		return workflow.TranscribeOutput{}, err
 	}
-	projectID, err := parseProjectID(in.ProjectID)
+	projectID, err := parseProjectID(ctx, in.ProjectID)
 	if err != nil {
 		return workflow.TranscribeOutput{}, err
 	}
@@ -136,13 +136,13 @@ func (a *Activities) ExtractKeyFrames(ctx context.Context, in workflow.ExtractKe
 
 	ownerID, err := uuid.Parse(in.OwnerID)
 	if err != nil {
-		return workflow.ExtractKeyFramesOutput{}, fmt.Errorf("owner id: %w", err)
+		return workflow.ExtractKeyFramesOutput{}, invalidInput(ctx, "owner id", err)
 	}
 	body, err := framePNG()
 	if err != nil {
 		return workflow.ExtractKeyFramesOutput{}, err
 	}
-	projectID, err := parseProjectID(in.ProjectID)
+	projectID, err := parseProjectID(ctx, in.ProjectID)
 	if err != nil {
 		return workflow.ExtractKeyFramesOutput{}, err
 	}
@@ -161,10 +161,10 @@ func (a *Activities) ComposeExport(ctx context.Context, in workflow.ComposeExpor
 
 	ownerID, err := uuid.Parse(in.OwnerID)
 	if err != nil {
-		return workflow.ComposeExportOutput{}, fmt.Errorf("owner id: %w", err)
+		return workflow.ComposeExportOutput{}, invalidInput(ctx, "owner id", err)
 	}
 	body := []byte(documentMarkdown(in.Name, in.KeyFramesFileID != ""))
-	projectID, err := parseProjectID(in.ProjectID)
+	projectID, err := parseProjectID(ctx, in.ProjectID)
 	if err != nil {
 		return workflow.ComposeExportOutput{}, err
 	}
@@ -176,22 +176,29 @@ func (a *Activities) ComposeExport(ctx context.Context, in workflow.ComposeExpor
 	return workflow.ComposeExportOutput{JobID: in.JobID, FileID: fileID.String()}, nil
 }
 
-func parseProjectID(raw string) (uuid.UUID, error) {
+func parseProjectID(ctx context.Context, raw string) (uuid.UUID, error) {
 	if raw == "" {
 		return uuid.Nil, nil
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("project id: %w", err)
+		return uuid.Nil, invalidInput(ctx, "project id", err)
 	}
 	return id, nil
 }
 
 func (a *Activities) publish(ctx context.Context, jobID string, ownerID, projectID uuid.UUID, kind, name, contentType string, body []byte) (uuid.UUID, error) {
+	if err := contextDone(ctx, "before-publish"); err != nil {
+		return uuid.Nil, err
+	}
+
 	ctx = a.traced(ctx)
 	fileID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(jobID+"/"+kind))
 	key := fmt.Sprintf("outputs/%s/%s", ownerID, fileID)
 	if err := a.objects.PutObject(ctx, "", key, contentType, body); err != nil {
+		return uuid.Nil, err
+	}
+	if err := contextDone(ctx, "before-register"); err != nil {
 		return uuid.Nil, err
 	}
 	if _, err := a.artifacts.Register(ctx, artifactbus.NewArtifact{

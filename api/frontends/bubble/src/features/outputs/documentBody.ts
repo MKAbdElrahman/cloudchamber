@@ -21,7 +21,7 @@ export function mockDocumentMarkdown(input: { title: string; sourceLabel: string
   const named = input.title === 'Document' ? '' : ` for ${input.title}`
   const fromFile = /\.[a-z0-9]+$/i.test(input.sourceLabel)
   const source = fromFile ? `\`${input.sourceLabel}\`` : 'the recording'
-  return `Notes${named}, composed from ${source}. The recording was transcribed, then sectioned and paired with the frames that carry the slides.
+  return `Notes${named}, composed from ${source}. The recording was transcribed, and the document is one Markdown file in this project. A video may also have a key frame stored beside it.
 
 # Opening
 
@@ -31,7 +31,7 @@ export function mockDocumentMarkdown(input: { title: string; sourceLabel: string
 
 **4:12** — The first claim, in the speaker's words, followed by the example that supports it.
 
-> Frame at 4:18. A slide with three boxes: the recording, the transcript, and this document.
+> A key frame stored for this video. It is not timed to a transcript line.
 
 **11:05** — A second point. The term is defined before it is used again.
 

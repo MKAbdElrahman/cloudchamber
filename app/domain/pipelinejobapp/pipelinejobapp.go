@@ -229,12 +229,14 @@ func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "pipeline job missing in context: %s", err)
 	}
 
-	job, err = a.reconcile(ctx, job)
+	job, activity, err := a.reconcile(ctx, job)
 	if err != nil {
 		a.log.Error(ctx, "pipelinejob.reconcile", "err", err, "job_id", job.ID)
 	}
 
-	return a.appJob(ctx, job)
+	appJob := a.appJob(ctx, job)
+	appJob.Activity = activity
+	return appJob
 }
 
 func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
@@ -243,15 +245,11 @@ func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "pipeline job missing in context: %s", err)
 	}
 
+	// The request is accepted here. The execution stays open until the workflow
+	// returns the cancellation error. The next read stores that closed status.
 	if err := a.temporal.CancelWorkflow(ctx, job.WorkflowID, job.RunID); err != nil {
 		a.log.Error(ctx, "pipelinejob.cancel", "err", err, "job_id", job.ID)
 		return errs.Errorf(errs.Internal, "cancel workflow: %s", err)
-	}
-
-	st, _ := pipelinejobbus.ParseStatus(pipelinejobbus.StatusCanceled)
-	job, err = a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{Status: &st, ClearError: true})
-	if err != nil {
-		a.log.Error(ctx, "pipelinejob.cancel.update", "err", err)
 	}
 
 	return a.appJob(ctx, job)
@@ -297,25 +295,30 @@ func (a *app) fileNames(ctx context.Context, jobs []pipelinejobbus.Job) map[uuid
 	return names
 }
 
-func (a *app) reconcile(ctx context.Context, job pipelinejobbus.Job) (pipelinejobbus.Job, error) {
+func (a *app) reconcile(ctx context.Context, job pipelinejobbus.Job) (pipelinejobbus.Job, string, error) {
 	if a.temporal == nil || job.WorkflowID == "" {
-		return job, nil
+		return job, "", nil
 	}
 	if job.Status.IsTerminal() {
-		return job, nil
+		return job, "", nil
 	}
 
 	desc, err := a.temporal.DescribeWorkflowExecution(ctx, job.WorkflowID, job.RunID)
 	if err != nil {
-		return job, err
+		return job, "", err
 	}
 	if desc == nil || desc.WorkflowExecutionInfo == nil {
-		return job, nil
+		return job, "", nil
 	}
 
 	status := mapTemporalStatus(desc.WorkflowExecutionInfo.Status)
+	progress, qerr := a.queryProgress(ctx, job)
+	if qerr != nil {
+		a.log.Error(ctx, "pipelinejob.progress", "err", qerr, "job_id", job.ID)
+	}
+
 	uj := pipelinejobbus.UpdateJob{}
-	changed := false
+	changed := rememberFileIDs(job, &uj, progress.AudioFileID, progress.TranscriptFileID, progress.KeyFramesFileID, progress.DocumentFileID)
 
 	if status != "" && status != job.Status.String() {
 		st, err := pipelinejobbus.ParseStatus(status)
@@ -325,42 +328,96 @@ func (a *app) reconcile(ctx context.Context, job pipelinejobbus.Job) (pipelinejo
 		}
 	}
 
-	if status == pipelinejobbus.StatusCompleted {
+	switch status {
+	case pipelinejobbus.StatusCompleted:
 		var result workflow.ProcessSourceResult
 		run := a.temporal.GetWorkflow(ctx, job.WorkflowID, job.RunID)
 		if err := run.Get(ctx, &result); err == nil {
-			if id, ok := parseFileID(result.AudioFileID); ok {
-				uj.AudioFileID = &id
-				changed = true
-			}
-			if id, ok := parseFileID(result.TranscriptFileID); ok {
-				uj.TranscriptFileID = &id
-				changed = true
-			}
-			if id, ok := parseFileID(result.KeyFramesFileID); ok {
-				uj.KeyFramesFileID = &id
-				changed = true
-			}
-			if id, ok := parseFileID(result.DocumentFileID); ok {
-				uj.DocumentFileID = &id
+			if rememberFileIDs(job, &uj, result.AudioFileID, result.TranscriptFileID, result.KeyFramesFileID, result.DocumentFileID) {
 				changed = true
 			}
 		}
 		uj.ClearError = true
 		changed = true
-	}
-
-	if status == pipelinejobbus.StatusFailed || status == pipelinejobbus.StatusTerminated || status == pipelinejobbus.StatusTimedOut {
+	case pipelinejobbus.StatusCanceled:
+		if progress.Activity != "" {
+			uj.ErrorMessage = &progress.Activity
+			changed = true
+		}
+	case pipelinejobbus.StatusFailed:
+		msg := a.failureText(ctx, job)
+		if msg == "" {
+			msg = status
+		}
+		uj.ErrorMessage = &msg
+		changed = true
+	case pipelinejobbus.StatusTerminated, pipelinejobbus.StatusTimedOut:
 		msg := status
 		uj.ErrorMessage = &msg
 		changed = true
 	}
 
-	if !changed {
-		return job, nil
+	activity := ""
+	if status == pipelinejobbus.StatusRunning || status == pipelinejobbus.StatusSubmitted {
+		activity = progress.Activity
 	}
 
-	return a.pipelineJobBus.Update(ctx, job, uj)
+	if !changed {
+		return job, activity, nil
+	}
+
+	updated, err := a.pipelineJobBus.Update(ctx, job, uj)
+	return updated, activity, err
+}
+
+func (a *app) queryProgress(ctx context.Context, job pipelinejobbus.Job) (workflow.ProcessSourceProgress, error) {
+	var progress workflow.ProcessSourceProgress
+	encoded, err := a.temporal.QueryWorkflow(ctx, job.WorkflowID, job.RunID, workflow.QueryProgress)
+	if err != nil {
+		return progress, err
+	}
+	if err := encoded.Get(&progress); err != nil {
+		return workflow.ProcessSourceProgress{}, err
+	}
+	return progress, nil
+}
+
+func (a *app) failureText(ctx context.Context, job pipelinejobbus.Job) string {
+	run := a.temporal.GetWorkflow(ctx, job.WorkflowID, job.RunID)
+	err := run.Get(ctx, nil)
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+func rememberFileIDs(job pipelinejobbus.Job, uj *pipelinejobbus.UpdateJob, audio, transcript, frames, document string) bool {
+	changed := false
+	if id := changedFileID(job.AudioFileID, audio); id != nil {
+		uj.AudioFileID = id
+		changed = true
+	}
+	if id := changedFileID(job.TranscriptFileID, transcript); id != nil {
+		uj.TranscriptFileID = id
+		changed = true
+	}
+	if id := changedFileID(job.KeyFramesFileID, frames); id != nil {
+		uj.KeyFramesFileID = id
+		changed = true
+	}
+	if id := changedFileID(job.DocumentFileID, document); id != nil {
+		uj.DocumentFileID = id
+		changed = true
+	}
+	return changed
+}
+
+func changedFileID(current uuid.UUID, raw string) *uuid.UUID {
+	id, ok := parseFileID(raw)
+	if !ok || id == current {
+		return nil
+	}
+	return &id
 }
 
 func mapTemporalStatus(status enumspb.WorkflowExecutionStatus) string {

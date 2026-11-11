@@ -36,6 +36,13 @@ export function getJob(token: string, jobId: string) {
   })
 }
 
+export function cancelJob(token: string, jobId: string) {
+  return apiFetch<PipelineJob>(`/v1/pipeline/jobs/${encodeURIComponent(jobId)}/cancel`, {
+    method: 'POST',
+    token,
+  })
+}
+
 export function normalizeJobs(data: JobsQuery): PipelineJob[] {
   if (Array.isArray(data)) return data
   if (data && Array.isArray(data.items)) return data.items

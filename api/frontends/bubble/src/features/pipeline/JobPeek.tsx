@@ -11,7 +11,8 @@ import { WORKSPACE_GAP } from '@/shared/spacing'
 import { readFileURL } from './api'
 import { JobStages } from './JobStages'
 import { JobStatusLabel } from './JobStatusLabel'
-import { jobOutcomeBanner, visibleJobStatus } from './jobStatus'
+import { conversionNotice } from './jobProgress'
+import { visibleJobStatus } from './jobStatus'
 import { useJobProgress } from './useJobProgress'
 import { usePipelineJob } from './usePipelineJob'
 
@@ -45,7 +46,7 @@ export function JobPeek({
   const jobQuery = usePipelineJob(token, pipelineJobId)
   const job = jobQuery.data
   const progress = useJobProgress(job)
-  const outcome = job ? jobOutcomeBanner(job.status) : null
+  const notice = progress ? conversionNotice(progress.phase, progress.stages) : null
   const fileId = videoOpen ? video?.fileId : undefined
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [held, setHeld] = useState<{ fileId: string; src: string } | null>(null)
@@ -125,7 +126,7 @@ export function JobPeek({
             header={
               <DrawerHeader
                 title={pipelineName}
-                subtitle={progress?.headline}
+                subtitle={notice ? undefined : progress?.headline}
                 endContent={job ? <JobStatusLabel status={visibleJobStatus(job)} /> : undefined}
                 onOpenChange={onPipelineOpenChange}
               />
@@ -137,14 +138,7 @@ export function JobPeek({
                   {jobQuery.isError ? (
                     <Banner status="error" title="Could not load the job" description={(jobQuery.error as Error).message} />
                   ) : null}
-                  {job && progress ? (
-                    <>
-                      {job.errorMessage && outcome ? (
-                        <Banner status={outcome.status} title={outcome.title} description={job.errorMessage} />
-                      ) : null}
-                      <JobStages progress={progress} />
-                    </>
-                  ) : null}
+                  {job && progress ? <JobStages progress={progress} /> : null}
                 </VStack>
               </LayoutContent>
             }

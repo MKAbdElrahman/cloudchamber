@@ -26,7 +26,7 @@ import {
   useProjects,
   type Project,
 } from '@/features/projects'
-import { listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
+import { jobNeedsOpen, listJobs, normalizeJobs, openUnsettledJobs, type PipelineJob } from '@/features/pipeline'
 import { filesFromJob } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
@@ -159,7 +159,8 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       const projectList = await listProjects(token)
       const pairs = await Promise.all(
         projectList.map(async (project) => {
-          const jobs = normalizeJobs(await listJobs(token, project.id)).filter((job) => job.projectId === project.id)
+          const listed = normalizeJobs(await listJobs(token, project.id)).filter((job) => job.projectId === project.id)
+          const jobs = await openUnsettledJobs(token, listed)
           return [project.id, jobs] as const
         }),
       )
@@ -168,6 +169,8 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       }
     },
     staleTime: 30_000,
+    refetchInterval: (query) =>
+      Object.values(query.state.data?.jobsByProject ?? {}).some((jobs) => jobs.some(jobNeedsOpen)) ? 3_000 : false,
   })
 
   async function refresh() {

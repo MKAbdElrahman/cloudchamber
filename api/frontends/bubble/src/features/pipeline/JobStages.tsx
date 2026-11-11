@@ -1,80 +1,43 @@
-import {
-  CheckCircleIcon,
-  ClockIcon,
-  NoSymbolIcon,
-  PauseCircleIcon,
-  XCircleIcon,
-} from '@heroicons/react/24/outline'
-
-import { Icon } from '@astryxdesign/core/Icon'
+import { Banner } from '@astryxdesign/core/Banner'
 import { VStack } from '@astryxdesign/core/Layout'
-import { List, ListItem } from '@astryxdesign/core/List'
-import { ProgressBar, type ProgressBarVariant } from '@astryxdesign/core/ProgressBar'
-import { Spinner } from '@astryxdesign/core/Spinner'
+import { Step, Stepper } from '@astryxdesign/core/Stepper'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
+import { conversionNotice, type JobProgress, type JobStageView } from './jobProgress'
 import type { JobPhase } from './jobStatus'
-import type { JobProgress, JobStageView } from './jobProgress'
 
-function barVariant(phase: JobPhase): ProgressBarVariant {
+function stepStatus(stage: JobStageView, phase: JobPhase): 'error' | 'warning' | undefined {
+  if (stage.state !== 'failed' && stage.state !== 'canceled' && stage.state !== 'paused') return undefined
   switch (phase) {
-    case 'finished':
-      return 'success'
     case 'failed':
       return 'error'
-    case 'paused':
     case 'canceled':
+    case 'paused':
       return 'warning'
     case 'waiting':
-      return 'neutral'
     case 'running':
-      return 'accent'
+    case 'finished':
+      return undefined
   }
 }
 
-function stageMark(stage: JobStageView, phase: JobPhase) {
-  if (stage.state === 'current' && phase === 'waiting') {
-    return <Icon icon={ClockIcon} size="sm" color="accent" />
-  }
-  switch (stage.state) {
-    case 'done':
-      return <Icon icon={CheckCircleIcon} size="sm" color="success" />
-    case 'current':
-      return <Spinner size="sm" shade="inherit" aria-label="Working" />
-    case 'paused':
-      return <Icon icon={PauseCircleIcon} size="sm" color="warning" />
-    case 'failed':
-      return <Icon icon={XCircleIcon} size="sm" color="error" />
-    case 'canceled':
-      return <Icon icon={NoSymbolIcon} size="sm" color="warning" />
-    case 'upcoming':
-      return <Icon icon={ClockIcon} size="sm" color="disabled" />
-  }
-}
-
-/** The same six stages in every outcome. The marks and the bar carry the phase. */
+/** The five activities. A stopped job leads with the notice; the stepper is the sequence. */
 export function JobStages({ progress }: { progress: JobProgress }) {
+  const notice = conversionNotice(progress.phase, progress.stages, progress.reason)
   return (
     <VStack gap={WORKSPACE_GAP.group}>
-      <ProgressBar
-        label="Stages"
-        value={progress.completedCount}
-        max={progress.stages.length}
-        hasValueLabel
-        formatValueLabel={(value, max) => `${value} of ${max}`}
-        variant={barVariant(progress.phase)}
-        isDisabled={progress.phase === 'canceled'}
-      />
-      <List hasDividers aria-label="Stages">
-        {progress.stages.map((stage) => (
-          <ListItem
+      {notice ? <Banner status={notice.status} title={notice.title} description={notice.description} /> : null}
+      <Stepper orientation="vertical" activeStep={progress.activeStep} label="Conversion">
+        {progress.stages.map((stage, index) => (
+          <Step
             key={stage.id}
+            step={index}
             label={stage.label}
-            description={stage.detail}
-            startContent={stageMark(stage, progress.phase)}
+            description={stage.state === 'upcoming' ? undefined : stage.detail}
+            status={stepStatus(stage, progress.phase)}
           />
         ))}
-      </List>
+      </Stepper>
     </VStack>
   )
 }

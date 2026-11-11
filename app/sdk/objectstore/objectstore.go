@@ -204,6 +204,11 @@ func (c *Client) DeleteObject(ctx context.Context, bucket, key string) (err erro
 	return nil
 }
 
+// IsMissing reports whether err is a missing object. A wrapped store error still matches.
+func IsMissing(err error) bool {
+	return missingObject(err)
+}
+
 func missingObject(err error) bool {
 	var apiErr smithy.APIError
 	if !errors.As(err, &apiErr) {

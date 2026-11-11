@@ -13,22 +13,25 @@ import (
 
 // Job represents a pipeline job returned to clients.
 type Job struct {
-	ID               string  `json:"id"`
-	OwnerID          string  `json:"ownerId"`
-	WorkflowID       string  `json:"workflowId"`
-	RunID            string  `json:"runId"`
-	ProjectID        string  `json:"projectId,omitempty"`
-	FileID           string  `json:"fileId,omitempty"`
-	FileName         string  `json:"fileName,omitempty"`
-	Status           string  `json:"status"`
-	ErrorMessage     *string `json:"errorMessage,omitempty"`
-	AudioFileID      string  `json:"audioFileId,omitempty"`
-	TranscriptFileID string  `json:"transcriptFileId,omitempty"`
-	KeyFramesFileID  string  `json:"keyFramesFileId,omitempty"`
-	DocumentFileID   string  `json:"documentFileId,omitempty"`
-	DocumentName     string  `json:"documentName,omitempty"`
-	DateCreated      string  `json:"dateCreated"`
-	DateUpdated      string  `json:"dateUpdated"`
+	ID           string  `json:"id"`
+	OwnerID      string  `json:"ownerId"`
+	WorkflowID   string  `json:"workflowId"`
+	RunID        string  `json:"runId"`
+	ProjectID    string  `json:"projectId,omitempty"`
+	FileID       string  `json:"fileId,omitempty"`
+	FileName     string  `json:"fileName,omitempty"`
+	Status       string  `json:"status"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
+	// Activity is the activity the open execution is in. A closed job leaves this empty;
+	// the stored error message carries the activity name.
+	Activity         string `json:"activity,omitempty"`
+	AudioFileID      string `json:"audioFileId,omitempty"`
+	TranscriptFileID string `json:"transcriptFileId,omitempty"`
+	KeyFramesFileID  string `json:"keyFramesFileId,omitempty"`
+	DocumentFileID   string `json:"documentFileId,omitempty"`
+	DocumentName     string `json:"documentName,omitempty"`
+	DateCreated      string `json:"dateCreated"`
+	DateUpdated      string `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.

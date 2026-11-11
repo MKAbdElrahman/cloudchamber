@@ -7,6 +7,19 @@ type ProcessSourceInput struct {
 	FileID  string `json:"file_id"`
 }
 
+// QueryProgress is the workflow query that returns the file ids already held and the activity in flight.
+const QueryProgress = "pipeline.progress"
+
+// ProcessSourceProgress is the state a query reads. It is not the workflow result.
+// A non-nil workflow error drops the result, so this value lives in workflow variables.
+type ProcessSourceProgress struct {
+	Activity         string `json:"activity"`
+	AudioFileID      string `json:"audio_file_id,omitempty"`
+	TranscriptFileID string `json:"transcript_file_id,omitempty"`
+	KeyFramesFileID  string `json:"key_frames_file_id,omitempty"`
+	DocumentFileID   string `json:"document_file_id,omitempty"`
+}
+
 // ProcessSourceResult is the workflow output. Each output is a file id, empty when that step produced nothing.
 type ProcessSourceResult struct {
 	JobID            string `json:"job_id"`

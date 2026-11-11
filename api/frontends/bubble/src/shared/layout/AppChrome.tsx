@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 
 import { AppShell } from '@astryxdesign/core/AppShell'
 import { HStack, Layout, LayoutContent } from '@astryxdesign/core/Layout'
-import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav'
 import {
   SideNav,
   SideNavCollapseButton,
+  SideNavHeading,
   SideNavItem,
   SideNavSection,
 } from '@astryxdesign/core/SideNav'
@@ -26,9 +26,9 @@ type AppChromeProps = {
 }
 
 /**
- * App shell. Fills the viewport (height fill = 100dvh) and swaps regions:
+ * One bar. The product name lives in the side nav; there is no top bar.
  *   >= md (768)   SideNav, resizable 200–400, default 260
- *   < md          SideNav moves into the mobile drawer
+ *   < md          that nav becomes the mobile bar and drawer
  * Settings drops its own start panel at lg (1024); see SHELL_NARROW_QUERY.
  */
 export function AppChrome({ children, section, accountName, onSignOut }: AppChromeProps) {
@@ -38,12 +38,6 @@ export function AppChrome({ children, section, accountName, onSignOut }: AppChro
       contentPadding={0}
       variant="elevated"
       mobileNav={{ breakpoint: 'md' }}
-      topNav={
-        <TopNav
-          label="CloudChamber"
-          heading={<TopNavHeading heading="CloudChamber" />}
-        />
-      }
       sideNav={
         <SideNav
           aria-label="Workspace navigation"
@@ -55,7 +49,8 @@ export function AppChrome({ children, section, accountName, onSignOut }: AppChro
             autoSaveId: 'bubble.shell-sidenav',
           }}
           header={
-            <HStack gap={WORKSPACE_GAP.local} vAlign="center" width="100%">
+            <HStack gap={WORKSPACE_GAP.local} vAlign="center" justify="between" width="100%">
+              <SideNavHeading heading="CloudChamber" headingHref={WORKSPACE_PATHS.home} />
               <SideNavCollapseButton size="sm" />
             </HStack>
           }

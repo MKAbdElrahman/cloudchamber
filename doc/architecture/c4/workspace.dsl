@@ -28,7 +28,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     grpcauthapp = component "grpcauthapp" "Checks a token for another service." "Go"
                     userbus = component "userbus" "The account record used to sign in." "Go"
                 }
-                uploadService = container "Upload service (tusd)" "tusd server for resumable video/audio uploads. Stores bytes in artifact storage. Hooks on the API service check the project, record the artifact, and refuse download. The browser never reads bytes from tusd." "tusd (Go)" "Service"
+                uploadService = container "Upload service" "Accepts a recording and stores it." "tusd" "Service"
             }
             group "Pipeline orchestration (Temporal)" {
                 temporalServer = container "Temporal Service" "Durable workflow orchestration cluster/frontend for workflows, task queues, retries, and visibility (dev: auto-setup)." "Temporal" "Service"
@@ -57,7 +57,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         // C2 — containers (container view only; no component endpoints)
         endUser -> cloudchamber.authAPI "Authenticates through" "HTTPS/JSON"
         endUser -> cloudchamber.apiService "Calls business APIs on" "HTTPS/JSON"
-        endUser -> cloudchamber.uploadService "Uploads recordings to, resumably (tus)" "HTTPS"
+        endUser -> cloudchamber.uploadService "Uploads a recording" "HTTPS"
         operator -> cloudchamber.adminUI "Opens admin UI in" "HTTPS"
         cloudchamber.adminUI -> cloudchamber.authAPI "Authenticates through" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService "Makes API requests to" "HTTPS/JSON"
@@ -71,8 +71,8 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService -> cloudchamber.temporalServer "Starts and queries CloudChamber pipeline workflows via" "gRPC"
         cloudchamber.apiService -> cloudchamber.artifactStore "Signs a short-lived read URL, and deletes an object the caller owns"
         endUser -> cloudchamber.artifactStore "Reads an owned file through a short-lived URL" "S3 API"
-        cloudchamber.uploadService -> cloudchamber.artifactStore "Stores upload data in" "S3 API"
-        cloudchamber.uploadService -> cloudchamber.apiService "Calls hooks (pre-create, pre-finish, pre-terminate, post-terminate)" "HTTPS/JSON"
+        cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording" "S3 API"
+        cloudchamber.uploadService -> cloudchamber.apiService "Asks the API to check and record the file" "HTTPS/JSON"
         cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads the source and writes audio and key frames in the same project"
@@ -92,7 +92,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService.projectapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.pipelineapp -> cloudchamber.postgres "Copies the source file's owner and project onto the job" "SQL/TCP"
         cloudchamber.apiService.pipelineapp -> cloudchamber.temporalServer "Starts and queries workflows via" "gRPC"
-        cloudchamber.uploadService -> cloudchamber.apiService.uploadapp "Asks the API to check the project and record the finished file" "HTTPS/JSON"
+        cloudchamber.uploadService -> cloudchamber.apiService.uploadapp "Asks the API to check and record the file" "HTTPS/JSON"
         cloudchamber.apiService.uploadapp -> cloudchamber.authAPI.grpcauthapp "Checks the caller" "gRPC"
         cloudchamber.apiService.uploadapp -> cloudchamber.artifactStore "Confirms the uploaded object is stored"
         cloudchamber.apiService.uploadapp -> cloudchamber.postgres "Records the upload and the file" "SQL/TCP"
@@ -106,54 +106,54 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.authAPI.userbus -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
 
         development = deploymentEnvironment "Development" {
-            deploymentNode "Developer machine" "Browser, kubectl, and Kind cluster access." "Linux workstation" "1" {
-                deploymentNode "Local web tier" "Admin UI via Vite; API via localhost port-forwards or Kind hostPort." "Web Browser" "1" {
+            deploymentNode "Developer machine" "Your machine." "Linux workstation" "1" {
+                deploymentNode "Local web tier" "The browser." "Web Browser" "1" {
                     containerInstance cloudchamber.adminUI
                 }
-                deploymentNode "Kind cluster (cloudchamber-dev)" "KIND config under zarf/k8s/dev/kind-config.yaml." "kind.x-k8s.io" "1" {
-                    deploymentNode "Namespace cloudchamber-system" "Kustomize manifests under zarf/k8s/dev/*." "Kubernetes namespace" "1" {
-                        deploymentNode "Application services" "Core API, auth, and metrics workloads." "Workload group" "1" {
-                            deploymentNode "Workload: CloudChamber" "CloudChamber API + metrics sidecar pattern." "Deployment" "1" {
+                deploymentNode "Kind cluster (cloudchamber-dev)" "The local cluster." "kind.x-k8s.io" "1" {
+                    deploymentNode "Namespace cloudchamber-system" "Dev namespace." "Kubernetes namespace" "1" {
+                        deploymentNode "Application services" "API, auth, and upload." "Workload group" "1" {
+                            deploymentNode "Workload: CloudChamber" "API and metrics." "Deployment" "1" {
                                 containerInstance cloudchamber.apiService
                                 containerInstance cloudchamber.metricsAPI
                             }
-                            deploymentNode "Workload: auth" "Auth service Deployment." "Deployment" "1" {
+                            deploymentNode "Workload: auth" "Sign-in." "Deployment" "1" {
                                 containerInstance cloudchamber.authAPI
                             }
-                            deploymentNode "Workload: tusd" "tusd resumable upload server (hooks to cloudchamber API, stores to SeaweedFS S3)." "Deployment" "1" {
+                            deploymentNode "Workload: tusd" "Uploads." "Deployment" "1" {
                                 containerInstance cloudchamber.uploadService
                             }
                         }
-                        deploymentNode "Pipeline orchestration" "Temporal control plane and visibility (dev)." "Workload group" "1" {
-                            deploymentNode "Workload: temporal-server" "Temporal server (auto-setup, dev)." "Deployment" "1" {
+                        deploymentNode "Pipeline orchestration" "Workflow control." "Workload group" "1" {
+                            deploymentNode "Workload: temporal-server" "Workflow server." "Deployment" "1" {
                                 containerInstance cloudchamber.temporalServer
                             }
-                            deploymentNode "Workload: temporal-ui" "Temporal UI." "Deployment" "1" {
+                            deploymentNode "Workload: temporal-ui" "Workflow view." "Deployment" "1" {
                                 containerInstance cloudchamber.temporalUI
                             }
                         }
-                        deploymentNode "Artifact & data stores" "Application, Temporal, and artifact persistence." "Workload group" "1" {
-                            deploymentNode "Workload: database" "PostgreSQL StatefulSet or external DB." "StatefulSet" "1" {
+                        deploymentNode "Artifact & data stores" "Databases and files." "Workload group" "1" {
+                            deploymentNode "Workload: database" "Application data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.postgres
                             }
-                            deploymentNode "Workload: temporal-database" "Temporal PostgreSQL StatefulSet (physical isolation, dev)." "StatefulSet" "1" {
+                            deploymentNode "Workload: temporal-database" "Workflow data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.temporalPostgres
                             }
-                            deploymentNode "Workload: seaweedfs" "Dev artifact storage." "Deployment" "1" {
+                            deploymentNode "Workload: seaweedfs" "Files." "Deployment" "1" {
                                 containerInstance cloudchamber.artifactStore
                             }
                         }
-                        deploymentNode "Pipeline workers" "One deployment for each task queue. Dev activities are simulated stand-ins." "Workload group" "1" {
-                            deploymentNode "Workload: workflow-worker" "Workflow worker." "Deployment" "1" {
+                        deploymentNode "Pipeline workers" "One worker for each step." "Workload group" "1" {
+                            deploymentNode "Workload: workflow-worker" "Workflow." "Deployment" "1" {
                                 containerInstance cloudchamber.workflowWorker
                             }
-                            deploymentNode "Workload: media-worker" "Media worker." "Deployment" "1" {
+                            deploymentNode "Workload: media-worker" "Audio and frames." "Deployment" "1" {
                                 containerInstance cloudchamber.mediaWorker
                             }
-                            deploymentNode "Workload: asr-worker" "ASR worker." "Deployment" "1" {
+                            deploymentNode "Workload: asr-worker" "Transcript." "Deployment" "1" {
                                 containerInstance cloudchamber.asrWorker
                             }
-                            deploymentNode "Workload: render-worker" "Render worker." "Deployment" "1" {
+                            deploymentNode "Workload: render-worker" "Document." "Deployment" "1" {
                                 containerInstance cloudchamber.renderWorker
                             }
                         }
@@ -163,69 +163,69 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         }
 
         production = deploymentEnvironment "Production" {
-            deploymentNode "Client access" "End users and operators access the platform over HTTPS." "Internet / corporate network" "1" {
-                deploymentNode "Ingress / load balancing" "TLS termination, routing, WAF/rate-limiting as needed." "Ingress / LB" "1" {
-                    infrastructureNode "HTTPS entrypoint" "Routes to admin UI, API, and auth endpoints." "Load balancer / ingress"
+            deploymentNode "Client access" "People using the product." "Internet" "1" {
+                deploymentNode "Ingress / load balancing" "HTTPS entry." "Ingress" "1" {
+                    infrastructureNode "HTTPS entrypoint" "Routes requests." "Load balancer"
                 }
             }
 
-            deploymentNode "Kubernetes / cloud platform (conceptual)" "Vendor-neutral production runtime; workloads scaled and operated per profile." "Managed platform" "1" {
-                deploymentNode "Application tier" "Stateless/control-plane services." "Workload group" "1" {
-                    deploymentNode "admin-ui" "Static/admin UI delivery." "Deployment / CDN" "1" {
+            deploymentNode "Kubernetes / cloud platform" "Where the services run." "Managed platform" "1" {
+                deploymentNode "Application tier" "API, auth, and upload." "Workload group" "1" {
+                    deploymentNode "admin-ui" "Admin site." "Deployment" "1" {
                         containerInstance cloudchamber.adminUI
                     }
-                    deploymentNode "api-service" "Primary API. Temporal client for pipeline submission and query." "Deployment (HA)" 1 {
+                    deploymentNode "api-service" "API." "Deployment" 1 {
                         containerInstance cloudchamber.apiService
                     }
-                    deploymentNode "auth-service" "Token issuance/validation." "Deployment (HA)" 1 {
+                    deploymentNode "auth-service" "Sign-in." "Deployment" 1 {
                         containerInstance cloudchamber.authAPI
                     }
-                    deploymentNode "upload-service (tusd)" "tusd resumable upload server; hooks to the API service, stores to S3-compatible artifact storage." "Deployment (HA)" 1 {
+                    deploymentNode "upload-service" "Uploads." "Deployment" 1 {
                         containerInstance cloudchamber.uploadService
                     }
-                    deploymentNode "metrics" "Metrics scrape/publish." "Deployment / sidecar" "1" {
+                    deploymentNode "metrics" "Metrics." "Deployment" "1" {
                         containerInstance cloudchamber.metricsAPI
                     }
                 }
 
-                deploymentNode "Pipeline orchestration (Temporal)" "Managed or self-hosted HA Temporal cluster." "Workload group" "1" {
-                    deploymentNode "temporal-service" "Temporal frontend/history/matching/worker services (HA)." "Temporal cluster" 1 {
+                deploymentNode "Pipeline orchestration" "Workflow control." "Workload group" "1" {
+                    deploymentNode "temporal-service" "Workflow server." "Temporal" 1 {
                         containerInstance cloudchamber.temporalServer
                     }
-                    deploymentNode "temporal-ui" "Workflow visibility (restricted access)." "Deployment" "1" {
+                    deploymentNode "temporal-ui" "Workflow view." "Deployment" "1" {
                         containerInstance cloudchamber.temporalUI
                     }
                 }
 
-                deploymentNode "Pipeline execution (split by capability)" "Independent worker pools scaled by queue/profile; idempotent activities, heartbeats/timeouts." "Workload group" "1" {
-                    deploymentNode "workflow-workers" "Poll cloudchamber-workflow queue." "Deployment (HPA)" 1 {
+                deploymentNode "Pipeline workers" "One pool for each step." "Workload group" "1" {
+                    deploymentNode "workflow-workers" "Workflow." "Deployment" 1 {
                         containerInstance cloudchamber.workflowWorker
                     }
-                    deploymentNode "media-workers" "CPU/I/O media activities (ffmpeg/extract)." "Deployment (HPA)" 1 {
+                    deploymentNode "media-workers" "Audio and frames." "Deployment" 1 {
                         containerInstance cloudchamber.mediaWorker
                     }
-                    deploymentNode "asr-workers" "Transcription activities (CPU/GPU/model-backed)." "Deployment (HPA)" 1 {
+                    deploymentNode "asr-workers" "Transcript." "Deployment" 1 {
                         containerInstance cloudchamber.asrWorker
                     }
-                    deploymentNode "render-workers" "Compose/export (Markdown/Typst PDF)." "Deployment (HPA)" 1 {
+                    deploymentNode "render-workers" "Document." "Deployment" 1 {
                         containerInstance cloudchamber.renderWorker
                     }
                 }
 
-                deploymentNode "Artifact & data stores" "Managed/persistent stores; workflows pass refs/IDs only." "Workload group" "1" {
-                    deploymentNode "application-db" "Primary relational database (HA/backups as required)." "Managed PostgreSQL / HA" "1" {
+                deploymentNode "Artifact & data stores" "Databases and files." "Workload group" "1" {
+                    deploymentNode "application-db" "Application data." "PostgreSQL" "1" {
                         containerInstance cloudchamber.postgres
                     }
-                    deploymentNode "temporal-persistence" "Temporal persistence/visibility database (operated for HA)." "Managed PostgreSQL / HA" "1" {
+                    deploymentNode "temporal-persistence" "Workflow data." "PostgreSQL" "1" {
                         containerInstance cloudchamber.temporalPostgres
                     }
-                    deploymentNode "artifact-storage" "Artifact storage." "S3-compatible object store" "1" {
+                    deploymentNode "artifact-storage" "Files." "S3-compatible" "1" {
                         containerInstance cloudchamber.artifactStore
                     }
                 }
 
-                deploymentNode "Observability & operations" "Logs, metrics, traces, alerts (conceptual)." "Platform services" "1" {
-                    infrastructureNode "Telemetry stack" "OTEL/metrics/logs/traces, dashboards, alerting." "Observability"
+                deploymentNode "Observability" "Logs, metrics, and traces." "Platform services" "1" {
+                    infrastructureNode "Telemetry" "Logs, metrics, and traces." "Observability"
                 }
             }
         }
@@ -298,15 +298,15 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         }
 
         deployment * development "DeploymentDevKind" {
-            title "Deployment view: Development (Kind)"
-            description "Local Kind layout for cloudchamber-dev (namespace cloudchamber-system), grouped by application, orchestration, artifact/data stores, and workers."
+            title "Deployment view: Development"
+            description "The local cluster."
             include *
             autoLayout tb
         }
 
         deployment * production "DeploymentProduction" {
-            title "Deployment view: Production (conceptual)"
-            description "Vendor-neutral production-like topology: HA API/Auth/Temporal, split capability worker pools, and S3-compatible artifact storage (refs/IDs only)."
+            title "Deployment view: Production"
+            description "The same services, run for production."
             include *
             autoLayout tb
         }

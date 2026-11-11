@@ -44,6 +44,6 @@ A person opens a recording. The API checks they own it and returns a short-lived
 
 ### Development deployment
 
-Local work targets a small Kubernetes style layout that mirrors how services run together in real environments, not one off scripts per developer.
+Local work runs the same services together in one cluster.
 
 ![](embed:DeploymentDevKind)

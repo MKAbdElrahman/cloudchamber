@@ -29,9 +29,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/stores/auditdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/stores/pipelinejobpg"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus/extensions/productotel"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus/stores/productpg"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/extensions/projectotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/stores/projectdb"
@@ -42,9 +39,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/extensions/userotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/usercache"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/userdb"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/vproductbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/vproductbus/extensions/vproductotel"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/vproductbus/stores/vproductdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/delegate"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
@@ -207,17 +201,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	userStorage := usercache.NewStore(log, userdb.NewStore(log, db), time.Minute)
 	userBus := userbus.NewBusiness(log, delegate, userStorage, userOtelExt, userAuditExt)
 
-	productOtelExt := productotel.NewExtension()
-	productStorage := productpg.NewStore(log, db)
-	productBus := productbus.NewBusiness(log, userBus, delegate, productStorage, productOtelExt)
-
 	projectOtelExt := projectotel.NewExtension()
 	projectStorage := projectdb.NewStore(log, db)
 	projectBus := projectbus.NewBusiness(projectStorage, projectOtelExt)
-
-	vproductOtelExt := vproductotel.NewExtension()
-	vproductStorage := vproductdb.NewStore(log, db)
-	vproductBus := vproductbus.NewBusiness(vproductStorage, vproductOtelExt)
 
 	pipelineJobStorage := pipelinejobpg.NewStore(log, db)
 	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelineJobStorage)
@@ -334,9 +320,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		BusConfig: mux.BusConfig{
 			AuditBus:       auditBus,
 			UserBus:        userBus,
-			ProductBus:     productBus,
 			ProjectBus:     projectBus,
-			VProductBus:    vproductBus,
 			PipelineJobBus: pipelineJobBus,
 			UploadBus:      uploadBus,
 			ArtifactBus:    artifactBus,

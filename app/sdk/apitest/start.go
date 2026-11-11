@@ -48,10 +48,8 @@ func New(t *testing.T, testName string) *Test {
 		Log: db.Log,
 		DB:  db.DB,
 		BusConfig: mux.BusConfig{
-			AuditBus:    db.BusDomain.Audit,
-			UserBus:     db.BusDomain.User,
-			ProductBus:  db.BusDomain.Product,
-			VProductBus: db.BusDomain.VProduct,
+			AuditBus: db.BusDomain.Audit,
+			UserBus:  db.BusDomain.User,
 		},
 		CloudChamberConfig: mux.CloudChamberConfig{
 			AuthClient: authClient,

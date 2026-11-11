@@ -8,13 +8,10 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/auditapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/productapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/rawapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/tranapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/vproductapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
@@ -35,12 +32,6 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		DB:    cfg.DB,
 	})
 
-	productapp.Routes(app, productapp.Config{
-		Log:        cfg.Log,
-		ProductBus: cfg.BusConfig.ProductBus,
-		AuthClient: cfg.CloudChamberConfig.AuthClient,
-	})
-
 	projectapp.Routes(app, projectapp.Config{
 		Log:         cfg.Log,
 		ProjectBus:  cfg.BusConfig.ProjectBus,
@@ -49,14 +40,6 @@ func (all) Add(app *web.App, cfg mux.Config) {
 	})
 
 	rawapp.Routes(app)
-
-	tranapp.Routes(app, tranapp.Config{
-		Log:        cfg.Log,
-		DB:         cfg.DB,
-		UserBus:    cfg.BusConfig.UserBus,
-		ProductBus: cfg.BusConfig.ProductBus,
-		AuthClient: cfg.CloudChamberConfig.AuthClient,
-	})
 
 	userapp.Routes(app, userapp.Config{
 		Log:        cfg.Log,
@@ -68,13 +51,6 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		Log:        cfg.Log,
 		AuditBus:   cfg.BusConfig.AuditBus,
 		AuthClient: cfg.CloudChamberConfig.AuthClient,
-	})
-
-	vproductapp.Routes(app, vproductapp.Config{
-		Log:         cfg.Log,
-		UserBus:     cfg.BusConfig.UserBus,
-		VProductBus: cfg.BusConfig.VProductBus,
-		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
 
 	pipelinejobapp.Routes(app, pipelinejobapp.Config{

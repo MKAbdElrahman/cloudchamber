@@ -10,7 +10,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/errs"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
@@ -89,60 +88,6 @@ func AuthorizeUser(client authclient.Authenticator, userBus userbus.ExtBusiness,
 				Claims: GetClaims(ctx),
 				UserID: userID,
 				Rule:   rule,
-			}
-
-			if err := client.Authorize(ctx, auth); err != nil {
-				return errs.New(errs.Unauthenticated, err)
-			}
-
-			return next(ctx, r)
-		}
-
-		return h
-	}
-
-	return m
-}
-
-// AuthorizeProduct executes the specified role and extracts the specified
-// product from the DB if a product id is specified in the call. Depending on
-// the rule specified, the userid from the claims may be compared with the
-// specified user id from the product.
-func AuthorizeProduct(client authclient.Authenticator, productBus productbus.ExtBusiness) web.MidFunc {
-	m := func(next web.HandlerFunc) web.HandlerFunc {
-		h := func(ctx context.Context, r *http.Request) web.Encoder {
-			id := web.Param(r, "product_id")
-
-			var userID uuid.UUID
-
-			if id != "" {
-				var err error
-				productID, err := uuid.Parse(id)
-				if err != nil {
-					return errs.New(errs.Unauthenticated, ErrInvalidID)
-				}
-
-				prd, err := productBus.QueryByID(ctx, productID)
-				if err != nil {
-					switch {
-					case errors.Is(err, productbus.ErrNotFound):
-						return errs.New(errs.Unauthenticated, err)
-					default:
-						return errs.Errorf(errs.Unauthenticated, "querybyid: productID[%s]: %s", productID, err)
-					}
-				}
-
-				userID = prd.UserID
-				ctx = setProduct(ctx, prd)
-			}
-
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-
-			auth := authclient.Authorize{
-				UserID: userID,
-				Claims: GetClaims(ctx),
-				Rule:   auth.RuleAdminOrSubject,
 			}
 
 			if err := client.Authorize(ctx, auth); err != nil {

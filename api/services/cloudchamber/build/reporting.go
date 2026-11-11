@@ -4,7 +4,6 @@ package build
 
 import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/vproductapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 )
@@ -22,11 +21,5 @@ func (rpt) Add(app *web.App, cfg mux.Config) {
 		Build: cfg.Build,
 		Log:   cfg.Log,
 		DB:    cfg.DB,
-	})
-
-	vproductapp.Routes(app, vproductapp.Config{
-		UserBus:     cfg.BusConfig.UserBus,
-		VProductBus: cfg.BusConfig.VProductBus,
-		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
 }

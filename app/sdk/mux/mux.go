@@ -13,11 +13,9 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/vproductbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/jmoiron/sqlx"
@@ -74,9 +72,7 @@ type AuthConfig struct {
 type BusConfig struct {
 	AuditBus       auditbus.ExtBusiness
 	UserBus        userbus.ExtBusiness
-	ProductBus     productbus.ExtBusiness
 	ProjectBus     projectbus.ExtBusiness
-	VProductBus    vproductbus.ExtBusiness
 	PipelineJobBus pipelinejobbus.ExtBusiness
 	UploadBus      uploadbus.ExtBusiness
 	ArtifactBus    artifactbus.ExtBusiness

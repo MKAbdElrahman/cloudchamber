@@ -7,9 +7,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/auditapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/productapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/tranapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
@@ -30,11 +28,6 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 		Build: cfg.Build,
 		Log:   cfg.Log,
 		DB:    cfg.DB,
-	})
-
-	productapp.Routes(app, productapp.Config{
-		ProductBus: cfg.BusConfig.ProductBus,
-		AuthClient: cfg.CloudChamberConfig.AuthClient,
 	})
 
 	projectapp.Routes(app, projectapp.Config{
@@ -67,14 +60,6 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 		ProjectBus:  cfg.BusConfig.ProjectBus,
 		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
 		DB:          sqldb.NewBeginner(cfg.DB),
-	})
-
-	tranapp.Routes(app, tranapp.Config{
-		UserBus:    cfg.BusConfig.UserBus,
-		ProductBus: cfg.BusConfig.ProductBus,
-		Log:        cfg.Log,
-		AuthClient: cfg.CloudChamberConfig.AuthClient,
-		DB:         cfg.DB,
 	})
 
 	userapp.Routes(app, userapp.Config{

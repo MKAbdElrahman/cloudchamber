@@ -237,3 +237,8 @@ ALTER TABLE pipeline_jobs ALTER COLUMN project_id SET NOT NULL;
 -- Version: 1.14
 -- Description: Drop the unused homes table
 DROP TABLE homes;
+
+-- Version: 1.15
+-- Description: Drop the unused products table and view
+DROP VIEW view_products;
+DROP TABLE products;

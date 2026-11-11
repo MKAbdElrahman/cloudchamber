@@ -2,16 +2,14 @@ package apitest
 
 import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 )
 
 // User extends the dbtest user for api test support.
 type User struct {
 	userbus.User
-	Products []productbus.Product
-	Audits   []auditbus.Audit
-	Token    string
+	Audits []auditbus.Audit
+	Token  string
 }
 
 // SeedData represents users for api tests.

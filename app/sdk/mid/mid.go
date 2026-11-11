@@ -7,7 +7,6 @@ import (
 
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/auth"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
@@ -32,7 +31,6 @@ const (
 	claimKey ctxKey = iota + 1
 	userIDKey
 	userKey
-	productKey
 	pipelineJobKey
 	projectKey
 	trKey
@@ -86,20 +84,6 @@ func GetUser(ctx context.Context) (userbus.User, error) {
 	v, ok := ctx.Value(userKey).(userbus.User)
 	if !ok {
 		return userbus.User{}, errors.New("user not found in context")
-	}
-
-	return v, nil
-}
-
-func setProduct(ctx context.Context, prd productbus.Product) context.Context {
-	return context.WithValue(ctx, productKey, prd)
-}
-
-// GetProduct returns the product from the context.
-func GetProduct(ctx context.Context) (productbus.Product, error) {
-	v, ok := ctx.Value(productKey).(productbus.Product)
-	if !ok {
-		return productbus.Product{}, errors.New("product not found in context")
 	}
 
 	return v, nil

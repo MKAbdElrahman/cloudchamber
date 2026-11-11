@@ -4,15 +4,13 @@ import (
 	"context"
 
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 )
 
 // User represents an app user specified for the test.
 type User struct {
 	userbus.User
-	Products []productbus.Product
-	Audits   []auditbus.Audit
+	Audits []auditbus.Audit
 }
 
 // SeedData represents data that was seeded for the test.

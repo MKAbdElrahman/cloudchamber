@@ -9,7 +9,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/rawapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
@@ -38,8 +37,6 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		ArtifactBus: cfg.BusConfig.ArtifactBus,
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
-
-	rawapp.Routes(app)
 
 	userapp.Routes(app, userapp.Config{
 		Log:        cfg.Log,

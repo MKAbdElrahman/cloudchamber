@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 )
@@ -13,7 +12,6 @@ import (
 type User struct {
 	userbus.User
 	Products []productbus.Product
-	Homes    []homebus.Home
 	Audits   []auditbus.Audit
 }
 

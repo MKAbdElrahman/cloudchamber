@@ -18,7 +18,6 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             group "Application services" {
                 apiService = container "API service" "Primary HTTP API and domain routes. Starts and queries pipeline workflows." "Go" {
                     auditapp = component "auditapp" "Audit subdomain (app/domain/auditapp, business/domain/auditbus)." "Go"
-                    homeapp = component "homeapp" "Home subdomain (app/domain/homeapp, business/domain/homebus)." "Go"
                     productapp = component "productapp" "Product subdomain (app/domain/productapp, business/domain/productbus)." "Go"
                     userapp = component "userapp" "User subdomain (app/domain/userapp, business/domain/userbus)." "Go"
                     vproductapp = component "vproductapp" "VProduct read-model subdomain (app/domain/vproductapp, business/domain/vproductbus)." "Go"
@@ -92,7 +91,6 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.adminUI -> cloudchamber.apiService.auditapp "Uses audit APIs on" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService.userapp "Manages users via" "HTTPS/JSON"
         cloudchamber.apiService.auditapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.apiService.homeapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.productapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.userapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.vproductapp -> cloudchamber.postgres "Reads from" "SQL/TCP"

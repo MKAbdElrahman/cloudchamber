@@ -233,3 +233,7 @@ CREATE INDEX pipeline_jobs_project_date_idx ON pipeline_jobs (project_id, date_c
 -- Description: A file and a job must name their project
 ALTER TABLE artifacts ALTER COLUMN project_id SET NOT NULL;
 ALTER TABLE pipeline_jobs ALTER COLUMN project_id SET NOT NULL;
+
+-- Version: 1.14
+-- Description: Drop the unused homes table
+DROP TABLE homes;

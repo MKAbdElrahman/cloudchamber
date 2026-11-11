@@ -13,11 +13,8 @@
           </div>
         </v-card-title>
         <v-card-text class="d-flex pa-0">
-          <v-col cols="4">
+          <v-col cols="12">
             <user-details :user="user" />
-          </v-col>
-          <v-col cols="8">
-            <user-homes :user-id="user.id" />
           </v-col>
         </v-card-text>
       </v-card>
@@ -26,10 +23,9 @@
 </template>
 <script>
 import UserDetails from "../Users/UserDetails.vue";
-import UserHomes from "../Users/UserHomes.vue";
 
 export default {
-  components: { UserDetails, UserHomes },
+  components: { UserDetails },
   props: {
     userId: {
       type: String,

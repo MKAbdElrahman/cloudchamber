@@ -6,9 +6,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/extensions/auditotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/stores/auditdb"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus/extensions/homeotel"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus/stores/homedb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus/extensions/productotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus/stores/productpg"
@@ -29,7 +26,6 @@ import (
 type BusDomain struct {
 	Delegate *delegate.Delegate
 	Audit    auditbus.ExtBusiness
-	Home     homebus.ExtBusiness
 	Product  productbus.ExtBusiness
 	User     userbus.ExtBusiness
 	VProduct vproductbus.ExtBusiness
@@ -51,10 +47,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	productStorage := productpg.NewStore(log, db)
 	productBus := productbus.NewBusiness(log, userBus, delegate, productStorage, productOtelExt)
 
-	homeOtelExt := homeotel.NewExtension()
-	homeStorage := homedb.NewStore(log, db)
-	homeBus := homebus.NewBusiness(log, userBus, delegate, homeStorage, homeOtelExt)
-
 	vproductOtelExt := vproductotel.NewExtension()
 	vproductStorage := vproductdb.NewStore(log, db)
 	vproductBus := vproductbus.NewBusiness(vproductStorage, vproductOtelExt)
@@ -62,7 +54,6 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	return BusDomain{
 		Delegate: delegate,
 		Audit:    auditBus,
-		Home:     homeBus,
 		Product:  productBus,
 		User:     userBus,
 		VProduct: vproductBus,

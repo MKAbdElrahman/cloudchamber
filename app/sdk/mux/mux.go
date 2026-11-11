@@ -12,7 +12,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
@@ -77,7 +76,6 @@ type BusConfig struct {
 	UserBus        userbus.ExtBusiness
 	ProductBus     productbus.ExtBusiness
 	ProjectBus     projectbus.ExtBusiness
-	HomeBus        homebus.ExtBusiness
 	VProductBus    vproductbus.ExtBusiness
 	PipelineJobBus pipelinejobbus.ExtBusiness
 	UploadBus      uploadbus.ExtBusiness

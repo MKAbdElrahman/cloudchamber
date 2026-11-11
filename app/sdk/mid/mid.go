@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/auth"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
@@ -34,7 +33,6 @@ const (
 	userIDKey
 	userKey
 	productKey
-	homeKey
 	pipelineJobKey
 	projectKey
 	trKey
@@ -102,20 +100,6 @@ func GetProduct(ctx context.Context) (productbus.Product, error) {
 	v, ok := ctx.Value(productKey).(productbus.Product)
 	if !ok {
 		return productbus.Product{}, errors.New("product not found in context")
-	}
-
-	return v, nil
-}
-
-func setHome(ctx context.Context, hme homebus.Home) context.Context {
-	return context.WithValue(ctx, homeKey, hme)
-}
-
-// GetHome returns the home from the context.
-func GetHome(ctx context.Context) (homebus.Home, error) {
-	v, ok := ctx.Value(homeKey).(homebus.Home)
-	if !ok {
-		return homebus.Home{}, errors.New("home not found in context")
 	}
 
 	return v, nil

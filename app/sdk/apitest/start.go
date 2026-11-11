@@ -51,7 +51,6 @@ func New(t *testing.T, testName string) *Test {
 			AuditBus:    db.BusDomain.Audit,
 			UserBus:     db.BusDomain.User,
 			ProductBus:  db.BusDomain.Product,
-			HomeBus:     db.BusDomain.Home,
 			VProductBus: db.BusDomain.VProduct,
 		},
 		CloudChamberConfig: mux.CloudChamberConfig{

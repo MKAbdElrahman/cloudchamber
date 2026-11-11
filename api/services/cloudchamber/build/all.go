@@ -7,7 +7,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/artifactapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/auditapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/homeapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/productapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
@@ -34,12 +33,6 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		Build: cfg.Build,
 		Log:   cfg.Log,
 		DB:    cfg.DB,
-	})
-
-	homeapp.Routes(app, homeapp.Config{
-		Log:        cfg.Log,
-		HomeBus:    cfg.BusConfig.HomeBus,
-		AuthClient: cfg.CloudChamberConfig.AuthClient,
 	})
 
 	productapp.Routes(app, productapp.Config{

@@ -12,12 +12,11 @@ import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
-import { Section } from '@astryxdesign/core/Section'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type PeekVideo, type PipelineJob } from '@/features/pipeline'
 import { ProjectTrail, useProject, type ProjectFile } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
-import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
+import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import type { SourceMediaKind } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
@@ -227,34 +226,30 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           />
         ) : null}
         {entries.length > 0 && view === 'list' ? (
-          // Outset in a transparent section: the hover keeps the element radius.
-          // A divider would square that highlight.
-          <Section variant="transparent" padding={WORKSPACE_CONTENT_PADDING}>
-            <List density="spacious" edge="outset" aria-label="Jobs">
-              {entries.map((entry) => (
-                <ListItem
-                  key={entry.id}
-                  label={entry.name}
-                  description={<EntryWhen entry={entry} />}
-                  startContent={<Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />}
-                  endContent={
-                    <HStack gap={WORKSPACE_GAP.local} vAlign="center">
-                      {entry.fileId || entry.jobId ? (
-                        <JobOpenIcons
-                          kind={entry.kind}
-                          hasPipeline={Boolean(entry.jobId)}
-                          status={entry.status}
-                          onOpen={(target) => openPeek(entry, target)}
-                        />
-                      ) : null}
-                      {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
-                    </HStack>
-                  }
-                  href={entry.href}
-                />
-              ))}
-            </List>
-          </Section>
+          <List density="spacious" aria-label="Jobs">
+            {entries.map((entry) => (
+              <ListItem
+                key={entry.id}
+                label={entry.name}
+                description={<EntryWhen entry={entry} />}
+                startContent={<Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />}
+                endContent={
+                  <HStack gap={WORKSPACE_GAP.local} vAlign="center">
+                    {entry.fileId || entry.jobId ? (
+                      <JobOpenIcons
+                        kind={entry.kind}
+                        hasPipeline={Boolean(entry.jobId)}
+                        status={entry.status}
+                        onOpen={(target) => openPeek(entry, target)}
+                      />
+                    ) : null}
+                    {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
+                  </HStack>
+                }
+                href={entry.href}
+              />
+            ))}
+          </List>
         ) : null}
         {entries.length > 0 && view === 'grid' ? (
           <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Jobs">

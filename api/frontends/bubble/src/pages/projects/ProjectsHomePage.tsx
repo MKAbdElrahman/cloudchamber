@@ -15,7 +15,6 @@ import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { MoreMenu } from '@astryxdesign/core/MoreMenu'
-import { Section } from '@astryxdesign/core/Section'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import {
@@ -29,7 +28,7 @@ import {
 } from '@/features/projects'
 import { listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
 import { filesFromJob } from '@/features/outputs'
-import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
+import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_CARD, WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
@@ -222,8 +221,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
               })}
             </Grid>
           ) : (
-            <Section variant="transparent" padding={WORKSPACE_CONTENT_PADDING}>
-              <List density="spacious" edge="outset" aria-label="Projects">
+            <List density="spacious" aria-label="Projects">
               {rows.map((project) => {
                 const files = projectFileCount(project.id, scope.data, scope.isPending)
                 const summary = projectSummary(files, !scope.isPending)
@@ -255,8 +253,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
                   />
                 )
               })}
-              </List>
-            </Section>
+            </List>
           )}
         </VStack>
       ) : null}

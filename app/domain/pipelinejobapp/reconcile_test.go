@@ -13,7 +13,7 @@ func TestActivityInFlightSkipsStoredJob(t *testing.T) {
 		Status:     pipelinejobbus.MustParseStatus(pipelinejobbus.StatusCanceled),
 	}
 
-	activity, err := a.activityInFlight(t.Context(), stored)
+	activity, err := a.progressActivity(t.Context(), stored)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func TestActivityInFlightSkipsStoredJob(t *testing.T) {
 	}
 
 	open := pipelinejobbus.Job{Status: pipelinejobbus.MustParseStatus(pipelinejobbus.StatusRunning)}
-	activity, err = a.activityInFlight(t.Context(), open)
+	activity, err = a.progressActivity(t.Context(), open)
 	if err != nil {
 		t.Fatal(err)
 	}

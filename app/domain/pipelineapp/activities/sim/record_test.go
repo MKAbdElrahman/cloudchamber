@@ -58,31 +58,31 @@ func TestFileUpdateRejectsUnknownKind(t *testing.T) {
 }
 
 func TestOutcomeUpdateStoresTheClosedJob(t *testing.T) {
-	running := pipelinejobbus.Job{Status: pipelinejobbus.MustParseStatus(pipelinejobbus.StatusRunning), ErrorMessage: new("earlier")}
+	running := pipelinejobbus.Job{Status: pipelinejobbus.MustParseStatus(pipelinejobbus.StatusRunning), FailureMessage: new("earlier")}
 
 	completed, changed, err := outcomeUpdate(running, pipelinejobbus.MustParseStatus(pipelinejobbus.StatusCompleted), "", "")
-	if err != nil || !changed || !completed.ClearError || completed.Status == nil || completed.Status.String() != pipelinejobbus.StatusCompleted || completed.StoppedStep == nil || *completed.StoppedStep != "" {
+	if err != nil || !changed || !completed.ClearFailure || completed.Status == nil || completed.Status.String() != pipelinejobbus.StatusCompleted || completed.StoppedActivityType == nil || *completed.StoppedActivityType != "" {
 		t.Fatalf("completed changed=%v update=%+v err=%v", changed, completed, err)
 	}
 
 	canceled, changed, err := outcomeUpdate(running, pipelinejobbus.MustParseStatus(pipelinejobbus.StatusCanceled), workflow.ActivityTranscribe, "")
-	if err != nil || !changed || !canceled.ClearError || canceled.StoppedStep == nil || *canceled.StoppedStep != workflow.ActivityTranscribe {
+	if err != nil || !changed || !canceled.ClearFailure || canceled.StoppedActivityType == nil || *canceled.StoppedActivityType != workflow.ActivityTranscribe {
 		t.Fatalf("canceled changed=%v update=%+v err=%v", changed, canceled, err)
 	}
 
 	failed, changed, err := outcomeUpdate(running, pipelinejobbus.MustParseStatus(pipelinejobbus.StatusFailed), workflow.ActivityResolveSource, "")
-	if err != nil || !changed || failed.ErrorMessage == nil || *failed.ErrorMessage != pipelinejobbus.StatusFailed || failed.StoppedStep == nil || *failed.StoppedStep != workflow.ActivityResolveSource {
+	if err != nil || !changed || failed.FailureMessage == nil || *failed.FailureMessage != pipelinejobbus.StatusFailed || failed.StoppedActivityType == nil || *failed.StoppedActivityType != workflow.ActivityResolveSource {
 		t.Fatalf("failed changed=%v update=%+v err=%v", changed, failed, err)
 	}
 }
 
 func TestOutcomeUpdateLeavesAStoredOutcome(t *testing.T) {
 	job := pipelinejobbus.Job{
-		Status:      pipelinejobbus.MustParseStatus(pipelinejobbus.StatusCanceled),
-		StoppedStep: workflow.ActivityTranscribe,
+		Status:              pipelinejobbus.MustParseStatus(pipelinejobbus.StatusCanceled),
+		StoppedActivityType: workflow.ActivityTranscribe,
 	}
 
-	_, changed, err := outcomeUpdate(job, job.Status, job.StoppedStep, "")
+	_, changed, err := outcomeUpdate(job, job.Status, job.StoppedActivityType, "")
 	if err != nil || changed {
 		t.Fatalf("changed=%v err=%v", changed, err)
 	}

@@ -108,7 +108,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const canCancel = Boolean(job && !foreign && !isTerminalJobStatus(visibleJobStatus(job)))
   const cancel = useMutation({
     mutationFn: () => {
-      if (!job) throw new Error('This conversion is not open.')
+      if (!job) throw new Error('This run is not open.')
       return cancelJob(token, job.id)
     },
     onSuccess: async (updated) => {
@@ -200,7 +200,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
                   ) : null}
                   {canCancel ? (
                     <Button
-                      label={cancel.isSuccess ? 'Canceling' : 'Cancel conversion'}
+                      label={cancel.isSuccess ? 'Canceling' : 'Cancel'}
                       variant="secondary"
                       size="sm"
                       onClick={() => cancel.mutate()}
@@ -241,7 +241,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
         {cancel.isError ? (
           <Banner
             status="error"
-            title="Could not cancel the conversion"
+            title="Could not cancel the run"
             description={cancel.error instanceof ApiError ? cancel.error.message : (cancel.error as Error).message}
           />
         ) : null}

@@ -122,14 +122,14 @@ func (b *Business) Update(ctx context.Context, job Job, uj UpdateJob) (Job, erro
 	if uj.Status != nil {
 		job.Status = *uj.Status
 	}
-	if uj.ClearError {
-		job.ErrorMessage = nil
+	if uj.ClearFailure {
+		job.FailureMessage = nil
 	}
-	if uj.ErrorMessage != nil {
-		job.ErrorMessage = uj.ErrorMessage
+	if uj.FailureMessage != nil {
+		job.FailureMessage = uj.FailureMessage
 	}
-	if uj.StoppedStep != nil {
-		job.StoppedStep = *uj.StoppedStep
+	if uj.StoppedActivityType != nil {
+		job.StoppedActivityType = *uj.StoppedActivityType
 	}
 	if uj.AudioFileID != nil {
 		job.AudioFileID = *uj.AudioFileID

@@ -7,11 +7,11 @@ export type PipelineJob = {
   fileId?: string
   fileName?: string
   status: string
-  errorMessage?: string | null
-  /** Activity reported for an open execution. */
-  activity?: string | null
-  /** Activity stored when the job closed. */
-  stoppedStep?: string | null
+  failureMessage?: string | null
+  /** Activity Type the open run has reached. Empty once the run is closed. */
+  progressActivity?: string | null
+  /** Activity Type of the step where the run closed. */
+  stoppedActivityType?: string | null
   /** Produced files. Absent until that stage of the job has finished. */
   audioFileId?: string | null
   transcriptFileId?: string | null

@@ -7,9 +7,9 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 )
 
-// activityInFlight reads the activity the open run is in. The name is run state
-// and is not stored. A terminal job already holds its outcome from the worker.
-func (a *app) activityInFlight(ctx context.Context, job pipelinejobbus.Job) (string, error) {
+// progressActivity reads the Activity Type the open run has reached. It comes from
+// the progress query and is not stored. A closed run already holds its outcome.
+func (a *app) progressActivity(ctx context.Context, job pipelinejobbus.Job) (string, error) {
 	if a.temporal == nil || job.WorkflowID == "" || job.Status.IsTerminal() {
 		return "", nil
 	}

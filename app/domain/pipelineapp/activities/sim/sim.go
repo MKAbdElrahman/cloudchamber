@@ -435,29 +435,29 @@ func (a *Activities) recordOutcome(ctx context.Context, jobID, status, step, mes
 	return nil
 }
 
-// outcomeUpdate sets the closed status and the step that stopped. A job that already stores that outcome is left as it is.
+// outcomeUpdate sets the closed status and the Activity Type of the step where the run closed. A job that already stores that outcome is left as it is.
 func outcomeUpdate(job pipelinejobbus.Job, status pipelinejobbus.Status, step, message string) (pipelinejobbus.UpdateJob, bool, error) {
 	step = strings.TrimSpace(step)
 	message = strings.TrimSpace(message)
 	switch status.String() {
 	case pipelinejobbus.StatusCompleted:
-		if job.Status.Equal(status) && job.ErrorMessage == nil && job.StoppedStep == "" {
+		if job.Status.Equal(status) && job.FailureMessage == nil && job.StoppedActivityType == "" {
 			return pipelinejobbus.UpdateJob{}, false, nil
 		}
-		return pipelinejobbus.UpdateJob{Status: new(status), ClearError: true, StoppedStep: new("")}, true, nil
+		return pipelinejobbus.UpdateJob{Status: new(status), ClearFailure: true, StoppedActivityType: new("")}, true, nil
 	case pipelinejobbus.StatusCanceled:
-		if job.Status.Equal(status) && job.ErrorMessage == nil && job.StoppedStep == step {
+		if job.Status.Equal(status) && job.FailureMessage == nil && job.StoppedActivityType == step {
 			return pipelinejobbus.UpdateJob{}, false, nil
 		}
-		return pipelinejobbus.UpdateJob{Status: new(status), ClearError: true, StoppedStep: new(step)}, true, nil
+		return pipelinejobbus.UpdateJob{Status: new(status), ClearFailure: true, StoppedActivityType: new(step)}, true, nil
 	case pipelinejobbus.StatusFailed:
 		if message == "" {
 			message = status.String()
 		}
-		if job.Status.Equal(status) && job.ErrorMessage != nil && *job.ErrorMessage == message && job.StoppedStep == step {
+		if job.Status.Equal(status) && job.FailureMessage != nil && *job.FailureMessage == message && job.StoppedActivityType == step {
 			return pipelinejobbus.UpdateJob{}, false, nil
 		}
-		return pipelinejobbus.UpdateJob{Status: new(status), ErrorMessage: new(message), StoppedStep: new(step)}, true, nil
+		return pipelinejobbus.UpdateJob{Status: new(status), FailureMessage: new(message), StoppedActivityType: new(step)}, true, nil
 	default:
 		return pipelinejobbus.UpdateJob{}, false, fmt.Errorf("outcome %s", status)
 	}

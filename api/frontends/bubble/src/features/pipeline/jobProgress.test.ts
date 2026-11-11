@@ -21,7 +21,7 @@ describe('progressFromJob', () => {
 
   it('follows the activity the server names', () => {
     const progress = progressFromJob(
-      { status: 'running', dateCreated: started, activity: 'pipeline.Transcribe', audioFileId: 'audio-1' },
+      { status: 'running', dateCreated: started, progressActivity: 'pipeline.Transcribe', audioFileId: 'audio-1' },
     )
     expect(progress.stages.map((stage) => stage.state)).toEqual([
       'done',
@@ -36,7 +36,7 @@ describe('progressFromJob', () => {
     const exporting = progressFromJob(
       {
         status: 'running',
-        activity: 'pipeline.ComposeExport',
+        progressActivity: 'pipeline.ComposeExport',
         audioFileId: 'audio-1',
         transcriptFileId: 'transcript-1',
         keyFramesFileId: 'frames-1',
@@ -110,7 +110,7 @@ describe('progressFromJob', () => {
     expect(stopped.completedCount).toBe(0)
 
     const named = progressFromJob(
-      { status: 'canceled', activity: 'pipeline.Transcribe', audioFileId: 'audio-1' },
+      { status: 'canceled', progressActivity: 'pipeline.Transcribe', audioFileId: 'audio-1' },
     )
     expect(named.stages.map((stage) => stage.state)).toEqual([
       'done',
@@ -127,7 +127,7 @@ describe('progressFromJob', () => {
     const after = progressFromJob(
       {
         status: 'canceled',
-        stoppedStep: 'pipeline.Transcribe',
+        stoppedActivityType: 'pipeline.Transcribe',
         audioFileId: 'audio-1',
         transcriptFileId: 'transcript-1',
       },
@@ -150,8 +150,8 @@ describe('progressFromJob', () => {
       {
         status: 'failed',
         dateCreated: started,
-        stoppedStep: 'pipeline.ResolveSource',
-        errorMessage: 'load source',
+        stoppedActivityType: 'pipeline.ResolveSource',
+        failureMessage: 'load source',
       },
     )
     expect(failed.stages.map((stage) => stage.state)).toEqual(['failed', 'upcoming', 'upcoming', 'upcoming', 'upcoming'])

@@ -150,7 +150,7 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 		a.log.Error(ctx, "pipelinejob.create.start", "err", err)
 		msg := "could not start the run"
 		st, _ := pipelinejobbus.ParseStatus(pipelinejobbus.StatusFailed)
-		if _, uerr := a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{Status: &st, ErrorMessage: &msg}); uerr != nil {
+		if _, uerr := a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{Status: &st, FailureMessage: &msg}); uerr != nil {
 			a.log.Error(ctx, "pipelinejob.create.update-failed", "err", uerr)
 		}
 		return errs.Errorf(errs.Internal, "start workflow: %s", err)
@@ -158,7 +158,7 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 
 	runID := run.GetRunID()
 	st, _ := pipelinejobbus.ParseStatus(pipelinejobbus.StatusRunning)
-	job, err = a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{RunID: &runID, Status: &st, ClearError: true})
+	job, err = a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{RunID: &runID, Status: &st, ClearFailure: true})
 	if err != nil {
 		a.log.Error(ctx, "pipelinejob.create.update-running", "err", err)
 	}
@@ -230,13 +230,13 @@ func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "pipeline job missing in context: %s", err)
 	}
 
-	activity, err := a.activityInFlight(ctx, job)
+	activity, err := a.progressActivity(ctx, job)
 	if err != nil {
 		a.log.Error(ctx, "pipelinejob.activity", "err", err, "job_id", job.ID)
 	}
 
 	appJob := a.appJob(ctx, job)
-	appJob.Activity = activity
+	appJob.ProgressActivity = activity
 	return appJob
 }
 

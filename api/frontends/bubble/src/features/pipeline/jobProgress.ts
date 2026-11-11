@@ -43,12 +43,12 @@ export type JobProgressInput = {
   keyFramesFileId?: string | null
   documentFileId?: string | null
   documentName?: string | null
-  /** Failure text stored with the job. Empty when the job was canceled. */
-  errorMessage?: string | null
-  /** Activity the open execution reported. Empty once the job is closed. */
-  activity?: string | null
-  /** Activity stored when the job closed. */
-  stoppedStep?: string | null
+  /** Application Failure message. Empty when the run closed as canceled. */
+  failureMessage?: string | null
+  /** Activity Type the open run has reached. Empty once the run is closed. */
+  progressActivity?: string | null
+  /** Activity Type of the step where the run closed. */
+  stoppedActivityType?: string | null
 }
 
 const STAGE_IDS: JobStageId[] = ['source', 'audio', 'transcript', 'keyframes', 'document']
@@ -144,7 +144,7 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
         case 'failed':
           return 'The document was not written.'
         case 'done':
-          if (!hasRef(job.documentFileId)) return 'This conversion finished.'
+          if (!hasRef(job.documentFileId)) return 'This job finished.'
           return pdf ? 'A PDF is in this project.' : 'A Markdown document is in this project.'
       }
       break
@@ -187,7 +187,7 @@ function failureReason(message: string | null | undefined): string {
 export function conversionNotice(
   phase: JobPhase,
   stages: JobStageView[],
-  errorMessage?: string | null,
+  failureMessage?: string | null,
 ): ConversionNotice | null {
   const stopped = stages.find(
     (stage) => stage.state === 'failed' || stage.state === 'canceled',
@@ -198,7 +198,7 @@ export function conversionNotice(
       return {
         status: 'error',
         title: 'Failed',
-        description: `${name} stopped and was not run again. ${failureReason(errorMessage)}Files already in the project stay there.`,
+        description: `${name} stopped and was not run again. ${failureReason(failureMessage)}Files already in the project stay there.`,
       }
     case 'canceled':
       if (!stopped) {
@@ -224,8 +224,8 @@ export function conversionNotice(
   }
 }
 
-function headlineFor(phase: JobPhase, stages: JobStageView[], errorMessage?: string | null): string {
-  const notice = conversionNotice(phase, stages, errorMessage)
+function headlineFor(phase: JobPhase, stages: JobStageView[], failureMessage?: string | null): string {
+  const notice = conversionNotice(phase, stages, failureMessage)
   if (notice) return notice.description
   const live = stages.find((stage) => stage.state === 'current')
   switch (phase) {
@@ -257,9 +257,9 @@ function stepWrote(job: JobProgressInput, id: JobStageId): boolean {
 }
 
 function namedStep(job: JobProgressInput): number {
-  const fromActivity = stepNamedIn(job.activity)
+  const fromActivity = stepNamedIn(job.progressActivity)
   if (fromActivity >= 0) return fromActivity
-  return stepNamedIn(job.stoppedStep)
+  return stepNamedIn(job.stoppedActivityType)
 }
 
 export function progressFromJob(job: JobProgressInput): JobProgress {
@@ -316,7 +316,7 @@ export function progressFromJob(job: JobProgressInput): JobProgress {
     completedCount: stages.filter((stage) => stage.state === 'done').length,
     stages,
     estimated: phase === 'running' && named < 0,
-    headline: headlineFor(phase, stages, job.errorMessage),
-    reason: job.errorMessage?.trim() || undefined,
+    headline: headlineFor(phase, stages, job.failureMessage),
+    reason: job.failureMessage?.trim() || undefined,
   }
 }

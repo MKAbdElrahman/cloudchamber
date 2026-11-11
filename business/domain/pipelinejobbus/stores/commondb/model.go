@@ -11,43 +11,43 @@ import (
 
 // Job represents a pipeline job row in the database.
 type Job struct {
-	ID                 uuid.UUID     `db:"job_id"`
-	OwnerID            uuid.UUID     `db:"owner_id"`
-	ProjectID          uuid.NullUUID `db:"project_id"`
-	WorkflowID         string        `db:"workflow_id"`
-	RunID              string        `db:"run_id"`
-	InputFileID        uuid.NullUUID `db:"input_file_id"`
-	IdempotencyKeyHash *string       `db:"idempotency_key_hash"`
-	Status             string        `db:"status"`
-	ErrorMessage       *string       `db:"error_message"`
-	StoppedStep        string        `db:"stopped_step"`
-	AudioFileID        uuid.NullUUID `db:"audio_file_id"`
-	TranscriptFileID   uuid.NullUUID `db:"transcript_file_id"`
-	KeyFramesFileID    uuid.NullUUID `db:"key_frames_file_id"`
-	DocumentFileID     uuid.NullUUID `db:"document_file_id"`
-	DateCreated        time.Time     `db:"date_created"`
-	DateUpdated        time.Time     `db:"date_updated"`
+	ID                  uuid.UUID     `db:"job_id"`
+	OwnerID             uuid.UUID     `db:"owner_id"`
+	ProjectID           uuid.NullUUID `db:"project_id"`
+	WorkflowID          string        `db:"workflow_id"`
+	RunID               string        `db:"run_id"`
+	InputFileID         uuid.NullUUID `db:"input_file_id"`
+	IdempotencyKeyHash  *string       `db:"idempotency_key_hash"`
+	Status              string        `db:"status"`
+	FailureMessage      *string       `db:"failure_message"`
+	StoppedActivityType string        `db:"stopped_activity_type"`
+	AudioFileID         uuid.NullUUID `db:"audio_file_id"`
+	TranscriptFileID    uuid.NullUUID `db:"transcript_file_id"`
+	KeyFramesFileID     uuid.NullUUID `db:"key_frames_file_id"`
+	DocumentFileID      uuid.NullUUID `db:"document_file_id"`
+	DateCreated         time.Time     `db:"date_created"`
+	DateUpdated         time.Time     `db:"date_updated"`
 }
 
 // ToDBJob converts a business pipeline job to a database model.
 func ToDBJob(bus pipelinejobbus.Job) Job {
 	db := Job{
-		ID:                 bus.ID,
-		OwnerID:            bus.OwnerID,
-		ProjectID:          nullFileID(bus.ProjectID),
-		WorkflowID:         bus.WorkflowID,
-		RunID:              bus.RunID,
-		InputFileID:        nullFileID(bus.InputFileID),
-		IdempotencyKeyHash: bus.IdempotencyKeyHash,
-		Status:             bus.Status.String(),
-		ErrorMessage:       bus.ErrorMessage,
-		StoppedStep:        bus.StoppedStep,
-		AudioFileID:        nullFileID(bus.AudioFileID),
-		TranscriptFileID:   nullFileID(bus.TranscriptFileID),
-		KeyFramesFileID:    nullFileID(bus.KeyFramesFileID),
-		DocumentFileID:     nullFileID(bus.DocumentFileID),
-		DateCreated:        bus.DateCreated.UTC(),
-		DateUpdated:        bus.DateUpdated.UTC(),
+		ID:                  bus.ID,
+		OwnerID:             bus.OwnerID,
+		ProjectID:           nullFileID(bus.ProjectID),
+		WorkflowID:          bus.WorkflowID,
+		RunID:               bus.RunID,
+		InputFileID:         nullFileID(bus.InputFileID),
+		IdempotencyKeyHash:  bus.IdempotencyKeyHash,
+		Status:              bus.Status.String(),
+		FailureMessage:      bus.FailureMessage,
+		StoppedActivityType: bus.StoppedActivityType,
+		AudioFileID:         nullFileID(bus.AudioFileID),
+		TranscriptFileID:    nullFileID(bus.TranscriptFileID),
+		KeyFramesFileID:     nullFileID(bus.KeyFramesFileID),
+		DocumentFileID:      nullFileID(bus.DocumentFileID),
+		DateCreated:         bus.DateCreated.UTC(),
+		DateUpdated:         bus.DateUpdated.UTC(),
 	}
 	return db
 }
@@ -60,22 +60,22 @@ func ToBusJob(db Job) (pipelinejobbus.Job, error) {
 	}
 
 	bus := pipelinejobbus.Job{
-		ID:                 db.ID,
-		OwnerID:            db.OwnerID,
-		ProjectID:          db.ProjectID.UUID,
-		WorkflowID:         db.WorkflowID,
-		RunID:              db.RunID,
-		InputFileID:        db.InputFileID.UUID,
-		IdempotencyKeyHash: db.IdempotencyKeyHash,
-		Status:             status,
-		ErrorMessage:       db.ErrorMessage,
-		StoppedStep:        db.StoppedStep,
-		AudioFileID:        db.AudioFileID.UUID,
-		TranscriptFileID:   db.TranscriptFileID.UUID,
-		KeyFramesFileID:    db.KeyFramesFileID.UUID,
-		DocumentFileID:     db.DocumentFileID.UUID,
-		DateCreated:        db.DateCreated.In(time.Local),
-		DateUpdated:        db.DateUpdated.In(time.Local),
+		ID:                  db.ID,
+		OwnerID:             db.OwnerID,
+		ProjectID:           db.ProjectID.UUID,
+		WorkflowID:          db.WorkflowID,
+		RunID:               db.RunID,
+		InputFileID:         db.InputFileID.UUID,
+		IdempotencyKeyHash:  db.IdempotencyKeyHash,
+		Status:              status,
+		FailureMessage:      db.FailureMessage,
+		StoppedActivityType: db.StoppedActivityType,
+		AudioFileID:         db.AudioFileID.UUID,
+		TranscriptFileID:    db.TranscriptFileID.UUID,
+		KeyFramesFileID:     db.KeyFramesFileID.UUID,
+		DocumentFileID:      db.DocumentFileID.UUID,
+		DateCreated:         db.DateCreated.In(time.Local),
+		DateUpdated:         db.DateUpdated.In(time.Local),
 	}
 
 	return bus, nil

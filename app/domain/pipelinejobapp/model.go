@@ -13,26 +13,26 @@ import (
 
 // Job represents a pipeline job returned to clients.
 type Job struct {
-	ID           string  `json:"id"`
-	OwnerID      string  `json:"ownerId"`
-	WorkflowID   string  `json:"workflowId"`
-	RunID        string  `json:"runId"`
-	ProjectID    string  `json:"projectId,omitempty"`
-	FileID       string  `json:"fileId,omitempty"`
-	FileName     string  `json:"fileName,omitempty"`
-	Status       string  `json:"status"`
-	ErrorMessage *string `json:"errorMessage,omitempty"`
-	// Activity is the activity the open execution is in. A closed job leaves this empty.
-	Activity string `json:"activity,omitempty"`
-	// StoppedStep is the activity a worker stored when the job closed.
-	StoppedStep      string `json:"stoppedStep,omitempty"`
-	AudioFileID      string `json:"audioFileId,omitempty"`
-	TranscriptFileID string `json:"transcriptFileId,omitempty"`
-	KeyFramesFileID  string `json:"keyFramesFileId,omitempty"`
-	DocumentFileID   string `json:"documentFileId,omitempty"`
-	DocumentName     string `json:"documentName,omitempty"`
-	DateCreated      string `json:"dateCreated"`
-	DateUpdated      string `json:"dateUpdated"`
+	ID             string  `json:"id"`
+	OwnerID        string  `json:"ownerId"`
+	WorkflowID     string  `json:"workflowId"`
+	RunID          string  `json:"runId"`
+	ProjectID      string  `json:"projectId,omitempty"`
+	FileID         string  `json:"fileId,omitempty"`
+	FileName       string  `json:"fileName,omitempty"`
+	Status         string  `json:"status"`
+	FailureMessage *string `json:"failureMessage,omitempty"`
+	// ProgressActivity is the Activity Type the open run has reached. A closed run leaves this empty.
+	ProgressActivity string `json:"progressActivity,omitempty"`
+	// StoppedActivityType is the Activity Type of the step where the run closed.
+	StoppedActivityType string `json:"stoppedActivityType,omitempty"`
+	AudioFileID         string `json:"audioFileId,omitempty"`
+	TranscriptFileID    string `json:"transcriptFileId,omitempty"`
+	KeyFramesFileID     string `json:"keyFramesFileId,omitempty"`
+	DocumentFileID      string `json:"documentFileId,omitempty"`
+	DocumentName        string `json:"documentName,omitempty"`
+	DateCreated         string `json:"dateCreated"`
+	DateUpdated         string `json:"dateUpdated"`
 }
 
 // Encode implements the encoder interface.
@@ -43,23 +43,23 @@ func (j Job) Encode() ([]byte, string, error) {
 
 func toAppJob(bus pipelinejobbus.Job, names map[uuid.UUID]string) Job {
 	return Job{
-		ID:               bus.ID.String(),
-		OwnerID:          bus.OwnerID.String(),
-		WorkflowID:       bus.WorkflowID,
-		RunID:            bus.RunID,
-		ProjectID:        fileIDString(bus.ProjectID),
-		FileID:           fileIDString(bus.InputFileID),
-		FileName:         names[bus.InputFileID],
-		Status:           bus.Status.String(),
-		ErrorMessage:     bus.ErrorMessage,
-		StoppedStep:      bus.StoppedStep,
-		AudioFileID:      fileIDString(bus.AudioFileID),
-		TranscriptFileID: fileIDString(bus.TranscriptFileID),
-		KeyFramesFileID:  fileIDString(bus.KeyFramesFileID),
-		DocumentFileID:   fileIDString(bus.DocumentFileID),
-		DocumentName:     names[bus.DocumentFileID],
-		DateCreated:      bus.DateCreated.Format(time.RFC3339),
-		DateUpdated:      bus.DateUpdated.Format(time.RFC3339),
+		ID:                  bus.ID.String(),
+		OwnerID:             bus.OwnerID.String(),
+		WorkflowID:          bus.WorkflowID,
+		RunID:               bus.RunID,
+		ProjectID:           fileIDString(bus.ProjectID),
+		FileID:              fileIDString(bus.InputFileID),
+		FileName:            names[bus.InputFileID],
+		Status:              bus.Status.String(),
+		FailureMessage:      bus.FailureMessage,
+		StoppedActivityType: bus.StoppedActivityType,
+		AudioFileID:         fileIDString(bus.AudioFileID),
+		TranscriptFileID:    fileIDString(bus.TranscriptFileID),
+		KeyFramesFileID:     fileIDString(bus.KeyFramesFileID),
+		DocumentFileID:      fileIDString(bus.DocumentFileID),
+		DocumentName:        names[bus.DocumentFileID],
+		DateCreated:         bus.DateCreated.Format(time.RFC3339),
+		DateUpdated:         bus.DateUpdated.Format(time.RFC3339),
 	}
 }
 

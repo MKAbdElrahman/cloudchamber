@@ -73,22 +73,22 @@ func (s Status) IsTerminal() bool {
 
 // Job represents a pipeline job owned by a user.
 type Job struct {
-	ID                 uuid.UUID
-	OwnerID            uuid.UUID
-	ProjectID          uuid.UUID
-	WorkflowID         string
-	RunID              string
-	InputFileID        uuid.UUID
-	IdempotencyKeyHash *string
-	Status             Status
-	ErrorMessage       *string
-	StoppedStep        string
-	AudioFileID        uuid.UUID
-	TranscriptFileID   uuid.UUID
-	KeyFramesFileID    uuid.UUID
-	DocumentFileID     uuid.UUID
-	DateCreated        time.Time
-	DateUpdated        time.Time
+	ID                  uuid.UUID
+	OwnerID             uuid.UUID
+	ProjectID           uuid.UUID
+	WorkflowID          string
+	RunID               string
+	InputFileID         uuid.UUID
+	IdempotencyKeyHash  *string
+	Status              Status
+	FailureMessage      *string
+	StoppedActivityType string
+	AudioFileID         uuid.UUID
+	TranscriptFileID    uuid.UUID
+	KeyFramesFileID     uuid.UUID
+	DocumentFileID      uuid.UUID
+	DateCreated         time.Time
+	DateUpdated         time.Time
 }
 
 // NewJob contains information needed to create a pipeline job.
@@ -105,13 +105,13 @@ type NewJob struct {
 
 // UpdateJob contains information that can be updated for a pipeline job.
 type UpdateJob struct {
-	RunID            *string
-	Status           *Status
-	ErrorMessage     *string
-	ClearError       bool
-	StoppedStep      *string
-	AudioFileID      *uuid.UUID
-	TranscriptFileID *uuid.UUID
-	KeyFramesFileID  *uuid.UUID
-	DocumentFileID   *uuid.UUID
+	RunID               *string
+	Status              *Status
+	FailureMessage      *string
+	ClearFailure        bool
+	StoppedActivityType *string
+	AudioFileID         *uuid.UUID
+	TranscriptFileID    *uuid.UUID
+	KeyFramesFileID     *uuid.UUID
+	DocumentFileID      *uuid.UUID
 }

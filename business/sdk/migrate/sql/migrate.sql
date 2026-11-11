@@ -248,3 +248,8 @@ DROP TABLE products;
 ALTER TABLE pipeline_jobs ADD COLUMN stopped_step TEXT NOT NULL DEFAULT '';
 UPDATE pipeline_jobs SET status = 'canceled' WHERE status IN ('timed_out', 'terminated');
 UPDATE pipeline_jobs SET status = 'failed' WHERE status = 'unknown';
+
+-- Version: 1.17
+-- Description: Name the closed activity type and the failure message.
+ALTER TABLE pipeline_jobs RENAME COLUMN stopped_step TO stopped_activity_type;
+ALTER TABLE pipeline_jobs RENAME COLUMN error_message TO failure_message;

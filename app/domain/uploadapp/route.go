@@ -1,4 +1,4 @@
-package tusdapp
+package uploadapp
 
 import (
 	"net/http"
@@ -28,5 +28,7 @@ func Routes(app *web.App, cfg Config) {
 
 	api := newApp(cfg.AuthClient, cfg.UploadBus, cfg.ArtifactBus, cfg.ProjectBus, cfg.ObjectStore, cfg.DB)
 
-	app.HandlerFuncNoMid(http.MethodPost, version, "/internal/tusd/hooks", api.handle)
+	// The same application middleware as every other route. mid.Otel stores the
+	// tracer that business spans use. The hook still does its own authentication.
+	app.HandlerFunc(http.MethodPost, version, "/internal/tusd/hooks", api.handle)
 }

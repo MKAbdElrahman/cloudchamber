@@ -104,7 +104,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	defer c.Close()
 
-	acts, err := pipelinesim.Open(ctx, log)
+	acts, err := pipelinesim.Open(ctx, log, tracer)
 	if err != nil {
 		return err
 	}

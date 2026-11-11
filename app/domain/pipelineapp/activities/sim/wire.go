@@ -12,10 +12,11 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/stores/artifactdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Open connects the worker to the database and the object store.
-func Open(ctx context.Context, log *logger.Logger) (*Activities, error) {
+func Open(ctx context.Context, log *logger.Logger, tracer trace.Tracer) (*Activities, error) {
 	cfg := struct {
 		DB struct {
 			User       string `conf:"default:postgres"`
@@ -63,5 +64,5 @@ func Open(ctx context.Context, log *logger.Logger) (*Activities, error) {
 
 	store := artifactdb.NewStore(log, db)
 	bus := artifactbus.NewBusiness(log, store, objects, artifactotel.NewExtension())
-	return New(bus, objects), nil
+	return New(bus, objects, tracer), nil
 }

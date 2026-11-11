@@ -1,4 +1,4 @@
-package tusdapp
+package uploadapp
 
 import "encoding/json"
 

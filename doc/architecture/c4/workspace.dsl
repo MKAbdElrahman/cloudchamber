@@ -17,16 +17,16 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             }
             group "Application services" {
                 apiService = container "API service" "Primary HTTP API and domain routes. Starts and queries pipeline workflows." "Go" {
-                    auditapp = component "auditapp" "Audit subdomain (app/domain/auditapp, business/domain/auditbus)." "Go"
-                    userapp = component "userapp" "User subdomain (app/domain/userapp, business/domain/userbus)." "Go"
-                    projectapp = component "projectapp" "Project subdomain (app/domain/projectapp, business/domain/projectbus). One owner, many files and jobs. A file is recorded only in a project that owner owns." "Go"
-                    pipelineapp = component "pipelineapp" "Starts a conversion from a file id. The job copies the owner and the project from that file; it does not take a project from the client." "Go / Temporal client"
-                    tusdapp = component "tusdapp" "Internal tusd hook subdomain (app/domain/tusdapp). pre-create authenticates the caller and checks they own the project in the upload metadata. pre-finish records the upload and the artifact, in that project, before tusd answers. pre-terminate refuses once the artifact exists. Download is disabled." "Go"
+                    auditapp = component "auditapp" "Records account changes for an administrator to review." "Go"
+                    userapp = component "userapp" "Creates and manages accounts." "Go"
+                    projectapp = component "projectapp" "A person owns many projects. Each file and job belongs to one project." "Go"
+                    pipelineapp = component "pipelineapp" "Starts a conversion from one file and keeps that file's project." "Go / Temporal client"
+                    uploadapp = component "uploadapp" "Checks the project on an upload, records the file when the upload finishes, and refuses to remove a finished file." "Go"
                 }
                 authAPI = container "Auth service" "JWT issue and validation." "Go" {
-                    authapp = component "authapp" "Authentication/token HTTP subdomain (app/domain/authapp)." "Go"
-                    grpcauthapp = component "grpcauthapp" "gRPC token validation subdomain for peer services (app/domain/grpcauthapp)." "Go"
-                    userbus = component "userbus" "Identity/user records subdomain used for authentication (business/domain/userbus)." "Go"
+                    authapp = component "authapp" "Issues a sign-in token and checks it." "Go"
+                    grpcauthapp = component "grpcauthapp" "Checks a token for another service." "Go"
+                    userbus = component "userbus" "The account record used to sign in." "Go"
                 }
                 uploadService = container "Upload service (tusd)" "tusd server for resumable video/audio uploads. Stores bytes in artifact storage. Hooks on the API service check the project, record the artifact, and refuse download. The browser never reads bytes from tusd." "tusd (Go)" "Service"
             }
@@ -43,7 +43,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             group "Artifact & data stores" {
                 postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database"
                 temporalPostgres = container "Temporal PostgreSQL" "Persistence and visibility storage for Temporal (physical isolation in dev)." "PostgreSQL" "Database"
-                artifactStore = container "Artifact storage (S3-compatible)" "S3-compatible object storage for source media, audio, transcripts, key frames, and exported documents. The durable name is the file id. Each file belongs to one owner and one project. Dev: SeaweedFS." "SeaweedFS (S3-compatible)" "Database"
+                artifactStore = container "Artifact storage" "Holds each project's recordings and documents." "S3-compatible" "Database"
             }
             group "Observability" {
                 metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go"
@@ -92,6 +92,10 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService.projectapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.pipelineapp -> cloudchamber.postgres "Copies the source file's owner and project onto the job" "SQL/TCP"
         cloudchamber.apiService.pipelineapp -> cloudchamber.temporalServer "Starts and queries workflows via" "gRPC"
+        cloudchamber.uploadService -> cloudchamber.apiService.uploadapp "Asks the API to check the project and record the finished file" "HTTPS/JSON"
+        cloudchamber.apiService.uploadapp -> cloudchamber.authAPI.grpcauthapp "Checks the caller" "gRPC"
+        cloudchamber.apiService.uploadapp -> cloudchamber.artifactStore "Confirms the uploaded object is stored"
+        cloudchamber.apiService.uploadapp -> cloudchamber.postgres "Records the upload and the file" "SQL/TCP"
         cloudchamber.apiService -> cloudchamber.authAPI.grpcauthapp "Validates tokens via (service-to-service)" "gRPC"
 
         // C3 — Auth service (subdomains aligned to current packages)
@@ -135,7 +139,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                             deploymentNode "Workload: temporal-database" "Temporal PostgreSQL StatefulSet (physical isolation, dev)." "StatefulSet" "1" {
                                 containerInstance cloudchamber.temporalPostgres
                             }
-                            deploymentNode "Workload: seaweedfs" "SeaweedFS S3-compatible artifact storage (dev, weed mini)." "Deployment" "1" {
+                            deploymentNode "Workload: seaweedfs" "Dev artifact storage." "Deployment" "1" {
                                 containerInstance cloudchamber.artifactStore
                             }
                         }
@@ -215,7 +219,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     deploymentNode "temporal-persistence" "Temporal persistence/visibility database (operated for HA)." "Managed PostgreSQL / HA" "1" {
                         containerInstance cloudchamber.temporalPostgres
                     }
-                    deploymentNode "artifact-storage" "S3-compatible object storage (e.g. SeaweedFS production topology or managed S3) for source/audio/transcripts/frames/exports." "S3-compatible object store" "1" {
+                    deploymentNode "artifact-storage" "Artifact storage." "S3-compatible object store" "1" {
                         containerInstance cloudchamber.artifactStore
                     }
                 }
@@ -247,35 +251,35 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             title "Dynamic View: Upload recording"
             description "Resumable upload of a user-provided recording."
 
-            endUser -> cloudchamber.uploadService "Creates an upload for a project"
-            cloudchamber.uploadService -> cloudchamber.apiService "pre-create: authenticates the caller and checks they own the project"
-            cloudchamber.uploadService -> endUser "Returns the upload URL"
-            endUser -> cloudchamber.uploadService "Sends the recording data"
-            cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording data"
-            cloudchamber.uploadService -> cloudchamber.apiService "pre-finish: reports completion before the client is answered"
-            cloudchamber.apiService -> cloudchamber.artifactStore "Verifies the object is present"
-            cloudchamber.apiService -> cloudchamber.postgres "Records the upload and the artifact in that project"
-            cloudchamber.uploadService -> endUser "Confirms the upload is complete"
+            endUser -> cloudchamber.uploadService "Starts an upload in a project"
+            cloudchamber.uploadService -> cloudchamber.apiService "Checks the person owns the project"
+            cloudchamber.uploadService -> endUser "Returns an address for the recording"
+            endUser -> cloudchamber.uploadService "Sends the recording"
+            cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording"
+            cloudchamber.uploadService -> cloudchamber.apiService "Asks the API to record the file"
+            cloudchamber.apiService -> cloudchamber.artifactStore "Confirms the recording is stored"
+            cloudchamber.apiService -> cloudchamber.postgres "Records the file in the project"
+            cloudchamber.uploadService -> endUser "Confirms the upload"
 
             autoLayout tb
         }
 
         dynamic cloudchamber "WatchArtifactDynamic" {
             title "Dynamic View: Watch a recording"
-            description "The user opens a file they own. The file id is the durable name. The API checks the owner and signs a short-lived URL. Object storage serves the bytes."
+            description "A person plays a recording they own."
 
-            endUser -> cloudchamber.apiService "Asks for a short-lived URL for a file id"
-            cloudchamber.apiService -> cloudchamber.postgres "Loads the artifact and checks the owner"
-            cloudchamber.apiService -> cloudchamber.artifactStore "Signs a GetObject URL for the browser"
-            cloudchamber.apiService -> endUser "Returns the URL and when it expires"
-            endUser -> cloudchamber.artifactStore "Reads the recording, including range requests"
+            endUser -> cloudchamber.apiService "Opens a recording"
+            cloudchamber.apiService -> cloudchamber.postgres "Checks the person owns it"
+            cloudchamber.apiService -> cloudchamber.artifactStore "Prepares a short-lived link"
+            cloudchamber.apiService -> endUser "Returns the link"
+            endUser -> cloudchamber.artifactStore "Plays the recording"
 
             autoLayout tb
         }
 
         component cloudchamber.apiService "APIServiceC3" {
             title "Component View: API service"
-            description "Subdomains inside the API service. projectapp owns projects. pipelineapp copies a file's project onto a job. tusdapp records the source file in that project."
+            description "Projects, accounts, conversions, and the upload check inside the API."
             include *
             include *?
             include cloudchamber.temporalServer
@@ -287,7 +291,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         component cloudchamber.authAPI "AuthServiceC3" {
             title "Component View: Auth service"
-            description "Subdomains inside the Auth service, aligned to current packages: authapp, grpcauthapp, and userbus."
+            description "Sign-in, token checks for other services, and the account record."
             include *
             include *?
             autoLayout tb

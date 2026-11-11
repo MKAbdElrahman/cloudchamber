@@ -7,7 +7,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/uploadapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
@@ -65,7 +65,7 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
 
-	tusdapp.Routes(app, tusdapp.Config{
+	uploadapp.Routes(app, uploadapp.Config{
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 		UploadBus:   cfg.BusConfig.UploadBus,
 		ArtifactBus: cfg.BusConfig.ArtifactBus,

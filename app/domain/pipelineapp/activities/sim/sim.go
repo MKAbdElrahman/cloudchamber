@@ -15,6 +15,8 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/workflow"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
+	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -26,11 +28,18 @@ const (
 type Activities struct {
 	artifacts artifactbus.ExtBusiness
 	objects   *objectstore.Client
+	tracer    trace.Tracer
 }
 
 // New constructs simulated activities that store objects and register files.
-func New(artifacts artifactbus.ExtBusiness, objects *objectstore.Client) *Activities {
-	return &Activities{artifacts: artifacts, objects: objects}
+func New(artifacts artifactbus.ExtBusiness, objects *objectstore.Client, tracer trace.Tracer) *Activities {
+	return &Activities{artifacts: artifacts, objects: objects, tracer: tracer}
+}
+
+// traced stores the worker tracer the way the HTTP middleware does, so
+// business spans started with otel.AddSpan join the activity trace.
+func (a *Activities) traced(ctx context.Context) context.Context {
+	return otel.InjectTracing(ctx, a.tracer)
 }
 
 func (a *Activities) ResolveSource(ctx context.Context, in workflow.ResolveSourceInput) (workflow.ResolveSourceOutput, error) {
@@ -42,7 +51,7 @@ func (a *Activities) ResolveSource(ctx context.Context, in workflow.ResolveSourc
 	if err != nil {
 		return workflow.ResolveSourceOutput{}, fmt.Errorf("file id: %w", err)
 	}
-	art, err := a.artifacts.QueryByFileID(ctx, fileID)
+	art, err := a.artifacts.QueryByFileID(a.traced(ctx), fileID)
 	if err != nil {
 		return workflow.ResolveSourceOutput{}, fmt.Errorf("load source: %w", err)
 	}
@@ -179,6 +188,7 @@ func parseProjectID(raw string) (uuid.UUID, error) {
 }
 
 func (a *Activities) publish(ctx context.Context, jobID string, ownerID, projectID uuid.UUID, kind, name, contentType string, body []byte) (uuid.UUID, error) {
+	ctx = a.traced(ctx)
 	fileID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(jobID+"/"+kind))
 	key := fmt.Sprintf("outputs/%s/%s", ownerID, fileID)
 	if err := a.objects.PutObject(ctx, "", key, contentType, body); err != nil {

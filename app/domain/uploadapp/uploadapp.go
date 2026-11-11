@@ -1,5 +1,5 @@
-// Package tusdapp handles internal tusd upload hooks (auth/bind, finalize/record).
-package tusdapp
+// Package uploadapp checks an upload and records the finished file.
+package uploadapp
 
 import (
 	"context"
@@ -142,8 +142,8 @@ func (a *app) preFinish(ctx context.Context, req hookRequest) web.Encoder {
 		return errs.New(errs.Internal, err)
 	}
 
-	tracer := trace.SpanFromContext(ctx).TracerProvider().Tracer("app.domain.tusdapp")
-	ctx, span := tracer.Start(ctx, "app.domain.tusdapp.verify_finalized_upload",
+	tracer := trace.SpanFromContext(ctx).TracerProvider().Tracer("app.domain.uploadapp")
+	ctx, span := tracer.Start(ctx, "app.domain.uploadapp.verify_finalized_upload",
 		trace.WithAttributes(
 			attribute.String("object_key", objectKey),
 			attribute.String("bucket", bucket),
@@ -191,7 +191,7 @@ func (a *app) preFinish(ctx context.Context, req hookRequest) web.Encoder {
 		name = req.Event.Upload.MetaData["filename"]
 	}
 
-	ctx, span = tracer.Start(ctx, "app.domain.tusdapp.record_artifact",
+	ctx, span = tracer.Start(ctx, "app.domain.uploadapp.record_artifact",
 		trace.WithAttributes(
 			attribute.String("object_key", objectKey),
 			attribute.String("file_id", fileID.String()),

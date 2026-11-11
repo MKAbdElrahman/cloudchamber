@@ -28,17 +28,17 @@ Holds durable relational state shared by domains. Schema changes flow through th
 
 Temporal Service provides durable workflow orchestration for long-running pipelines (workflow state, task queues, retries/timeouts, visibility). The primary API service starts and queries pipeline workflows. A worker polls each task queue. In dev, the media, transcription, and export activities are simulated stand-ins that still write real files into the source file's project. The dev stack uses auto-setup with a physically isolated PostgreSQL instance for Temporal persistence/visibility and Temporal UI for workflow visibility.
 
-### Artifact storage (S3-compatible)
+### Artifact storage
 
-Production-like pipelines pass file ids (not large blobs) through workflow history. S3-compatible object storage holds source media, extracted audio, transcripts, key frames, and exported documents. The dev infrastructure uses SeaweedFS; production uses an operated S3-compatible store with appropriate durability, security, and lifecycle controls.
+Holds each project's recordings and documents. Pipelines pass file ids, not the file bytes. Dev uses SeaweedFS.
 
-A project has one owner. Every file belongs to one project, and that project's owner is the file's owner. The browser names the project when it creates the upload. pre-create checks that the caller owns it. pre-finish records the source file in that project before tusd tells the browser the upload finished. tusd does not serve the bytes.
+A project has one owner. Every file belongs to one project, and that project's owner is the file's owner. The person names the project when they start the upload. The API checks they own it, then records the file there before the upload is confirmed. The upload service does not play the recording.
 
 ![](embed:UploadTusHooksDynamic)
 
 A job does not take a project from the client. It copies the owner and the project from the source file. Each output the workers register copies the same pair.
 
-Watching uses the file id. The API checks that the caller owns the file and returns a short-lived URL. The browser then reads the bytes, including range requests, from artifact storage. The bucket and object key stay on the file row. Deleting a file removes the object first, then the row. A project delete is refused while a file or a job still points at it.
+A person opens a recording. The API checks they own it and returns a short-lived link. The browser plays the recording from storage. Deleting a file removes the stored recording, then the record of it. A project cannot be deleted while it still has files or jobs.
 
 ![](embed:WatchArtifactDynamic)
 

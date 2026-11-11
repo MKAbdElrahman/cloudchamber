@@ -58,7 +58,7 @@ export function isUserUuid(value: string): boolean {
   return UUID_RE.test(value.trim())
 }
 
-function formatRoleLabel(role: string): string {
+export function roleLabel(role: string): string {
   switch (role.toUpperCase()) {
     case 'USER':
       return 'Pipeline user'
@@ -83,7 +83,7 @@ export function accountDisplayLabel(
   if (!claims) return 'Account'
 
   const primaryRole = claims.roles[0]
-  if (primaryRole) return formatRoleLabel(primaryRole)
+  if (primaryRole) return roleLabel(primaryRole)
 
   const sub = claims.sub.trim()
   if (/^\d+$/.test(sub)) return 'Account'

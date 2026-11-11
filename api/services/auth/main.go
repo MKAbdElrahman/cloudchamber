@@ -75,10 +75,21 @@ func run(ctx context.Context, log *logger.Logger) error {
 			CORSAllowedOrigins []string      `conf:"default:*"`
 		}
 		Auth struct {
-			KeysJSON   string `conf:"mask"`
-			KeysFolder string `conf:"default:zarf/keys/"`
-			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
-			Issuer     string `conf:"default:service project"`
+			KeysJSON           string `conf:"mask"`
+			KeysFolder         string `conf:"default:zarf/keys/"`
+			ActiveKID string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
+			Issuer    string `conf:"default:service project"`
+		}
+		Google struct {
+			Key          string `conf:"mask"`
+			Secret       string `conf:"mask"`
+			CallbackBase string `conf:"default:http://127.0.0.1:6100"`
+		}
+		Bubble struct {
+			URL string `conf:"default:http://127.0.0.1:5173"`
+		}
+		Session struct {
+			Secret string `conf:"default:cloudchamber-dev-oauth-session,mask"`
 		}
 		DB struct {
 			User         string `conf:"default:postgres"`
@@ -236,7 +247,13 @@ func run(ctx context.Context, log *logger.Logger) error {
 			UserBus: userBus,
 		},
 		AuthConfig: mux.AuthConfig{
-			Auth: ath,
+			Auth:               ath,
+			ActiveKID:          cfg.Auth.ActiveKID,
+			GoogleKey:          cfg.Google.Key,
+			GoogleSecret:       cfg.Google.Secret,
+			GoogleCallbackBase: cfg.Google.CallbackBase,
+			BubbleURL:          cfg.Bubble.URL,
+			SessionSecret:      cfg.Session.Secret,
 		},
 	}
 

@@ -66,7 +66,13 @@ type CloudChamberConfig struct {
 
 // AuthConfig contains auth service specific config.
 type AuthConfig struct {
-	Auth *auth.Auth
+	Auth               *auth.Auth
+	ActiveKID          string
+	GoogleKey          string
+	GoogleSecret       string
+	GoogleCallbackBase string
+	BubbleURL          string
+	SessionSecret      string
 }
 
 type BusConfig struct {

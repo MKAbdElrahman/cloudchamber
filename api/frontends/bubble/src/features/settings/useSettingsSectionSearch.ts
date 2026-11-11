@@ -12,12 +12,12 @@ const INDEX: SettingsSearchHit[] = [
   {
     id: 'appearance',
     label: 'Appearance',
-    description: 'Color theme and theme pack',
+    description: 'Light, dark, or system',
   },
   {
     id: 'account',
     label: 'Account',
-    description: 'Session identity, roles, token expiry',
+    description: 'Name, email, and role',
   },
   {
     id: 'developer',

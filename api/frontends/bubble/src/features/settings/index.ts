@@ -1,3 +1,4 @@
+export { AccountPanel } from './AccountPanel'
 export { AppearancePanel } from './AppearancePanel'
 export { isSettingsSectionId, type SettingsSectionId } from './sections'
 export { SettingsSectionSearch } from './SettingsSectionSearch'

@@ -83,6 +83,18 @@ spec:
                   name: app-config
                   key: db_disabletls
                   optional: true
+            - name: AUTH_GOOGLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: auth-google
+                  key: key
+                  optional: true
+            - name: AUTH_GOOGLE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-google
+                  key: secret
+                  optional: true
 
             - name: KUBERNETES_NAMESPACE
               valueFrom:

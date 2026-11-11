@@ -17,6 +17,9 @@ spec:
 
       containers:
         - name: auth
+          env:
+            - name: AUTH_GOOGLE_CALLBACK_BASE
+              value: http://127.0.0.1:6100
           resources:
             requests:
               cpu: "100m"

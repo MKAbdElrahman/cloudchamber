@@ -17,7 +17,7 @@ import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type PeekVideo, type PipelineJob } from '@/features/pipeline'
 import { ProjectTrail, useProject, type ProjectFile } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
-import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
+import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
 import type { SourceMediaKind } from '@/shared/media'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
@@ -192,6 +192,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
 
   return (
     <WorkspacePage
+      contentWidth={PAGE_CONTENT_WIDTH}
       header={
         <VStack gap={WORKSPACE_GAP.group} width="100%">
           <ProjectTrail projectId={projectId} />

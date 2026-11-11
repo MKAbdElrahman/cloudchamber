@@ -14,7 +14,7 @@ import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKind
 import { JobOpenIcons, JobPeek, JobStatusLabel, createJob, jobPhase, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
 import { ForeignProjectNotice, ProjectTrail, type ProjectFile } from '@/features/projects'
 import { ApiError } from '@/shared/api'
-import { PageHeader, PendingLines, SHELL_NARROW_QUERY, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
+import { PageHeader, PendingLines, SHELL_NARROW_QUERY, TEXT_CONTENT_WIDTH, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { useProjectFiles } from '../projects/useProjectFiles'
@@ -147,10 +147,13 @@ export function JobFilePage({ token }: JobFilePageProps) {
           : undefined
   const badgeStatus = job ? visibleJobStatus(job) : undefined
 
+  const outlinePanel = Boolean(file && !isNarrow && ready && outline)
+
   return (
     <WorkspacePage
+      contentWidth={outlinePanel ? undefined : TEXT_CONTENT_WIDTH}
       start={
-        file && !isNarrow && ready && outline ? (
+        outlinePanel ? (
           <LayoutPanel width="17.5rem" hasDivider>
             {outline}
           </LayoutPanel>
@@ -199,7 +202,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
         </VStack>
       }
     >
-      <VStack ref={bindArticle} gap={WORKSPACE_GAP.section}>
+      <VStack ref={bindArticle} gap={WORKSPACE_GAP.section} width="100%" maxWidth={TEXT_CONTENT_WIDTH}>
         {pending ? <PendingLines /> : null}
         {foreign && job?.projectId && resolvedJobId ? (
           <ForeignProjectNotice ownerId={job.projectId} jobId={resolvedJobId} />

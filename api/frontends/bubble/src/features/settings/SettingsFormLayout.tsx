@@ -6,7 +6,7 @@ import { VStack } from '@astryxdesign/core/Layout'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Text } from '@astryxdesign/core/Text'
 
-import { WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
+import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { SHELL_ICON_COLOR } from '@/shared/theme'
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>
@@ -16,8 +16,8 @@ export function SettingsCard({ title, children }: { title?: string; children: Re
   return (
     <VStack gap={WORKSPACE_GAP.local} width="100%">
       {title != null ? <Text type="label">{title}</Text> : null}
-      <Card width="100%" {...WORKSPACE_CARD_FLUSH}>
-        <List density="spacious" edge="flush" hasDividers aria-label={title ?? 'Settings'}>
+      <Card width="100%" {...WORKSPACE_CARD}>
+        <List density="spacious" hasDividers aria-label={title ?? 'Settings'}>
           {children}
         </List>
       </Card>

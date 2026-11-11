@@ -18,9 +18,10 @@ nodes:
       # Metrics Prometheus
       - containerPort: 4020
         hostPort: 4020
-      # Auth
+      # Auth. The process stays on 6000 inside the cluster. The laptop
+      # port is 6100 because Chrome refuses to open port 6000.
       - containerPort: 6000
-        hostPort: 6000
+        hostPort: 6100
       # Auth debug
       - containerPort: 6010
         hostPort: 6010

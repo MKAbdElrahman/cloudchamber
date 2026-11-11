@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { SignInExperience } from '@/features/auth'
 import { rememberProject } from '@/features/projects'
@@ -27,6 +27,19 @@ function AuthenticatedApp() {
 export default function App() {
   const { token, setToken } = useSession()
   const location = useLocation()
+  const navigate = useNavigate()
+  const handedToken = new URLSearchParams(location.search).get('token')
+  const handedName = new URLSearchParams(location.search).get('name') ?? undefined
+
+  useEffect(() => {
+    if (!handedToken) return
+    if (!token) setToken(handedToken, handedName)
+    const params = new URLSearchParams(location.search)
+    params.delete('token')
+    params.delete('name')
+    const query = params.toString()
+    navigate(query ? `${location.pathname}?${query}` : location.pathname, { replace: true })
+  }, [handedName, handedToken, location.pathname, location.search, navigate, setToken, token])
 
   useEffect(() => {
     const routeProjectId = projectIdFromPath(location.pathname)
@@ -35,11 +48,7 @@ export default function App() {
 
   if (!token) {
     return (
-      <SignInExperience
-        onAuthenticated={(nextToken, name) => {
-          setToken(nextToken, name)
-        }}
-      />
+      <SignInExperience />
     )
   }
 

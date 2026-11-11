@@ -28,7 +28,7 @@ import {
 } from '@/features/projects'
 import { listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
 import { filesFromJob } from '@/features/outputs'
-import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_CARD, WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
@@ -175,6 +175,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
 
   return (
     <WorkspacePage
+      contentWidth={PAGE_CONTENT_WIDTH}
       header={
         <PageHeader
           title="Projects"

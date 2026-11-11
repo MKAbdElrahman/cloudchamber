@@ -1,7 +1,5 @@
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu'
 import { Icon } from '@astryxdesign/core/Icon'
-import { VStack } from '@astryxdesign/core/Layout'
-import { Text } from '@astryxdesign/core/Text'
 import { useSideNavCollapse } from '@astryxdesign/core/SideNav'
 import {
   ArrowRightOnRectangleIcon,
@@ -32,15 +30,13 @@ export function AccountMenu({ accountName, onSignOut }: AccountMenuProps) {
         icon: <Icon icon={UserCircleIcon} size="sm" color={SHELL_ICON_COLOR} />,
       }}
       hasChevron={false}
-      placement="above"
-      alignment={isCollapsed ? 'center' : 'start'}
-      menuWidth="16.25rem"
+      // The rail clips overflow. Matching the trigger keeps the open menu
+      // inside that padding. A collapsed rail is only an icon, so the menu
+      // opens beside it, where the radius is not cut by the rail edge.
+      placement={isCollapsed ? 'end' : 'above'}
+      alignment="start"
+      menuWidth={isCollapsed ? '16.25rem' : undefined}
       presentation="popover"
-      header={
-        <VStack gap={0}>
-          <Text type="label">{accountName}</Text>
-        </VStack>
-      }
       items={[
         {
           label: 'Profile',

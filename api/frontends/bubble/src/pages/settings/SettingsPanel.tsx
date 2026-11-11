@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMediaQuery } from '@astryxdesign/core/hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { LayoutPanel, HStack, VStack } from '@astryxdesign/core/Layout'
+import { LayoutPanel, VStack } from '@astryxdesign/core/Layout'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Icon } from '@astryxdesign/core/Icon'
 import { MetadataList, MetadataListItem } from '@astryxdesign/core/MetadataList'
 import { Switch } from '@astryxdesign/core/Switch'
 import { TextInput } from '@astryxdesign/core/TextInput'
-import { Token } from '@astryxdesign/core/Token'
-import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { Link } from '@astryxdesign/core/Link'
 import {
   CodeBracketIcon,
@@ -19,17 +17,17 @@ import {
 } from '@heroicons/react/24/outline'
 
 import {
+  AccountPanel,
   AppearancePanel,
   SettingsSectionSearch,
   isSettingsSectionId,
   useSettingsSectionSearch,
   type SettingsSectionId,
 } from '@/features/settings'
-import { accountDisplayLabel, parseServiceJwt, useSession } from '@/shared/auth'
 import { env, readCustomTusdEndpoint, writeCustomTusdEndpoint } from '@/shared/config'
-import { PageHeader, SHELL_NARROW_QUERY, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { PageHeader, SHELL_NARROW_QUERY, TEXT_CONTENT_WIDTH, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
-import { META_TOKEN_COLOR, SHELL_ICON_COLOR, useThemePreference } from '@/shared/theme'
+import { SHELL_ICON_COLOR } from '@/shared/theme'
 
 const NAV: { id: SettingsSectionId; label: string; icon: typeof PaintBrushIcon }[] = [
   { id: 'appearance', label: 'Appearance', icon: PaintBrushIcon },
@@ -75,6 +73,13 @@ function TusdEndpointSetting() {
   )
 }
 
+/**
+ * Settings regions, and the mechanism for each:
+ *   > lg (1024)  start panel 17.5rem holds its width; content extends to the open edge
+ *   <= lg        the panel is swapped off; the section list stacks above the pane,
+ *                and that single region centers on the 640 settings measure
+ */
+
 /** Settings sidebar — section links beside the active pane. Below the shell's lg point the list stacks above the pane. */
 export function SettingsPanel() {
   const isNarrow = useMediaQuery(SHELL_NARROW_QUERY)
@@ -82,8 +87,6 @@ export function SettingsPanel() {
   const { section: sectionParam } = useParams<{ section: string }>()
   const section: SettingsSectionId = isSettingsSectionId(sectionParam) ? sectionParam : 'appearance'
   const { query, setQuery, results, isFiltering } = useSettingsSectionSearch()
-  const { themeId, setThemeId, colorMode, setColorMode } = useThemePreference()
-  const { token, displayName } = useSession()
 
   useEffect(() => {
     if (!isSettingsSectionId(sectionParam)) {
@@ -91,49 +94,18 @@ export function SettingsPanel() {
     }
   }, [sectionParam, navigate])
 
-  const claims = useMemo(() => (token ? parseServiceJwt(token) : null), [token])
-  const accountLabel = accountDisplayLabel(claims, displayName)
   const activeNav = NAV.find((n) => n.id === section)
 
   const sectionTitle = activeNav?.label ?? 'Settings'
 
   const sectionBody = (
-    <VStack gap={WORKSPACE_GAP.section}>
+    <VStack gap={WORKSPACE_GAP.section} width="100%">
       <Heading level={2}>{sectionTitle}</Heading>
       {section === 'appearance' ? (
-        <AppearancePanel
-          themeId={themeId}
-          setThemeId={setThemeId}
-          colorMode={colorMode}
-          setColorMode={setColorMode}
-        />
+        <AppearancePanel />
       ) : null}
 
-      {section === 'account' ? (
-        <MetadataList>
-          <MetadataListItem label="Display name">{accountLabel}</MetadataListItem>
-          <MetadataListItem label="User ID (sub)">{claims?.sub ?? '—'}</MetadataListItem>
-          <MetadataListItem label="Roles">
-            {claims && claims.roles.length > 0 ? (
-              <HStack gap={WORKSPACE_GAP.local} wrap="wrap">
-                {claims.roles.map((role) => (
-                  <Token key={role} label={role} size="sm" color={META_TOKEN_COLOR} />
-                ))}
-              </HStack>
-            ) : (
-              '—'
-            )}
-          </MetadataListItem>
-          <MetadataListItem label="Issuer">{claims?.iss ?? '—'}</MetadataListItem>
-          <MetadataListItem label="Expires">
-            {claims?.expiresAt ? (
-              <Timestamp value={claims.expiresAt.toISOString()} format="relative" />
-            ) : (
-              '—'
-            )}
-          </MetadataListItem>
-        </MetadataList>
-      ) : null}
+      {section === 'account' ? <AccountPanel /> : null}
 
       {section === 'developer' ? (
         <VStack gap={WORKSPACE_GAP.group}>
@@ -172,7 +144,7 @@ export function SettingsPanel() {
       {isFiltering && navItems.length === 0 ? (
         <Text type="supporting">No matching sections.</Text>
       ) : null}
-      <List density="spacious" edge="flush" hasDividers aria-label="Settings sections">
+      <List density="spacious" aria-label="Settings sections">
         {navItems.map((item) => (
           <ListItem
             key={item.id}
@@ -188,7 +160,7 @@ export function SettingsPanel() {
 
   if (isNarrow) {
     return (
-      <WorkspacePage>
+      <WorkspacePage contentWidth={TEXT_CONTENT_WIDTH}>
         <VStack gap={WORKSPACE_GAP.section}>
           <Heading level={1}>Settings</Heading>
           {sectionList}

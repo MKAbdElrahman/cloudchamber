@@ -1,21 +1,21 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FolderIcon } from '@heroicons/react/24/outline'
+import { RectangleStackIcon } from '@heroicons/react/24/outline'
 
 import { Grid } from '@astryxdesign/core/Grid'
-import { HStack, VStack } from '@astryxdesign/core/Layout'
+import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout'
 import { AlertDialog } from '@astryxdesign/core/AlertDialog'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Button } from '@astryxdesign/core/Button'
 import { ClickableCard } from '@astryxdesign/core/ClickableCard'
-import { Divider } from '@astryxdesign/core/Divider'
+import { ContextMenu, type ContextMenuOption } from '@astryxdesign/core/ContextMenu'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { MoreMenu } from '@astryxdesign/core/MoreMenu'
-import { Heading, Text } from '@astryxdesign/core/Text'
+import { Text } from '@astryxdesign/core/Text'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import {
   createProject,
@@ -29,7 +29,7 @@ import {
 import { listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
 import { filesFromJob } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
-import { WORKSPACE_CARD, WORKSPACE_CARD_FLUSH, WORKSPACE_GAP } from '@/shared/spacing'
+import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { MUTED_ICON_COLOR } from '@/shared/theme'
 
 import { LibraryViewControl } from './LibraryViewControl'
@@ -45,8 +45,6 @@ function countLabel(count: number, singular: string, plural: string): string {
 
 type ProjectTileProps = {
   project: Project
-  files: number
-  countsReady: boolean
   onRename: (project: Project) => void
   onDelete: (project: Project) => void
 }
@@ -70,44 +68,76 @@ function projectFileCount(
   return (scope.jobsByProject[projectId] ?? []).reduce((count, job) => count + filesFromJob(job).length, 0)
 }
 
-/** One project card. The folder mark names it; the card opens it. */
-function ProjectTile({ project, files, countsReady, onRename, onDelete }: ProjectTileProps) {
-  const summary = projectSummary(files, countsReady)
+function projectActions(
+  project: Project,
+  onRename: (project: Project) => void,
+  onDelete: (project: Project) => void,
+): ContextMenuOption[] {
+  return [
+    { label: 'Rename', onClick: () => onRename(project) },
+    { type: 'divider' },
+    { label: 'Delete', variant: 'destructive', onClick: () => onDelete(project) },
+  ]
+}
 
+/** Right-click opens the same actions at the pointer. A long press opens them on touch. */
+function ProjectMenu({
+  project,
+  onRename,
+  onDelete,
+  role,
+  children,
+}: ProjectTileProps & { role?: 'presentation'; children: ReactNode }) {
   return (
-    <ClickableCard
-      label={`Open ${project.name}`}
-      href={WORKSPACE_PATHS.project(project.id)}
-      {...WORKSPACE_CARD_FLUSH}
-      height="100%"
+    <ContextMenu
+      presentation="adaptive"
+      label={`Manage ${project.name}`}
+      role={role}
+      items={projectActions(project, onRename, onDelete)}
     >
-      <VStack gap={0} height="100%">
-        <HStack gap={WORKSPACE_GAP.group} padding={WORKSPACE_CARD.padding} justify="between" vAlign="center">
-          <HStack gap={WORKSPACE_GAP.group} vAlign="center">
-            <Icon icon={FolderIcon} size="lg" color={MUTED_ICON_COLOR} />
-            <Heading level={3} maxLines={1}>
+      {children}
+    </ContextMenu>
+  )
+}
+
+/** Visible overflow. The corner of a tile, or the end of a row. */
+function ProjectMoreMenu({
+  project,
+  onRename,
+  onDelete,
+}: ProjectTileProps) {
+  return (
+    <MoreMenu
+      label={`Manage ${project.name}`}
+      size="sm"
+      alignment="end"
+      presentation="adaptive"
+      items={projectActions(project, onRename, onDelete)}
+    />
+  )
+}
+
+/** Board card. The name is the project. The menu sits at the end of that name. */
+function ProjectTile({ project, onRename, onDelete }: ProjectTileProps) {
+  return (
+    <ProjectMenu project={project} onRename={onRename} onDelete={onDelete}>
+      <ClickableCard
+        label={`Open ${project.name}`}
+        href={WORKSPACE_PATHS.project(project.id)}
+        {...WORKSPACE_CARD}
+        width="100%"
+        height="100%"
+      >
+        <HStack justify="between" vAlign="start" width="100%" gap={WORKSPACE_GAP.local}>
+          <StackItem size="fill">
+            <Text type="label" weight="semibold" maxLines={2}>
               {project.name}
-            </Heading>
-          </HStack>
-          <MoreMenu
-            label={`Manage ${project.name}`}
-            size="sm"
-            alignment="end"
-            items={[
-              { label: 'Rename', onClick: () => onRename(project) },
-              { type: 'divider' },
-              { label: 'Delete', variant: 'destructive', onClick: () => onDelete(project) },
-            ]}
-          />
+            </Text>
+          </StackItem>
+          <ProjectMoreMenu project={project} onRename={onRename} onDelete={onDelete} />
         </HStack>
-        <Divider />
-        <VStack padding={WORKSPACE_CARD.padding}>
-          <Text type="supporting">
-            {summary ?? ' '}
-          </Text>
-        </VStack>
-      </VStack>
-    </ClickableCard>
+      </ClickableCard>
+    </ProjectMenu>
   )
 }
 
@@ -192,7 +222,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
         <EmptyState
           title="No projects yet"
           description="Create a project, then add one recording at a time."
-          icon={<Icon icon={FolderIcon} size="lg" color={MUTED_ICON_COLOR} />}
+          icon={<Icon icon={RectangleStackIcon} size="lg" color={MUTED_ICON_COLOR} />}
           isCompact
         />
       ) : null}
@@ -203,54 +233,42 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
           </HStack>
           {view === 'grid' ? (
             <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Projects">
-              {rows.map((project) => {
-                const files = projectFileCount(project.id, scope.data, scope.isPending)
-                return (
-                  <ProjectTile
-                    key={project.id}
-                    project={project}
-                    files={files}
-                    countsReady={!scope.isPending}
-                    onRename={(item) => {
-                      setRenameName(item.name)
-                      setRenaming(item)
-                    }}
-                    onDelete={setDeleting}
-                  />
-                )
-              })}
+              {rows.map((project) => (
+                <ProjectTile
+                  key={project.id}
+                  project={project}
+                  onRename={(item) => {
+                    setRenameName(item.name)
+                    setRenaming(item)
+                  }}
+                  onDelete={setDeleting}
+                />
+              ))}
             </Grid>
           ) : (
             <List density="spacious" aria-label="Projects">
               {rows.map((project) => {
                 const files = projectFileCount(project.id, scope.data, scope.isPending)
                 const summary = projectSummary(files, !scope.isPending)
+                const openRename = (item: Project) => {
+                  setRenameName(item.name)
+                  setRenaming(item)
+                }
                 return (
-                  <ListItem
+                  <ProjectMenu
                     key={project.id}
-                    href={WORKSPACE_PATHS.project(project.id)}
-                    label={project.name}
-                    description={summary ?? undefined}
-                    startContent={<Icon icon={FolderIcon} size="sm" color={MUTED_ICON_COLOR} />}
-                    endContent={
-                      <MoreMenu
-                        label={`Manage ${project.name}`}
-                        size="sm"
-                        alignment="end"
-                        items={[
-                          {
-                            label: 'Rename',
-                            onClick: () => {
-                              setRenameName(project.name)
-                              setRenaming(project)
-                            },
-                          },
-                          { type: 'divider' },
-                          { label: 'Delete', variant: 'destructive', onClick: () => setDeleting(project) },
-                        ]}
-                      />
-                    }
-                  />
+                    project={project}
+                    onRename={openRename}
+                    onDelete={setDeleting}
+                    role="presentation"
+                  >
+                    <ListItem
+                      href={WORKSPACE_PATHS.project(project.id)}
+                      label={project.name}
+                      description={summary ?? undefined}
+                      endContent={<ProjectMoreMenu project={project} onRename={openRename} onDelete={setDeleting} />}
+                    />
+                  </ProjectMenu>
                 )
               })}
             </List>

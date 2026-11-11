@@ -14,10 +14,3 @@ export const WORKSPACE_CARD = {
   elevation: 'low' as const,
   padding: WORKSPACE_GAP.group,
 }
-
-/** Same surface, flush edge, so a divider or list can meet the border. */
-export const WORKSPACE_CARD_FLUSH = {
-  variant: WORKSPACE_CARD.variant,
-  elevation: WORKSPACE_CARD.elevation,
-  padding: 0 as const,
-}

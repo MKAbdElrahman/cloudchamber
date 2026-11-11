@@ -9,7 +9,7 @@ import { AppChrome, projectIdFromPath, workspaceSectionFromPath } from '@/shared
 
 function AuthenticatedApp() {
   const location = useLocation()
-  const { token, displayName, signOut } = useSession()
+  const { token, displayName } = useSession()
 
   if (!token) return null
 
@@ -18,7 +18,7 @@ function AuthenticatedApp() {
   const accountName = accountDisplayLabel(claims, displayName)
 
   return (
-    <AppChrome section={section} accountName={accountName} onSignOut={signOut}>
+    <AppChrome section={section} accountName={accountName}>
       <AuthenticatedRoutes />
     </AppChrome>
   )

@@ -5,11 +5,11 @@ import { Square2StackIcon } from '@heroicons/react/24/outline'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Card } from '@astryxdesign/core/Card'
 import { Grid } from '@astryxdesign/core/Grid'
-import { HStack, VStack } from '@astryxdesign/core/Layout'
+import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout'
 import { Button } from '@astryxdesign/core/Button'
 import { ClickableCard } from '@astryxdesign/core/ClickableCard'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
-import { Heading, Text } from '@astryxdesign/core/Text'
+import { Text } from '@astryxdesign/core/Text'
 import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
@@ -255,26 +255,28 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Jobs">
             {entries.map((entry) => {
               const body = (
-                <VStack gap={WORKSPACE_GAP.group}>
-                  <HStack justify="between" vAlign="start">
-                    <Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />
-                    <HStack gap={WORKSPACE_GAP.local} vAlign="center">
-                      {entry.fileId || entry.jobId ? (
-                        <JobOpenIcons
-                          kind={entry.kind}
-                          hasPipeline={Boolean(entry.jobId)}
-                          status={entry.status}
-                          onOpen={(target) => openPeek(entry, target)}
-                        />
-                      ) : null}
-                      {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
-                    </HStack>
+                <HStack gap={WORKSPACE_GAP.group} vAlign="center" width="100%">
+                  <Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />
+                  <StackItem size="fill">
+                    <VStack gap={0}>
+                      <Text type="label" weight="semibold" maxLines={2}>
+                        {entry.name}
+                      </Text>
+                      <EntryWhen entry={entry} />
+                    </VStack>
+                  </StackItem>
+                  <HStack gap={WORKSPACE_GAP.local} vAlign="center">
+                    {entry.fileId || entry.jobId ? (
+                      <JobOpenIcons
+                        kind={entry.kind}
+                        hasPipeline={Boolean(entry.jobId)}
+                        status={entry.status}
+                        onOpen={(target) => openPeek(entry, target)}
+                      />
+                    ) : null}
+                    {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
                   </HStack>
-                  <Heading level={3} maxLines={2}>
-                    {entry.name}
-                  </Heading>
-                  <EntryWhen entry={entry} />
-                </VStack>
+                </HStack>
               )
               if (!entry.href) {
                 return (

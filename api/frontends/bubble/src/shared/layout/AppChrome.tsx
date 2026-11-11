@@ -6,7 +6,7 @@ import { SideNav, SideNavHeading, SideNavItem, SideNavSection } from '@astryxdes
 import { FolderIcon } from '@heroicons/react/24/outline'
 import { FolderIcon as FolderSolid } from '@heroicons/react/24/solid'
 
-import { AccountMenu } from './AccountMenu'
+import { AccountFooter } from './AccountFooter'
 import type { WorkspaceSection } from './workspace'
 import { WORKSPACE_PATHS } from './workspacePaths'
 
@@ -14,7 +14,6 @@ type AppChromeProps = {
   children: ReactNode
   section: WorkspaceSection
   accountName: string
-  onSignOut: () => void
 }
 
 /**
@@ -24,7 +23,7 @@ type AppChromeProps = {
  *   < md          that nav becomes the mobile bar and drawer
  * Settings drops its own start panel at lg (1024); see SHELL_NARROW_QUERY.
  */
-export function AppChrome({ children, section, accountName, onSignOut }: AppChromeProps) {
+export function AppChrome({ children, section, accountName }: AppChromeProps) {
   return (
     <AppShell
       height="fill"
@@ -42,7 +41,7 @@ export function AppChrome({ children, section, accountName, onSignOut }: AppChro
             autoSaveId: 'bubble.shell-sidenav',
           }}
           header={<SideNavHeading heading="CloudChamber" headingHref={WORKSPACE_PATHS.home} />}
-          footer={<AccountMenu accountName={accountName} onSignOut={onSignOut} />}
+          footer={<AccountFooter accountName={accountName} />}
         >
           <SideNavSection title="Workspace">
             <SideNavItem

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { Avatar } from '@astryxdesign/core/Avatar'
+import { Button } from '@astryxdesign/core/Button'
 import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { List } from '@astryxdesign/core/List'
 import { Text } from '@astryxdesign/core/Text'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { CalendarIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
+import { ArrowRightOnRectangleIcon, CalendarIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
 
 import { accountDisplayLabel, isUserUuid, parseServiceJwt, roleLabel, useSession } from '@/shared/auth'
 import { WORKSPACE_GAP } from '@/shared/spacing'
@@ -20,7 +21,7 @@ function rolesLine(roles: string[]): string {
 
 /** Account identity: the person, then the record the API holds for them. */
 export function AccountPanel() {
-  const { token, displayName } = useSession()
+  const { token, displayName, signOut } = useSession()
   const claims = useMemo(() => (token ? parseServiceJwt(token) : null), [token])
   const userId = claims && isUserUuid(claims.sub) ? claims.sub : null
   const [account, setAccount] = useState<AccountUser | null>(null)
@@ -75,6 +76,12 @@ export function AccountPanel() {
             detail={<Timestamp value={account.dateCreated} format="relative" />}
           />
         ) : null}
+        <SettingsRow
+          title="This browser"
+          icon={ArrowRightOnRectangleIcon}
+          description="Signed in on this browser."
+          control={<Button label="Sign out" variant="ghost" size="sm" onClick={signOut} />}
+        />
       </List>
 
       {account && !account.enabled ? (

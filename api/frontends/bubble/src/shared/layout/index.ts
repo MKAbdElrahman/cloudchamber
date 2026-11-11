@@ -1,4 +1,4 @@
-export { AccountMenu } from './AccountMenu'
+export { AccountFooter } from './AccountFooter'
 export { AppChrome } from './AppChrome'
 export { PageHeader } from './PageHeader'
 export { PendingLines } from './PendingLines'

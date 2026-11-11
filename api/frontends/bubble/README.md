@@ -2,27 +2,24 @@
 
 Web app for CloudChamber.
 
-Modular React + Vite + TypeScript + Tailwind v4 + **[Meta Astryx](https://github.com/meta/astryx)** (`@astryxdesign/core`, Neutral theme) + TanStack Query + `tus-js-client`.
+Modular React + Vite + TypeScript + Tailwind v4 + **[Meta Astryx](https://github.com/meta/astryx)** (`@astryxdesign/core`) + TanStack Query + `tus-js-client`.
 
-Mirrors backend modularity by **feature/domain** modules:
+Sign in with Google. A project holds its recordings and documents. Settings are Appearance and Account.
 
-- `src/features/auth` — login / JWT (auth service token or paste token)
-- `src/features/upload` — resumable tus upload to tusd (owner-scoped, verified server-side)
+Feature modules:
+
+- `src/features/auth` — Google sign-in
 - `src/features/projects` — projects, and the files in a project
-- `src/features/pipeline` — start a conversion from a file id and follow its status
-- `src/shared` — config/env, API client, session, layout chrome (`AppShell` / `TopNav`)
-- `src/app/AstryxProviders.tsx` — theme + layer providers
-- `references/astryx/` — upstream template mapping + `pnpm astryx` CLI usage
-
-Astryx surfaces in use: resizable job **console** (`Table`, inspector panel), **toasts**, **Stepper** wizard, split **login**, **MetadataList** settings. Legacy shadcn `shared/ui` removed.
-
-## Scope
-
-A project holds its recordings and documents. An upload names the project. A conversion starts from a file id and writes the document back into that project.
+- `src/features/upload` — resumable tus upload to tusd
+- `src/features/pipeline` — start a conversion from a file and follow it
+- `src/features/outputs` — the document a job writes back into the project
+- `src/features/settings` — Appearance and Account
+- `src/shared` — config, API client, session, side-nav chrome
+- `src/app/AstryxProviders.tsx` — theme providers
 
 ## Configure
 
-Copy `.env.example` to `.env` and adjust bases for your environment (kind dev defaults shown). The auth token endpoint is `GET {VITE_AUTH_API_BASE}/v1/auth/token/{VITE_AUTH_KID}` (Basic auth). You can also paste an existing bearer token.
+Copy `.env.example` to `.env` and adjust the bases for your environment. Sign-in sends the browser to `{VITE_AUTH_API_BASE}/api/auth/google`.
 
 ## Run
 
@@ -33,4 +30,4 @@ pnpm dev
 
 Build: `pnpm build`. Quality gate: `pnpm check` (lint, unit tests, build, `astryx doctor`).
 
-Routes when signed in: `/` for projects, `/p/:projectId` for one project, and `/settings/appearance` (and `account`, `developer`).
+Routes when signed in: `/` for projects, `/p/:projectId` for one project, `/settings/appearance`, and `/settings/account`.

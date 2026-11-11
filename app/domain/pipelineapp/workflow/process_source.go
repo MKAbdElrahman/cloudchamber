@@ -76,9 +76,14 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 		return nil, err
 	}
 
+	framesOpts := mediaOpts
+	if workflow.GetVersion(ctx, "extract-key-frames-queue", workflow.DefaultVersion, 1) == 1 {
+		framesOpts.TaskQueue = TaskQueueFrames
+	}
+
 	var frames ExtractKeyFramesOutput
 	if err := workflow.ExecuteActivity(
-		workflow.WithActivityOptions(ctx, mediaOpts),
+		workflow.WithActivityOptions(ctx, framesOpts),
 		ActivityExtractKeyFrames,
 		ExtractKeyFramesInput{
 			JobID:       in.JobID,

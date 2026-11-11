@@ -4,4 +4,5 @@ resources:
   - ./dev-pipeline-workflow.yaml
   - ./dev-pipeline-media.yaml
   - ./dev-pipeline-asr.yaml
+  - ./dev-pipeline-frames.yaml
   - ./dev-pipeline-render.yaml

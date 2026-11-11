@@ -6,7 +6,7 @@ import { jobPhase, type JobPhase } from './jobStatus'
  * Stand-in for a workflow query the API does not expose yet.
  * The job record is one status plus artifact refs. Temporal runs
  * ResolveSource, ExtractAudio, Transcribe, ExtractKeyFrames, and
- * ComposeExport on the workflow, media, speech, and render workers.
+ * ComposeExport on the workflow, media, speech, frames, and render workers.
  * Until `GET /v1/pipeline/jobs/{id}/progress` reports each activity, a running
  * job walks these stages on a clock. A ref, or a finished job, replaces it.
  */
@@ -132,8 +132,8 @@ function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput):
       switch (state) {
         case 'current':
           return audioOnly
-            ? 'This recording is audio, so the media worker records that there are no frames.'
-            : 'The media worker is choosing frames and lining them up with the transcript.'
+            ? 'This recording is audio, so the frames worker records that there are no frames.'
+            : 'The frames worker is choosing frames and lining them up with the transcript.'
         case 'paused':
           return 'Paused while frames were being chosen.'
         case 'canceled':

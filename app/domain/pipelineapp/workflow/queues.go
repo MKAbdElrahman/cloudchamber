@@ -4,8 +4,10 @@ package workflow
 const (
 	// TaskQueueWorkflow processes workflow tasks for ProcessSourceWorkflow.
 	TaskQueueWorkflow = "cloudchamber-workflow"
-	// TaskQueueMedia processes source/audio/key-frame activities.
+	// TaskQueueMedia processes source and audio activities.
 	TaskQueueMedia = "cloudchamber-media"
+	// TaskQueueFrames processes key-frame activities.
+	TaskQueueFrames = "cloudchamber-frames"
 	// TaskQueueASR processes transcription activities.
 	TaskQueueASR = "cloudchamber-asr"
 	// TaskQueueRender processes composition and export activities.

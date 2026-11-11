@@ -108,11 +108,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 	if err != nil {
 		return err
 	}
-	w := worker.New(c, pipelinewf.TaskQueueMedia, worker.Options{
-		Interceptors: []interceptor.WorkerInterceptor{tracingInterceptor},
-	})
+	// The client copies interceptors that implement WorkerInterceptor onto the
+	// worker. Passing the tracing interceptor here as well records every span twice.
+	w := worker.New(c, pipelinewf.TaskQueueMedia, worker.Options{})
 	w.RegisterActivityWithOptions(acts.ResolveSource, activity.RegisterOptions{Name: pipelinewf.ActivityResolveSource})
 	w.RegisterActivityWithOptions(acts.ExtractAudio, activity.RegisterOptions{Name: pipelinewf.ActivityExtractAudio})
+	// A workflow started before the frames queue still has this activity scheduled here.
 	w.RegisterActivityWithOptions(acts.ExtractKeyFrames, activity.RegisterOptions{Name: pipelinewf.ActivityExtractKeyFrames})
 
 	log.Info(ctx, "startup", "status", "worker started", "taskQueue", pipelinewf.TaskQueueMedia, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)

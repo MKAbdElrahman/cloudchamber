@@ -102,9 +102,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	defer c.Close()
 
-	w := worker.New(c, pipelinewf.TaskQueueWorkflow, worker.Options{
-		Interceptors: []interceptor.WorkerInterceptor{tracingInterceptor},
-	})
+	// The client copies interceptors that implement WorkerInterceptor onto the
+	// worker. Passing the tracing interceptor here as well records every span twice.
+	w := worker.New(c, pipelinewf.TaskQueueWorkflow, worker.Options{})
 	w.RegisterWorkflow(pipelinewf.ProcessSourceWorkflow)
 
 	log.Info(ctx, "startup", "status", "worker started", "taskQueue", pipelinewf.TaskQueueWorkflow, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)

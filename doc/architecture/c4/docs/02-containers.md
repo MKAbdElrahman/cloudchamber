@@ -26,11 +26,23 @@ Holds durable relational state shared by domains. Schema changes flow through th
 
 ### Temporal orchestration
 
-Temporal Service provides durable workflow orchestration for long-running pipelines (workflow state, task queues, retries/timeouts, visibility). The primary API service starts and queries pipeline workflows. A worker polls each task queue. In dev, the media, transcription, and export activities are simulated stand-ins that still write real files into the source file's project. The dev stack uses auto-setup with a physically isolated PostgreSQL instance for Temporal persistence/visibility and Temporal UI for workflow visibility.
+Temporal Service is the frontend, history, matching, and internal worker service. Dev runs those roles in one auto-setup process. Workflow history and visibility sit in a separate PostgreSQL instance, so a restart of that process keeps the run.
+
+The API is the Temporal client. It checks the caller, records the job, and starts ProcessSourceWorkflow. That start returns after History records the execution and schedules the first workflow task. The API stores the run id and returns the job. The workflow worker polls that task after it is queued, and that poll may overlap the API response. The API asks the frontend to cancel an execution, and reads status and results from the frontend. The job row records the source file's owner and project. Whenever someone lists or opens jobs, the API reads each execution the row still has open and copies that status onto the row. When the execution has closed, that read also copies the output file ids. Those reads are later requests. They are not part of the workflow trace.
+
+The workflow worker only polls Temporal. The first workflow task schedules ResolveSource. It then waits. The next activity is queued only after that result is reported, which takes another workflow task. The order is ExtractAudio, Transcribe, ExtractKeyFrames, then ComposeExport. The task that schedules ExtractKeyFrames records the frames-queue version first. Production uses worker versioning. A pinned run stays on the build that started it, and two workers of that build poll each task queue, so if one stops the other continues the run. An auto-upgrade run moves to the target build, and that workflow change still has to replay. Dev runs one worker per queue, and a crash waits until that worker polls again. Dev patches workflow changes in code. Media, frames, ASR, and render poll their own task queues. In dev those activities are simulated stand-ins: they check or write objects, and they do not download the source, the audio, or earlier outputs.
+
+A transient activity error is retried on the same activity. A permanent failure makes the workflow remove the outputs already registered in the project, then close the execution as failed. A cancel while an activity is running waits for that activity. The activity learns about the cancel on its next heartbeat and stops before writing. The workflow then removes outputs already registered, and returns a canceled error. The API stores that failed status from a later read of the frontend. Workers expose poll and schedule-to-start metrics for the metrics service to scrape. Schedule-to-start stays open, so a task waits for the next worker allowed to poll that queue. For a pinned run, that worker is the starting build.
+
+![](embed:PipelineProcessDynamic)
+
+![](embed:PipelineFailureDynamic)
+
+![](embed:PipelineCancelDynamic)
 
 ### Artifact storage
 
-Holds each project's recordings and documents. Pipelines pass file ids, not the file bytes. Dev uses SeaweedFS.
+Holds the bytes of recordings and pipeline outputs. Pipelines pass file ids, not the file bytes. Dev uses SeaweedFS. Which project a file belongs to is the artifact row in application PostgreSQL. The object key is the owner and the file id.
 
 A project has one owner. Every file belongs to one project, and that project's owner is the file's owner. The person names the project when they start the upload. The API checks they own it, then records the file there before the upload is confirmed. The upload service does not play the recording.
 

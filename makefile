@@ -135,6 +135,7 @@ AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
 PIPELINE_WORKFLOW_IMAGE := $(BASE_IMAGE_NAME)/pipeline-workflow:$(VERSION)
 PIPELINE_MEDIA_IMAGE    := $(BASE_IMAGE_NAME)/pipeline-media:$(VERSION)
 PIPELINE_ASR_IMAGE      := $(BASE_IMAGE_NAME)/pipeline-asr:$(VERSION)
+PIPELINE_FRAMES_IMAGE   := $(BASE_IMAGE_NAME)/pipeline-frames:$(VERSION)
 PIPELINE_RENDER_IMAGE   := $(BASE_IMAGE_NAME)/pipeline-render:$(VERSION)
 
 C4_DIR          := doc/architecture/c4
@@ -221,7 +222,7 @@ auth:
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		.
 
-pipeline-workers: pipeline-workflow pipeline-media pipeline-asr pipeline-render
+pipeline-workers: pipeline-workflow pipeline-media pipeline-asr pipeline-frames pipeline-render
 
 pipeline-workflow:
 	docker build \
@@ -243,6 +244,14 @@ pipeline-asr:
 	docker build \
 		-f zarf/docker/dockerfile.pipeline-asr \
 		-t $(PIPELINE_ASR_IMAGE) \
+		--build-arg BUILD_TAG=$(VERSION) \
+		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		.
+
+pipeline-frames:
+	docker build \
+		-f zarf/docker/dockerfile.pipeline-frames \
+		-t $(PIPELINE_FRAMES_IMAGE) \
 		--build-arg BUILD_TAG=$(VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		.
@@ -310,6 +319,7 @@ dev-load:
 	kind load docker-image $(PIPELINE_WORKFLOW_IMAGE) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(PIPELINE_MEDIA_IMAGE) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(PIPELINE_ASR_IMAGE) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(PIPELINE_FRAMES_IMAGE) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(PIPELINE_RENDER_IMAGE) --name $(KIND_CLUSTER) & \
 	wait;
 
@@ -336,6 +346,7 @@ dev-apply:
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-workflow
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-media
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-asr
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-frames
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-render
 
 	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
@@ -351,6 +362,23 @@ dev-restart:
 dev-run: build dev-up dev-load dev-apply
 
 dev-update: build dev-load dev-restart
+
+# Workers keep the image tag 0.0.1, so loading a new image does not replace a
+# running pod. Apply the worker manifests, then restart the five deployments.
+dev-update-workers: pipeline-workers
+	kind load docker-image $(PIPELINE_WORKFLOW_IMAGE) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(PIPELINE_MEDIA_IMAGE) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(PIPELINE_ASR_IMAGE) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(PIPELINE_FRAMES_IMAGE) --name $(KIND_CLUSTER) & \
+	kind load docker-image $(PIPELINE_RENDER_IMAGE) --name $(KIND_CLUSTER) & \
+	wait
+	kustomize build zarf/k8s/dev/pipeline-workers | kubectl apply -f -
+	kubectl rollout restart deployment/pipeline-workflow deployment/pipeline-media deployment/pipeline-asr deployment/pipeline-frames deployment/pipeline-render --namespace=$(NAMESPACE)
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-workflow
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-media
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-asr
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-frames
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-render
 
 dev-update-apply: build dev-load dev-apply
 

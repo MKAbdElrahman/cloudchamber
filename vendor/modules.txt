@@ -616,6 +616,7 @@ go.temporal.io/sdk/log
 go.temporal.io/sdk/temporal
 go.temporal.io/sdk/worker
 go.temporal.io/sdk/workflow
+go.temporal.io/sdk/testsuite
 # go.temporal.io/sdk/contrib/opentelemetry v0.8.1
 ## explicit; go 1.25.4
 go.temporal.io/sdk/contrib/opentelemetry

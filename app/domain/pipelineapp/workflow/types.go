@@ -28,6 +28,7 @@ type ResolveSourceInput struct {
 type ResolveSourceOutput struct {
 	JobID       string `json:"job_id"`
 	OwnerID     string `json:"owner_id"`
+	ProjectID   string `json:"project_id"`
 	FileID      string `json:"file_id"`
 	Name        string `json:"name"`
 	ContentType string `json:"content_type"`
@@ -35,9 +36,10 @@ type ResolveSourceOutput struct {
 
 // ExtractAudioInput is the input for audio extraction.
 type ExtractAudioInput struct {
-	JobID   string `json:"job_id"`
-	OwnerID string `json:"owner_id"`
-	Name    string `json:"name"`
+	JobID     string `json:"job_id"`
+	OwnerID   string `json:"owner_id"`
+	ProjectID string `json:"project_id"`
+	Name      string `json:"name"`
 }
 
 // ExtractAudioOutput is the audio file the speech step reads.
@@ -50,10 +52,11 @@ type ExtractAudioOutput struct {
 
 // TranscribeInput is the input for transcription.
 type TranscribeInput struct {
-	JobID   string `json:"job_id"`
-	OwnerID string `json:"owner_id"`
-	FileID  string `json:"file_id"`
-	Name    string `json:"name"`
+	JobID     string `json:"job_id"`
+	OwnerID   string `json:"owner_id"`
+	ProjectID string `json:"project_id"`
+	FileID    string `json:"file_id"`
+	Name      string `json:"name"`
 }
 
 // TranscribeOutput is the transcript file.
@@ -66,6 +69,7 @@ type TranscribeOutput struct {
 type ExtractKeyFramesInput struct {
 	JobID       string `json:"job_id"`
 	OwnerID     string `json:"owner_id"`
+	ProjectID   string `json:"project_id"`
 	Name        string `json:"name"`
 	ContentType string `json:"content_type"`
 }
@@ -80,6 +84,7 @@ type ExtractKeyFramesOutput struct {
 type ComposeExportInput struct {
 	JobID            string `json:"job_id"`
 	OwnerID          string `json:"owner_id"`
+	ProjectID        string `json:"project_id"`
 	FileID           string `json:"file_id"`
 	Name             string `json:"name"`
 	TranscriptFileID string `json:"transcript_file_id"`

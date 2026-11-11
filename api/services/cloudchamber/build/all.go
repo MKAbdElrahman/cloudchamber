@@ -10,6 +10,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/homeapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/productapp"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/rawapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tranapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
@@ -45,6 +46,13 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		Log:        cfg.Log,
 		ProductBus: cfg.BusConfig.ProductBus,
 		AuthClient: cfg.CloudChamberConfig.AuthClient,
+	})
+
+	projectapp.Routes(app, projectapp.Config{
+		Log:         cfg.Log,
+		ProjectBus:  cfg.BusConfig.ProjectBus,
+		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
 
 	rawapp.Routes(app)
@@ -88,6 +96,8 @@ func (all) Add(app *web.App, cfg mux.Config) {
 	artifactapp.Routes(app, artifactapp.Config{
 		Log:         cfg.Log,
 		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		UploadBus:   cfg.BusConfig.UploadBus,
+		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
 
@@ -95,6 +105,7 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 		UploadBus:   cfg.BusConfig.UploadBus,
 		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		ProjectBus:  cfg.BusConfig.ProjectBus,
 		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
 		DB:          sqldb.NewBeginner(cfg.DB),
 	})

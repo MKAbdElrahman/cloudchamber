@@ -6,6 +6,7 @@ import { FolderIcon } from '@heroicons/react/24/outline'
 import { Grid } from '@astryxdesign/core/Grid'
 import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { AlertDialog } from '@astryxdesign/core/AlertDialog'
+import { Banner } from '@astryxdesign/core/Banner'
 import { Button } from '@astryxdesign/core/Button'
 import { ClickableCard } from '@astryxdesign/core/ClickableCard'
 import { Divider } from '@astryxdesign/core/Divider'
@@ -17,12 +18,10 @@ import { MoreMenu } from '@astryxdesign/core/MoreMenu'
 import { Heading, Text } from '@astryxdesign/core/Text'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import {
-  claimUnassignedJobs,
   createProject,
-  DEFAULT_PROJECT_ID,
   deleteProject,
-  listProjectJobIds,
   listProjects,
+  projectErrorMessage,
   updateProject,
   useProjects,
   type Project,
@@ -59,8 +58,7 @@ function projectSummary(files: number, countsReady: boolean): string | null {
 }
 
 type ProjectScope = {
-  jobs: PipelineJob[]
-  jobIds: Record<string, string[]>
+  jobsByProject: Record<string, PipelineJob[]>
 }
 
 function projectFileCount(
@@ -69,8 +67,7 @@ function projectFileCount(
   countsPending: boolean,
 ): number {
   if (countsPending || !scope) return 0
-  const jobIds = new Set(scope.jobIds[projectId] ?? [])
-  return scope.jobs.filter((job) => jobIds.has(job.id)).reduce((count, job) => count + filesFromJob(job).length, 0)
+  return (scope.jobsByProject[projectId] ?? []).reduce((count, job) => count + filesFromJob(job).length, 0)
 }
 
 /** One project card. The folder mark names it; the card opens it. */
@@ -129,18 +126,15 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   const scope = useQuery({
     queryKey: ['pipeline-jobs', 'home'],
     queryFn: async () => {
-      const jobList = normalizeJobs(await listJobs(token))
-      await claimUnassignedJobs(
-        jobList.map((job) => job.id),
-        DEFAULT_PROJECT_ID,
-      )
-      const projectList = await listProjects()
+      const projectList = await listProjects(token)
       const pairs = await Promise.all(
-        projectList.map(async (project) => [project.id, await listProjectJobIds(project.id)] as const),
+        projectList.map(async (project) => {
+          const jobs = normalizeJobs(await listJobs(token, project.id)).filter((job) => job.projectId === project.id)
+          return [project.id, jobs] as const
+        }),
       )
       return {
-        jobs: jobList,
-        jobIds: Object.fromEntries(pairs) as Record<string, string[]>,
+        jobsByProject: Object.fromEntries(pairs) as Record<string, PipelineJob[]>,
       }
     },
     staleTime: 30_000,
@@ -152,7 +146,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   }
 
   const create = useMutation({
-    mutationFn: createProject,
+    mutationFn: (name: string) => createProject(token, name),
     onSuccess: async (project) => {
       await refresh()
       setCreateName('')
@@ -162,7 +156,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   })
 
   const rename = useMutation({
-    mutationFn: (project: Project) => updateProject(project.id, renameName),
+    mutationFn: (project: Project) => updateProject(token, project.id, renameName),
     onSuccess: async () => {
       await refresh()
       setRenaming(null)
@@ -170,7 +164,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   })
 
   const remove = useMutation({
-    mutationFn: (project: Project) => deleteProject(project.id),
+    mutationFn: (project: Project) => deleteProject(token, project.id),
     onSuccess: async () => {
       await refresh()
       setDeleting(null)
@@ -190,7 +184,10 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       }
     >
       {projects.isPending ? <PendingLines /> : null}
-      {rows.length === 0 && !projects.isPending ? (
+      {projects.isError ? (
+        <Banner status="error" title="Could not load projects" description={projectErrorMessage(projects.error)} />
+      ) : null}
+      {rows.length === 0 && !projects.isPending && !projects.isError ? (
         <EmptyState
           title="No projects yet"
           description="Create a project, then add one recording at a time."
@@ -263,6 +260,9 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       <Dialog isOpen={isCreating} onOpenChange={setCreating} purpose="form">
         <DialogHeader title="New project" subtitle="Jobs stay inside it." onOpenChange={setCreating} />
         <VStack gap={WORKSPACE_GAP.group}>
+          {create.isError ? (
+            <Banner status="error" title="Could not create the project" description={projectErrorMessage(create.error)} />
+          ) : null}
           <TextInput label="Name" value={createName} onChange={setCreateName} />
           <HStack gap={WORKSPACE_GAP.local} justify="end">
             <Button label="Cancel" variant="secondary" onClick={() => setCreating(false)} />
@@ -280,6 +280,9 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       <Dialog isOpen={renaming !== null} onOpenChange={(open) => { if (!open) setRenaming(null) }} purpose="form">
         <DialogHeader title="Rename project" onOpenChange={(open) => { if (!open) setRenaming(null) }} />
         <VStack gap={WORKSPACE_GAP.group}>
+          {rename.isError ? (
+            <Banner status="error" title="Could not rename the project" description={projectErrorMessage(rename.error)} />
+          ) : null}
           <TextInput label="Name" value={renameName} onChange={setRenameName} />
           <HStack gap={WORKSPACE_GAP.local} justify="end">
             <Button label="Cancel" variant="secondary" onClick={() => setRenaming(null)} />
@@ -299,9 +302,11 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
         onOpenChange={(open) => { if (!open) setDeleting(null) }}
         title="Delete project"
         description={
-          deleting
-            ? `${deleting.name} and its place in the library go away. Its jobs are not moved to another project.`
-            : 'This project goes away.'
+          remove.isError
+            ? projectErrorMessage(remove.error)
+            : deleting
+              ? `${deleting.name} and its place in the library go away. Its jobs are not moved to another project.`
+              : 'This project goes away.'
         }
         actionLabel="Delete"
         isActionLoading={remove.isPending}

@@ -37,9 +37,10 @@ type hookHTTPRequest struct {
 
 // hookResponse is the tusd HTTP hook response payload.
 type hookResponse struct {
-	HTTPResponse   *hookHTTPResponse `json:"HTTPResponse,omitempty"`
-	RejectUpload   bool              `json:"RejectUpload,omitempty"`
-	ChangeFileInfo *hookFileInfo     `json:"ChangeFileInfo,omitempty"`
+	HTTPResponse      *hookHTTPResponse `json:"HTTPResponse,omitempty"`
+	RejectUpload      bool              `json:"RejectUpload,omitempty"`
+	RejectTermination bool              `json:"RejectTermination,omitempty"`
+	ChangeFileInfo    *hookFileInfo     `json:"ChangeFileInfo,omitempty"`
 }
 
 type hookHTTPResponse struct {

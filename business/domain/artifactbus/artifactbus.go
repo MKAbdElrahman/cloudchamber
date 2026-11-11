@@ -25,8 +25,10 @@ var (
 type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	Upsert(ctx context.Context, art Artifact) error
+	Delete(ctx context.Context, fileID uuid.UUID) error
 	QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifact, error)
 	QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]Artifact, error)
+	QueryByProject(ctx context.Context, ownerID, projectID uuid.UUID) ([]Artifact, error)
 }
 
 // Presigner signs a short-lived read of one object. It does not fetch the bytes.
@@ -40,9 +42,11 @@ type ExtBusiness interface {
 	// dependencies to the transaction and wrap the returned business themselves.
 	NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error)
 	Register(ctx context.Context, na NewArtifact) (Artifact, error)
+	Delete(ctx context.Context, ownerID, fileID uuid.UUID) error
 	ReadURL(ctx context.Context, ownerID, fileID uuid.UUID) (Playback, error)
 	QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifact, error)
 	QueryByFileIDs(ctx context.Context, fileIDs []uuid.UUID) ([]Artifact, error)
+	QueryByProject(ctx context.Context, ownerID, projectID uuid.UUID) ([]Artifact, error)
 }
 
 // Extension wraps a new layer of business logic around the existing logic.
@@ -96,6 +100,7 @@ func (b *Business) Register(ctx context.Context, na NewArtifact) (Artifact, erro
 	art := Artifact{
 		FileID:      na.FileID,
 		OwnerID:     na.OwnerID,
+		ProjectID:   na.ProjectID,
 		Bucket:      na.Bucket,
 		ObjectKey:   na.ObjectKey,
 		Kind:        na.Kind,
@@ -132,6 +137,30 @@ func (b *Business) ReadURL(ctx context.Context, ownerID, fileID uuid.UUID) (Play
 	}
 
 	return Playback{URL: url, ExpiresAt: expiresAt}, nil
+}
+
+// Delete removes a file the caller owns. The object itself is removed by the caller first.
+func (b *Business) Delete(ctx context.Context, ownerID, fileID uuid.UUID) error {
+	art, err := b.storer.QueryByFileID(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if art.OwnerID != ownerID {
+		return ErrNotFound
+	}
+	if err := b.storer.Delete(ctx, fileID); err != nil {
+		return fmt.Errorf("delete: %w", err)
+	}
+	return nil
+}
+
+// QueryByProject returns the files in one project, newest first.
+func (b *Business) QueryByProject(ctx context.Context, ownerID, projectID uuid.UUID) ([]Artifact, error) {
+	arts, err := b.storer.QueryByProject(ctx, ownerID, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("query by project: %w", err)
+	}
+	return arts, nil
 }
 
 // QueryByFileID returns the artifact for a file id.

@@ -15,7 +15,7 @@ import { List, ListItem } from '@astryxdesign/core/List'
 import { Section } from '@astryxdesign/core/Section'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type PeekVideo, type PipelineJob } from '@/features/pipeline'
-import { ProjectTrail, useProject, useProjectRecordings, type ProjectRecording } from '@/features/projects'
+import { ProjectTrail, useProject, type ProjectFile } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
 import { PageHeader, PendingLines, WorkspacePage, WORKSPACE_CONTENT_PADDING, WORKSPACE_PATHS } from '@/shared/layout'
 import type { SourceMediaKind } from '@/shared/media'
@@ -25,6 +25,7 @@ import { MUTED_ICON_COLOR } from '@/shared/theme'
 import { AddRecordingDialog } from './AddRecordingDialog'
 import { LibraryViewControl } from './LibraryViewControl'
 import { useLibraryView } from './useLibraryView'
+import { useProjectFiles } from './useProjectFiles'
 import { useProjectJobs } from './useProjectJobs'
 
 type ProjectHomePageProps = {
@@ -56,65 +57,59 @@ type LibraryEntry = {
   showStatus: boolean
 }
 
-function containersFor(projectId: string, jobs: PipelineJob[], recordings: ProjectRecording[]): LibraryEntry[] {
-  const recordingByJob = new Map(
-    recordings.flatMap((recording) => (recording.jobId ? [[recording.jobId, recording] as const] : [])),
-  )
-  const recordingByFile = new Map(
-    recordings.flatMap((recording) => (recording.fileId ? [[recording.fileId, recording] as const] : [])),
-  )
-  const linked = new Set<string>()
+function containersFor(projectId: string, jobs: PipelineJob[], files: ProjectFile[]): LibraryEntry[] {
+  const sources = files.filter((file) => file.kind === 'source')
+  const sourceById = new Map(sources.map((file) => [file.id, file]))
+  const used = new Set<string>()
   const fromJobs = jobs.map((job) => {
-    const recording =
-      recordingByJob.get(job.id) ?? (job.fileId ? recordingByFile.get(job.fileId) : undefined)
-    if (recording) linked.add(recording.id)
-    const fileName = job.fileName || recording?.name
-    const media = knownMediaName(fileName, recording?.name)
+    const source = job.fileId ? sourceById.get(job.fileId) : undefined
+    if (source) used.add(source.id)
+    const fileName = job.fileName || source?.name
+    const media = knownMediaName(fileName, source?.name)
     const document = filesFromJob(job, media ?? undefined)[0]
-    const date = job.dateUpdated ?? recording?.dateAdded
+    const date = job.dateUpdated ?? source?.dateCreated
     const status = visibleJobStatus(job)
     const name = faceFileName({
       face: 'library',
       fileName,
-      recordingName: recording?.name,
+      recordingName: source?.name,
       documentName: document?.name,
       date,
     })
     return {
       id: job.id,
       jobId: job.id,
-      fileId: job.fileId ?? recording?.fileId,
+      fileId: job.fileId ?? source?.id,
       fileName,
-      recordingName: recording?.name,
+      recordingName: source?.name,
       name,
       href: WORKSPACE_PATHS.job(projectId, job.id),
       date,
       detail: media && media !== name ? media : '',
-      kind: mediaKindOf(fileName, recording?.name),
+      kind: mediaKindOf(fileName, source?.name),
       status,
       showStatus: jobPhase(status) !== 'finished',
     }
   })
-  const drafts = recordings
-    .filter((recording) => !recording.jobId && !linked.has(recording.id))
-    .map((recording) => {
-      const media = knownMediaName(recording.name, recording.name)
+  const drafts = sources
+    .filter((source) => !used.has(source.id))
+    .map((source) => {
+      const media = knownMediaName(source.name, source.name)
       const name = faceFileName({
         face: 'video',
-        fileName: recording.name,
-        recordingName: recording.name,
-        date: recording.dateAdded,
+        fileName: source.name,
+        recordingName: source.name,
+        date: source.dateCreated,
       })
       return {
-        id: recording.id,
-        fileId: recording.fileId,
-        fileName: recording.name,
-        recordingName: recording.name,
+        id: source.id,
+        fileId: source.id,
+        fileName: source.name,
+        recordingName: source.name,
         name,
-        href: WORKSPACE_PATHS.recording(projectId, recording.id),
-        date: recording.dateAdded,
+        date: source.dateCreated,
         detail: media && media !== name ? media : '',
-        kind: mediaKindOf(recording.name, recording.name),
+        kind: mediaKindOf(source.name, source.name),
         showStatus: false,
       }
     })
@@ -139,7 +134,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
   const { projectId = '' } = useParams()
   const project = useProject(projectId)
   const jobsQuery = useProjectJobs(token, projectId)
-  const recordingsQuery = useProjectRecordings(projectId)
+  const filesQuery = useProjectFiles(token, projectId)
   const [view, setView] = useLibraryView()
   const [searchParams, setSearchParams] = useSearchParams()
   const askedToAdd = searchParams.get('add') === 'recording'
@@ -171,9 +166,9 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
     setPipeline({ id: entry.jobId, name: entry.name })
     setPipelineOpen(true)
   }
-  const listed = containersFor(projectId, jobsQuery.data ?? [], recordingsQuery.data ?? [])
+  const listed = containersFor(projectId, jobsQuery.data ?? [], filesQuery.data ?? [])
   const entries = uploadingFile ? [uploadingEntry(uploadingFile), ...listed] : listed
-  const pending = jobsQuery.isPending || recordingsQuery.isPending
+  const pending = jobsQuery.isPending || filesQuery.isPending
 
   if (askedToAdd && !addOpen) {
     setFormKey((current) => current + 1)

@@ -16,8 +16,14 @@ export function readFileURL(token: string, fileId: string) {
   })
 }
 
-export function listJobs(token: string) {
-  return apiFetch<JobsQuery>('/v1/pipeline/jobs?page=1&rows=50&orderBy=date_created,DESC', {
+export function listJobs(token: string, projectId?: string) {
+  const query = new URLSearchParams({
+    page: '1',
+    rows: '50',
+    orderBy: 'date_created,DESC',
+  })
+  if (projectId) query.set('project_id', projectId)
+  return apiFetch<JobsQuery>(`/v1/pipeline/jobs?${query.toString()}`, {
     method: 'GET',
     token,
   })

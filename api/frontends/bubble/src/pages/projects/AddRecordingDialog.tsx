@@ -5,7 +5,7 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { VStack } from '@astryxdesign/core/Layout'
 import { createJob, JobStatusLabel } from '@/features/pipeline'
-import { addProjectJob, addProjectRecording, attachRecordingJob, useProject } from '@/features/projects'
+import { useProject } from '@/features/projects'
 import { UploadPanel } from '@/features/upload'
 import { ApiError } from '@/shared/api'
 import { WORKSPACE_GAP } from '@/shared/spacing'
@@ -45,21 +45,17 @@ function AddRecordingForm({
     onSavingChange(true)
     setError(null)
     try {
-      const recording = await addProjectRecording(projectId, { fileId: upload.fileId, name: upload.fileName })
       let notice: string | undefined
       if (startConversion) {
         try {
           const job = await createJob(token, upload.fileId, `ui-${crypto.randomUUID()}`)
-          await addProjectJob(projectId, job.id)
-          await attachRecordingJob(recording.id, job.id)
           queryClient.setQueryData(['pipeline-job', job.id], job)
-          await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
         } catch (err) {
           notice = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Could not start the conversion.'
         }
       }
-      await queryClient.invalidateQueries({ queryKey: ['project-recordings', projectId] })
-      await queryClient.invalidateQueries({ queryKey: ['project-recording', projectId, recording.id] })
+      await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
+      await queryClient.invalidateQueries({ queryKey: ['project-files', projectId] })
       onUploadingFile(null)
       onFinished(notice)
     } catch (err) {
@@ -75,6 +71,7 @@ function AddRecordingForm({
       {error ? <Banner status="error" title="Could not save the recording" description={error} /> : null}
       <UploadPanel
         token={token}
+        projectId={projectId}
         embedded
         startConversion={startConversion}
         onStartConversionChange={setStartConversion}

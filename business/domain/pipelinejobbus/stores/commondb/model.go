@@ -13,6 +13,7 @@ import (
 type Job struct {
 	ID                 uuid.UUID     `db:"job_id"`
 	OwnerID            uuid.UUID     `db:"owner_id"`
+	ProjectID          uuid.NullUUID `db:"project_id"`
 	WorkflowID         string        `db:"workflow_id"`
 	RunID              string        `db:"run_id"`
 	InputFileID        uuid.NullUUID `db:"input_file_id"`
@@ -32,6 +33,7 @@ func ToDBJob(bus pipelinejobbus.Job) Job {
 	db := Job{
 		ID:                 bus.ID,
 		OwnerID:            bus.OwnerID,
+		ProjectID:          nullFileID(bus.ProjectID),
 		WorkflowID:         bus.WorkflowID,
 		RunID:              bus.RunID,
 		InputFileID:        nullFileID(bus.InputFileID),
@@ -58,6 +60,7 @@ func ToBusJob(db Job) (pipelinejobbus.Job, error) {
 	bus := pipelinejobbus.Job{
 		ID:                 db.ID,
 		OwnerID:            db.OwnerID,
+		ProjectID:          db.ProjectID.UUID,
 		WorkflowID:         db.WorkflowID,
 		RunID:              db.RunID,
 		InputFileID:        db.InputFileID.UUID,

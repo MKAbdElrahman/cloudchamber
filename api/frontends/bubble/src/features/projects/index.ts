@@ -4,16 +4,17 @@ export {
   addProjectJob,
   addProjectRecording,
   attachRecordingJob,
-  claimUnassignedJobs,
   createProject,
   deleteProject,
   getRecording,
+  listProjectFiles,
   listProjectJobIds,
   listProjectRecordings,
   listProjects,
+  projectErrorMessage,
   projectIdForJob,
   updateProject,
 } from './api'
-export { DEFAULT_PROJECT_ID, readCurrentProjectId, rememberProject } from './store'
+export { readCurrentProjectId, rememberProject } from './store'
 export { useJobOwner, useProject, useProjectRecordings, useProjects, useRecording } from './useProjects'
-export type { Project, ProjectRecording } from './types'
+export type { Project, ProjectFile, ProjectRecording } from './types'

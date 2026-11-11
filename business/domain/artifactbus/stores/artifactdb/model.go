@@ -9,22 +9,24 @@ import (
 )
 
 type artifactDB struct {
-	FileID      uuid.UUID `db:"file_id"`
-	OwnerID     uuid.UUID `db:"owner_id"`
-	Bucket      string    `db:"bucket"`
-	ObjectKey   string    `db:"object_key"`
-	Kind        string    `db:"kind"`
-	ContentType string    `db:"content_type"`
-	Name        string    `db:"name"`
-	Status      string    `db:"status"`
-	DateCreated time.Time `db:"date_created"`
-	DateUpdated time.Time `db:"date_updated"`
+	FileID      uuid.UUID     `db:"file_id"`
+	OwnerID     uuid.UUID     `db:"owner_id"`
+	ProjectID   uuid.NullUUID `db:"project_id"`
+	Bucket      string        `db:"bucket"`
+	ObjectKey   string        `db:"object_key"`
+	Kind        string        `db:"kind"`
+	ContentType string        `db:"content_type"`
+	Name        string        `db:"name"`
+	Status      string        `db:"status"`
+	DateCreated time.Time     `db:"date_created"`
+	DateUpdated time.Time     `db:"date_updated"`
 }
 
 func toDBArtifact(bus artifactbus.Artifact) artifactDB {
 	return artifactDB{
 		FileID:      bus.FileID,
 		OwnerID:     bus.OwnerID,
+		ProjectID:   nullUUID(bus.ProjectID),
 		Bucket:      bus.Bucket,
 		ObjectKey:   bus.ObjectKey,
 		Kind:        bus.Kind.String(),
@@ -49,6 +51,7 @@ func toBusArtifact(row artifactDB) (artifactbus.Artifact, error) {
 	return artifactbus.Artifact{
 		FileID:      row.FileID,
 		OwnerID:     row.OwnerID,
+		ProjectID:   row.ProjectID.UUID,
 		Bucket:      row.Bucket,
 		ObjectKey:   row.ObjectKey,
 		Kind:        kind,
@@ -58,6 +61,13 @@ func toBusArtifact(row artifactDB) (artifactbus.Artifact, error) {
 		DateCreated: row.DateCreated.In(time.Local),
 		DateUpdated: row.DateUpdated.In(time.Local),
 	}, nil
+}
+
+func nullUUID(id uuid.UUID) uuid.NullUUID {
+	if id == uuid.Nil {
+		return uuid.NullUUID{}
+	}
+	return uuid.NullUUID{UUID: id, Valid: true}
 }
 
 func toBusArtifacts(rows []artifactDB) ([]artifactbus.Artifact, error) {

@@ -9,6 +9,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/homeapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/productapp"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tranapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/tusdapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
@@ -42,6 +43,12 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 		AuthClient: cfg.CloudChamberConfig.AuthClient,
 	})
 
+	projectapp.Routes(app, projectapp.Config{
+		ProjectBus:  cfg.BusConfig.ProjectBus,
+		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		AuthClient:  cfg.CloudChamberConfig.AuthClient,
+	})
+
 	pipelinejobapp.Routes(app, pipelinejobapp.Config{
 		Log:               cfg.Log,
 		PipelineJobBus:    cfg.BusConfig.PipelineJobBus,
@@ -54,6 +61,8 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 	artifactapp.Routes(app, artifactapp.Config{
 		Log:         cfg.Log,
 		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		UploadBus:   cfg.BusConfig.UploadBus,
+		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 	})
 
@@ -61,6 +70,7 @@ func (crud) Add(app *web.App, cfg mux.Config) {
 		AuthClient:  cfg.CloudChamberConfig.AuthClient,
 		UploadBus:   cfg.BusConfig.UploadBus,
 		ArtifactBus: cfg.BusConfig.ArtifactBus,
+		ProjectBus:  cfg.BusConfig.ProjectBus,
 		ObjectStore: cfg.CloudChamberConfig.ObjectStore,
 		DB:          sqldb.NewBeginner(cfg.DB),
 	})

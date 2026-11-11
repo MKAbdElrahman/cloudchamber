@@ -12,6 +12,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
@@ -241,6 +242,57 @@ func AuthorizePipeline(client authclient.Authenticator, pipelineJobBus pipelinej
 
 				userID = job.OwnerID
 				ctx = setPipelineJob(ctx, job)
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			auth := authclient.Authorize{
+				Claims: GetClaims(ctx),
+				UserID: userID,
+				Rule:   auth.RuleAdminOrSubject,
+			}
+
+			if err := client.Authorize(ctx, auth); err != nil {
+				return errs.New(errs.Unauthenticated, err)
+			}
+
+			return next(ctx, r)
+		}
+
+		return h
+	}
+
+	return m
+}
+
+// AuthorizeProject loads the project and allows its owner or an admin.
+func AuthorizeProject(client authclient.Authenticator, projectBus projectbus.ExtBusiness) web.MidFunc {
+	m := func(next web.HandlerFunc) web.HandlerFunc {
+		h := func(ctx context.Context, r *http.Request) web.Encoder {
+			id := web.Param(r, "project_id")
+
+			var userID uuid.UUID
+
+			if id != "" {
+				var err error
+				projectID, err := uuid.Parse(id)
+				if err != nil {
+					return errs.New(errs.Unauthenticated, ErrInvalidID)
+				}
+
+				prj, err := projectBus.QueryByID(ctx, projectID)
+				if err != nil {
+					switch {
+					case errors.Is(err, projectbus.ErrNotFound):
+						return errs.New(errs.Unauthenticated, err)
+					default:
+						return errs.Errorf(errs.Unauthenticated, "querybyid: projectID[%s]: %s", projectID, err)
+					}
+				}
+
+				userID = prj.OwnerID
+				ctx = setProject(ctx, prj)
 			}
 
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

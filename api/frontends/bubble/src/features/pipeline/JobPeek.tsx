@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer'
@@ -46,25 +47,72 @@ export function JobPeek({
   const progress = useJobProgress(job)
   const outcome = job ? jobOutcomeBanner(job.status) : null
   const fileId = videoOpen ? video?.fileId : undefined
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [held, setHeld] = useState<{ fileId: string; src: string } | null>(null)
+  const renewing = useRef(false)
   const urlQuery = useQuery({
     queryKey: ['file-url', fileId],
     queryFn: () => readFileURL(token, fileId!),
     enabled: Boolean(fileId),
-    staleTime: 60_000,
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
   })
   const playbackUrl = urlQuery.data?.url
+  const expiresAt = urlQuery.data?.expiresAt
+  const renewUrl = urlQuery.refetch
   const videoName = video?.name ?? 'Recording'
   const caption = playbackUrl ? videoName : urlQuery.isPending ? `Opening ${videoName}` : `${videoName} cannot be played from here.`
+  const src = held && held.fileId === fileId ? held.src : ''
+
+  if (!videoOpen && held) setHeld(null)
+  if (videoOpen && fileId && playbackUrl && held?.fileId !== fileId) setHeld({ fileId, src: playbackUrl })
+
+  useEffect(() => {
+    if (!playbackUrl || !src || playbackUrl === src) return
+    const videoEl = dialogRef.current?.querySelector('video')
+    if (!videoEl) return
+    const time = videoEl.currentTime
+    const playing = !videoEl.paused
+    videoEl.src = playbackUrl
+    const restore = () => {
+      if (Number.isFinite(time)) videoEl.currentTime = time
+      if (playing) void videoEl.play()
+    }
+    videoEl.addEventListener('loadedmetadata', restore, { once: true })
+  }, [playbackUrl, src])
+
+  useEffect(() => {
+    if (!expiresAt || !videoOpen) return
+    const wait = new Date(expiresAt).getTime() - Date.now() - 60_000
+    const timer = window.setTimeout(() => {
+      void renewUrl()
+    }, Math.max(wait, 0))
+    return () => window.clearTimeout(timer)
+  }, [expiresAt, videoOpen, renewUrl])
+
+  useEffect(() => {
+    const videoEl = dialogRef.current?.querySelector('video')
+    if (!videoEl || !videoOpen) return
+    const onError = () => {
+      if (renewing.current) return
+      renewing.current = true
+      void renewUrl().finally(() => {
+        renewing.current = false
+      })
+    }
+    videoEl.addEventListener('error', onError)
+    return () => videoEl.removeEventListener('error', onError)
+  }, [playbackUrl, videoOpen, renewUrl])
 
   return (
     <>
       {video ? (
         <Lightbox
+          ref={dialogRef}
           isOpen={videoOpen}
           onOpenChange={onVideoOpenChange}
           media={{
-            src: playbackUrl ?? '',
+            src,
             alt: videoName,
             type: 'video',
             caption,

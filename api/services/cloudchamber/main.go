@@ -35,6 +35,9 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus/extensions/productotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus/stores/productpg"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/extensions/projectotel"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/stores/projectdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus/stores/uploaddb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
@@ -211,6 +214,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 	productStorage := productpg.NewStore(log, db)
 	productBus := productbus.NewBusiness(log, userBus, delegate, productStorage, productOtelExt)
 
+	projectOtelExt := projectotel.NewExtension()
+	projectStorage := projectdb.NewStore(log, db)
+	projectBus := projectbus.NewBusiness(projectStorage, projectOtelExt)
+
 	homeOtelExt := homeotel.NewExtension()
 	homeStorage := homedb.NewStore(log, db)
 	homeBus := homebus.NewBusiness(log, userBus, delegate, homeStorage, homeOtelExt)
@@ -335,6 +342,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			AuditBus:       auditBus,
 			UserBus:        userBus,
 			ProductBus:     productBus,
+			ProjectBus:     projectBus,
 			HomeBus:        homeBus,
 			VProductBus:    vproductBus,
 			PipelineJobBus: pipelineJobBus,

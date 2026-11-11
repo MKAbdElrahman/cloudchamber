@@ -17,6 +17,7 @@ type Job struct {
 	OwnerID          string  `json:"ownerId"`
 	WorkflowID       string  `json:"workflowId"`
 	RunID            string  `json:"runId"`
+	ProjectID        string  `json:"projectId,omitempty"`
 	FileID           string  `json:"fileId,omitempty"`
 	FileName         string  `json:"fileName,omitempty"`
 	Status           string  `json:"status"`
@@ -42,6 +43,7 @@ func toAppJob(bus pipelinejobbus.Job, names map[uuid.UUID]string) Job {
 		OwnerID:          bus.OwnerID.String(),
 		WorkflowID:       bus.WorkflowID,
 		RunID:            bus.RunID,
+		ProjectID:        fileIDString(bus.ProjectID),
 		FileID:           fileIDString(bus.InputFileID),
 		FileName:         names[bus.InputFileID],
 		Status:           bus.Status.String(),

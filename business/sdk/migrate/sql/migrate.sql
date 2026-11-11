@@ -196,3 +196,35 @@ ALTER TABLE pipeline_jobs DROP COLUMN source_ref;
 
 ALTER TABLE artifacts DROP COLUMN source_ref;
 ALTER TABLE uploads DROP COLUMN source_ref;
+
+-- Version: 1.11
+-- Description: Create table projects
+CREATE TABLE projects (
+	project_id   UUID      NOT NULL,
+	owner_id     UUID      NOT NULL,
+	name         TEXT      NOT NULL,
+	date_created TIMESTAMP NOT NULL,
+	date_updated TIMESTAMP NOT NULL,
+
+	PRIMARY KEY (project_id),
+	UNIQUE (project_id, owner_id),
+	FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX projects_owner_date_idx ON projects (owner_id, date_created DESC);
+
+-- Version: 1.12
+-- Description: A file and a job belong to one project owned by the same user
+ALTER TABLE artifacts ADD COLUMN project_id UUID NULL;
+ALTER TABLE pipeline_jobs ADD COLUMN project_id UUID NULL;
+
+ALTER TABLE artifacts
+	ADD CONSTRAINT artifacts_project_owner_fkey
+	FOREIGN KEY (project_id, owner_id) REFERENCES projects (project_id, owner_id);
+
+ALTER TABLE pipeline_jobs
+	ADD CONSTRAINT pipeline_jobs_project_owner_fkey
+	FOREIGN KEY (project_id, owner_id) REFERENCES projects (project_id, owner_id);
+
+CREATE INDEX artifacts_project_date_idx ON artifacts (project_id, date_created DESC);
+CREATE INDEX pipeline_jobs_project_date_idx ON pipeline_jobs (project_id, date_created DESC);

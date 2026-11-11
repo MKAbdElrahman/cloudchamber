@@ -19,6 +19,7 @@ type Status = 'idle' | 'uploading' | 'success' | 'error'
 
 export function UploadPanel({
   token,
+  projectId,
   onUploaded,
   startConversion,
   onStartConversionChange,
@@ -27,6 +28,7 @@ export function UploadPanel({
   embedded,
 }: {
   token: string
+  projectId: string
   onUploaded: (upload: { fileId: string; fileName: string }) => void
   startConversion: boolean
   onStartConversionChange: (checked: boolean) => void
@@ -62,7 +64,11 @@ export function UploadPanel({
     const upload = new tus.Upload(file, {
       endpoint: readTusdEndpoint(),
       retryDelays: [0, 1000, 3000, 5000, 10000],
-      metadata: { filename: file.name, filetype: file.type || 'application/octet-stream' },
+      metadata: {
+        filename: file.name,
+        filetype: file.type || 'application/octet-stream',
+        projectId,
+      },
       headers: { Authorization: `Bearer ${token}` },
       onError(err) {
         setStatus('error')

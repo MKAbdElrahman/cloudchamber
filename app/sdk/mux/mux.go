@@ -15,6 +15,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/vproductbus"
@@ -75,6 +76,7 @@ type BusConfig struct {
 	AuditBus       auditbus.ExtBusiness
 	UserBus        userbus.ExtBusiness
 	ProductBus     productbus.ExtBusiness
+	ProjectBus     projectbus.ExtBusiness
 	HomeBus        homebus.ExtBusiness
 	VProductBus    vproductbus.ExtBusiness
 	PipelineJobBus pipelinejobbus.ExtBusiness

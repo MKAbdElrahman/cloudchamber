@@ -6,6 +6,7 @@ import "github.com/google/uuid"
 type QueryFilter struct {
 	ID                 *uuid.UUID
 	OwnerID            *uuid.UUID
+	ProjectID          *uuid.UUID
 	WorkflowID         *string
 	IdempotencyKeyHash *string
 	Status             *Status

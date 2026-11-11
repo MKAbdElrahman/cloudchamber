@@ -109,6 +109,7 @@ func (s Status) MarshalText() ([]byte, error) {
 type Artifact struct {
 	FileID      uuid.UUID
 	OwnerID     uuid.UUID
+	ProjectID   uuid.UUID
 	Bucket      string
 	ObjectKey   string
 	Kind        Kind
@@ -123,6 +124,7 @@ type Artifact struct {
 type NewArtifact struct {
 	FileID      uuid.UUID
 	OwnerID     uuid.UUID
+	ProjectID   uuid.UUID
 	Bucket      string
 	ObjectKey   string
 	Kind        Kind

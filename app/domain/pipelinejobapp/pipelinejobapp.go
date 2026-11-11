@@ -70,6 +70,8 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 	switch {
 	case art.OwnerID != ownerID, !ready:
 		return errs.NewFieldErrors("fileId", errors.New("fileId must reference a ready file you own"))
+	case art.ProjectID == uuid.Nil:
+		return errs.NewFieldErrors("fileId", errors.New("fileId must reference a file in a project you own"))
 	}
 	key := strings.TrimSpace(app.IdempotencyKey)
 	if key == "" {
@@ -109,6 +111,7 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 	nj := pipelinejobbus.NewJob{
 		ID:                 jobID,
 		OwnerID:            ownerID,
+		ProjectID:          art.ProjectID,
 		WorkflowID:         workflowID,
 		InputFileID:        art.FileID,
 		IdempotencyKeyHash: idempotencyHash,

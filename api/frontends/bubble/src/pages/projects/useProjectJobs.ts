@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { isTerminalJobStatus, listJobs, loadJob, normalizeJobs, type PipelineJob } from '@/features/pipeline'
-import { claimUnassignedJobs, DEFAULT_PROJECT_ID, listProjectJobIds } from '@/features/projects'
 
 const POLL_MS = 3_000
 
@@ -29,13 +28,8 @@ export function useProjectJobs(token: string, projectId: string) {
   return useQuery({
     queryKey: ['pipeline-jobs', projectId],
     queryFn: async (): Promise<PipelineJob[]> => {
-      const jobs = normalizeJobs(await listJobs(token))
-      await claimUnassignedJobs(
-        jobs.map((job) => job.id),
-        DEFAULT_PROJECT_ID,
-      )
-      const ids = new Set(await listProjectJobIds(projectId))
-      const mine = await reconcileOpenJobs(token, jobs.filter((job) => ids.has(job.id)))
+      const jobs = normalizeJobs(await listJobs(token, projectId)).filter((job) => job.projectId === projectId)
+      const mine = await reconcileOpenJobs(token, jobs)
       for (const job of mine) {
         if (!needsReconcile(job)) queryClient.setQueryData(['pipeline-job', job.id], job)
       }

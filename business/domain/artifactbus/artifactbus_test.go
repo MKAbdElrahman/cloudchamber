@@ -80,6 +80,12 @@ func (f *fakeStore) NewWithTx(sqldb.CommitRollbacker) (Storer, error) { return f
 
 func (f *fakeStore) Upsert(context.Context, Artifact) error { return nil }
 
+func (f *fakeStore) Delete(context.Context, uuid.UUID) error { return nil }
+
+func (f *fakeStore) QueryByProject(context.Context, uuid.UUID, uuid.UUID) ([]Artifact, error) {
+	return nil, nil
+}
+
 func (f *fakeStore) QueryByFileID(_ context.Context, fileID uuid.UUID) (Artifact, error) {
 	art, ok := f.byID[fileID]
 	if !ok {

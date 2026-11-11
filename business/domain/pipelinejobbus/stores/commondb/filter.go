@@ -21,6 +21,11 @@ func ApplyFilter(filter pipelinejobbus.QueryFilter, data map[string]any, buf *by
 		wc = append(wc, "owner_id = :owner_id")
 	}
 
+	if filter.ProjectID != nil {
+		data["project_id"] = *filter.ProjectID
+		wc = append(wc, "project_id = :project_id")
+	}
+
 	if filter.WorkflowID != nil {
 		data["workflow_id"] = *filter.WorkflowID
 		wc = append(wc, "workflow_id = :workflow_id")

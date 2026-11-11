@@ -1,44 +1,163 @@
+import { apiFetch } from '@/shared/api'
+
 import {
   assignJob,
-  claimUnassigned,
-  insertProject,
-  removeProject,
-  renameProject,
-  insertRecording,
   linkRecordingJob,
   readProjectIdForJob,
   readProjectJobIds,
-  readProjects,
   readProjectRecordings,
+  readProjects,
   readRecording,
+  removeProject,
+  replaceProjectId,
+  insertRecording,
 } from './store'
-import type { Project, ProjectRecording } from './types'
+import type { Project, ProjectFile, ProjectRecording } from './types'
+
+const MIGRATED_KEY = 'bubble.projects.migrated.v1'
+const PAGE_ROWS = 100
+
+type ProjectResponse = {
+  id: string
+  ownerID: string
+  name: string
+  dateCreated: string
+  dateUpdated: string
+}
+
+type ProjectsQuery = {
+  items?: ProjectResponse[]
+  total?: number
+  page?: number
+  rowsPerPage?: number
+}
+
+function toProject(row: ProjectResponse): Project {
+  return {
+    id: row.id,
+    ownerID: row.ownerID,
+    name: row.name,
+    dateCreated: row.dateCreated,
+    dateUpdated: row.dateUpdated,
+  }
+}
+
+function sameName(left: string, right: string): boolean {
+  return left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase()
+}
+
+/** The sentence to show when creating or renaming a project fails. */
+export function projectErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : 'Could not save the project.'
+  const start = message.indexOf('[')
+  if (start >= 0) {
+    try {
+      const fields = JSON.parse(message.slice(start)) as { error?: string }[]
+      const text = fields.find((item) => item.error)?.error
+      if (text?.includes('invalid title')) return 'Use a title of 1 to 80 characters.'
+      if (text) return text
+    } catch {
+      /* The message is not a field-error list. */
+    }
+  }
+  return message
+}
+
+async function fetchPage(token: string, page: number): Promise<ProjectsQuery> {
+  const query = new URLSearchParams({
+    page: String(page),
+    rows: String(PAGE_ROWS),
+    orderBy: 'date_created,DESC',
+  })
+  return apiFetch<ProjectsQuery>(`/v1/projects?${query}`, { method: 'GET', token })
+}
+
+async function fetchAll(token: string): Promise<Project[]> {
+  const first = await fetchPage(token, 1)
+  const rows = [...(first.items ?? [])]
+  const total = first.total ?? rows.length
+  let page = 1
+  while (rows.length < total && page < 20) {
+    page += 1
+    const next = await fetchPage(token, page)
+    const items = next.items ?? []
+    if (items.length === 0) break
+    rows.push(...items)
+  }
+  return rows.map(toProject)
+}
+
+async function createOnServer(token: string, name: string): Promise<Project> {
+  const row = await apiFetch<ProjectResponse>('/v1/projects', {
+    method: 'POST',
+    token,
+    body: JSON.stringify({ name }),
+  })
+  return toProject(row)
+}
 
 /**
- * Stand-in for the project API. The shapes match the endpoints we will add:
- * GET/POST /v1/projects, PATCH/DELETE /v1/projects/:id, GET/POST /v1/projects/:id/jobs.
+ * Browser projects were the stand-in list. Copy each one onto the server once,
+ * matching an existing title so a retry does not create a second copy.
  */
-
-export function listProjects(): Promise<Project[]> {
-  return Promise.resolve(readProjects())
+async function migrateLocalProjects(token: string, server: Project[]) {
+  const known = [...server]
+  for (const project of readProjects()) {
+    const existing = known.find((item) => sameName(item.name, project.name))
+    const next = existing ?? (await createOnServer(token, project.name))
+    if (!existing) known.push(next)
+    replaceProjectId(project.id, next.id)
+  }
 }
 
-export function createProject(name: string): Promise<Project> {
+let inflight: { token: string; promise: Promise<Project[]> } | null = null
+
+async function loadProjects(token: string): Promise<Project[]> {
+  const server = await fetchAll(token)
+  if (typeof localStorage === 'undefined' || localStorage.getItem(MIGRATED_KEY)) return server
+  await migrateLocalProjects(token, server)
+  localStorage.setItem(MIGRATED_KEY, '1')
+  return fetchAll(token)
+}
+
+export function listProjects(token: string): Promise<Project[]> {
+  if (inflight?.token === token) return inflight.promise
+  const promise = loadProjects(token).finally(() => {
+    if (inflight?.promise === promise) inflight = null
+  })
+  inflight = { token, promise }
+  return promise
+}
+
+export function createProject(token: string, name: string): Promise<Project> {
   const trimmed = name.trim()
   if (!trimmed) return Promise.reject(new Error('Project name is required.'))
-  return Promise.resolve(insertProject(trimmed))
+  return createOnServer(token, trimmed)
 }
 
-export function updateProject(projectId: string, name: string): Promise<void> {
+export function updateProject(token: string, projectId: string, name: string): Promise<Project> {
   const trimmed = name.trim()
   if (!trimmed) return Promise.reject(new Error('Project name is required.'))
-  renameProject(projectId, trimmed)
-  return Promise.resolve()
+  return apiFetch<ProjectResponse>(`/v1/projects/${encodeURIComponent(projectId)}`, {
+    method: 'PUT',
+    token,
+    body: JSON.stringify({ name: trimmed }),
+  }).then(toProject)
 }
 
-export function deleteProject(projectId: string): Promise<void> {
+export async function deleteProject(token: string, projectId: string): Promise<void> {
+  await apiFetch<null>(`/v1/projects/${encodeURIComponent(projectId)}`, {
+    method: 'DELETE',
+    token,
+  })
   removeProject(projectId)
-  return Promise.resolve()
+}
+
+export function listProjectFiles(token: string, projectId: string) {
+  return apiFetch<{ items?: ProjectFile[] }>(`/v1/projects/${encodeURIComponent(projectId)}/files`, {
+    method: 'GET',
+    token,
+  }).then((data) => data.items ?? [])
 }
 
 export function listProjectJobIds(projectId: string): Promise<string[]> {
@@ -71,10 +190,5 @@ export function addProjectRecording(
 
 export function attachRecordingJob(recordingId: string, jobId: string): Promise<void> {
   linkRecordingJob(recordingId, jobId)
-  return Promise.resolve()
-}
-
-export function claimUnassignedJobs(jobIds: readonly string[], fallbackProjectId: string): Promise<void> {
-  claimUnassigned(jobIds, fallbackProjectId)
   return Promise.resolve()
 }

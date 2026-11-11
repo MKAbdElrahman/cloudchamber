@@ -94,6 +94,7 @@ func (b *Business) Create(ctx context.Context, nj NewJob) (Job, error) {
 	job := Job{
 		ID:                 nj.ID,
 		OwnerID:            nj.OwnerID,
+		ProjectID:          nj.ProjectID,
 		WorkflowID:         nj.WorkflowID,
 		RunID:              nj.RunID,
 		InputFileID:        nj.InputFileID,

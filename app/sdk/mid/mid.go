@@ -9,6 +9,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/homebus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/productbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
@@ -35,6 +36,7 @@ const (
 	productKey
 	homeKey
 	pipelineJobKey
+	projectKey
 	trKey
 )
 
@@ -128,6 +130,20 @@ func GetPipelineJob(ctx context.Context) (pipelinejobbus.Job, error) {
 	v, ok := ctx.Value(pipelineJobKey).(pipelinejobbus.Job)
 	if !ok {
 		return pipelinejobbus.Job{}, errors.New("pipeline job not found in context")
+	}
+
+	return v, nil
+}
+
+func setProject(ctx context.Context, prj projectbus.Project) context.Context {
+	return context.WithValue(ctx, projectKey, prj)
+}
+
+// GetProject returns the project from the context.
+func GetProject(ctx context.Context) (projectbus.Project, error) {
+	v, ok := ctx.Value(projectKey).(projectbus.Project)
+	if !ok {
+		return projectbus.Project{}, errors.New("project not found in context")
 	}
 
 	return v, nil

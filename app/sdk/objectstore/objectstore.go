@@ -4,6 +4,7 @@ package objectstore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -177,6 +179,42 @@ func (c *Client) PresignGet(ctx context.Context, bucket, key string, ttl time.Du
 	}
 
 	return out.URL, time.Now().Add(ttl), nil
+}
+
+// DeleteObject removes one object. A missing object is success so a retry can finish.
+func (c *Client) DeleteObject(ctx context.Context, bucket, key string) (err error) {
+	if bucket == "" {
+		bucket = c.bucket
+	}
+
+	ctx, span := startSpan(ctx, "objectstore.delete_object",
+		attribute.String("object.bucket", bucket),
+		attribute.String("object.key", key),
+	)
+	defer func() { endSpan(span, err) }()
+
+	_, err = c.svc.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil && !missingObject(err) {
+		return fmt.Errorf("delete object bucket[%s] key[%s]: %w", bucket, key, err)
+	}
+
+	return nil
+}
+
+func missingObject(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	switch apiErr.ErrorCode() {
+	case "NotFound", "NoSuchKey", "404":
+		return true
+	default:
+		return false
+	}
 }
 
 func startSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {

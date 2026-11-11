@@ -1,46 +1,36 @@
 import { fileIdFromSourceRef } from '@/shared/media'
 
-import type { Project, ProjectRecording } from './types'
+import type { ProjectRecording } from './types'
 
 const STORAGE_KEY = 'bubble.projects.v1'
 
-/** Seed project that receives jobs created before projects existed. */
-export const DEFAULT_PROJECT_ID = 'proj-lecture-notes'
+/** A project saved in the browser before the server owned the list. */
+export type StoredProject = {
+  id: string
+  name: string
+  dateCreated: string
+}
 
 type ProjectStore = {
-  projects: Project[]
+  projects: StoredProject[]
   /** job id → project id */
   jobProject: Record<string, string>
   recordings: ProjectRecording[]
   currentProjectId: string
 }
 
-const SEED: ProjectStore = {
-  projects: [
-    {
-      id: DEFAULT_PROJECT_ID,
-      name: 'Lecture notes',
-      dateCreated: '2026-03-01T09:00:00.000Z',
-    },
-    {
-      id: 'proj-seminar',
-      name: 'Seminar recordings',
-      dateCreated: '2026-03-04T09:00:00.000Z',
-    },
-  ],
-  jobProject: {
-    'job-demo-01': DEFAULT_PROJECT_ID,
-    'job-demo-02': DEFAULT_PROJECT_ID,
-  },
+const EMPTY: ProjectStore = {
+  projects: [],
+  jobProject: {},
   recordings: [],
-  currentProjectId: DEFAULT_PROJECT_ID,
+  currentProjectId: '',
 }
 
 let memory: ProjectStore | null = null
 
-function isProject(value: unknown): value is Project {
+function isProject(value: unknown): value is StoredProject {
   if (!value || typeof value !== 'object') return false
-  const project = value as Partial<Project>
+  const project = value as Partial<StoredProject>
   return typeof project.id === 'string' && typeof project.name === 'string' && typeof project.dateCreated === 'string'
 }
 
@@ -51,14 +41,10 @@ function parseStore(raw: string): ProjectStore | null {
   const jobProject: Record<string, string> = {}
   if (parsed.jobProject && typeof parsed.jobProject === 'object') {
     for (const [jobId, projectId] of Object.entries(parsed.jobProject)) {
-      if (typeof projectId === 'string' && projects.some((project) => project.id === projectId)) {
-        jobProject[jobId] = projectId
-      }
+      if (typeof projectId === 'string' && projectId) jobProject[jobId] = projectId
     }
   }
-  const current = projects.some((project) => project.id === parsed.currentProjectId)
-    ? parsed.currentProjectId!
-    : (projects[0]?.id ?? '')
+  const current = typeof parsed.currentProjectId === 'string' ? parsed.currentProjectId : ''
   const recordings = Array.isArray(parsed.recordings) ? parsed.recordings.filter(isRecording).map(withFileId) : []
   return { projects, jobProject, recordings, currentProjectId: current }
 }
@@ -107,8 +93,8 @@ function readStore(): ProjectStore {
   } catch {
     /* seed below */
   }
-  writeStore(structuredClone(SEED))
-  return memory ?? SEED
+  writeStore(structuredClone(EMPTY))
+  return memory ?? EMPTY
 }
 
 function update(change: (store: ProjectStore) => void): ProjectStore {
@@ -118,7 +104,7 @@ function update(change: (store: ProjectStore) => void): ProjectStore {
   return next
 }
 
-export function readProjects(): Project[] {
+export function readProjects(): StoredProject[] {
   return readStore().projects
 }
 
@@ -127,18 +113,26 @@ export function readCurrentProjectId(): string {
 }
 
 export function rememberProject(projectId: string) {
-  const store = readStore()
-  if (!store.projects.some((project) => project.id === projectId)) return
-  if (store.currentProjectId === projectId) return
+  if (!projectId) return
+  if (readStore().currentProjectId === projectId) return
   update((next) => {
     next.currentProjectId = projectId
   })
 }
 
-export function renameProject(projectId: string, name: string) {
+/** Point recordings and jobs that used a browser project id at the server id. */
+export function replaceProjectId(from: string, to: string) {
   update((next) => {
-    const project = next.projects.find((item) => item.id === projectId)
-    if (project) project.name = name
+    const jobProject: Record<string, string> = {}
+    for (const [jobId, owner] of Object.entries(next.jobProject)) {
+      jobProject[jobId] = owner === from ? to : owner
+    }
+    next.jobProject = jobProject
+    next.recordings = next.recordings.map((recording) =>
+      recording.projectId === from ? { ...recording, projectId: to } : recording,
+    )
+    if (next.currentProjectId === from) next.currentProjectId = to
+    next.projects = next.projects.filter((project) => project.id !== from)
   })
 }
 
@@ -149,23 +143,8 @@ export function removeProject(projectId: string) {
       if (owner === projectId) delete next.jobProject[jobId]
     }
     next.recordings = next.recordings.filter((recording) => recording.projectId !== projectId)
-    if (next.currentProjectId === projectId) {
-      next.currentProjectId = next.projects[0]?.id ?? ''
-    }
+    if (next.currentProjectId === projectId) next.currentProjectId = ''
   })
-}
-
-export function insertProject(name: string): Project {
-  const project: Project = {
-    id: `proj-${crypto.randomUUID()}`,
-    name,
-    dateCreated: new Date().toISOString(),
-  }
-  update((next) => {
-    next.projects.push(project)
-    next.currentProjectId = project.id
-  })
-  return project
 }
 
 export function readProjectIdForJob(jobId: string): string | null {
@@ -215,16 +194,5 @@ export function linkRecordingJob(recordingId: string, jobId: string) {
   update((next) => {
     const recording = next.recordings.find((item) => item.id === recordingId)
     if (recording) recording.jobId = jobId
-  })
-}
-
-/** Jobs with no project yet join the fallback project. Assigned jobs stay put. */
-export function claimUnassigned(jobIds: readonly string[], fallbackProjectId: string) {
-  update((next) => {
-    if (!next.projects.some((project) => project.id === fallbackProjectId)) return
-    for (const jobId of jobIds) {
-      if (!jobId || next.jobProject[jobId]) continue
-      next.jobProject[jobId] = fallbackProjectId
-    }
   })
 }

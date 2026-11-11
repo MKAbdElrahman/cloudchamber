@@ -28,7 +28,8 @@ spec:
             - -s3-endpoint=http://seaweedfs-service:8333
             - -hooks-http=http://cloudchamber-service:3000/v1/internal/tusd/hooks
             - -hooks-http-forward-headers=Authorization,traceparent,tracestate,baggage
-            - -hooks-enabled-events=pre-create,pre-finish,post-terminate
+            - -hooks-enabled-events=pre-create,pre-finish,pre-terminate,post-terminate
+            - -disable-download
             - -behind-proxy
           env:
             - name: AWS_ACCESS_KEY_ID

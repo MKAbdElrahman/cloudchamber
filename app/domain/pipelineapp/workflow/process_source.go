@@ -62,7 +62,7 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 	if err := workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, mediaOpts),
 		ActivityExtractAudio,
-		ExtractAudioInput{JobID: in.JobID, OwnerID: resolved.OwnerID, Name: resolved.Name},
+		ExtractAudioInput{JobID: in.JobID, OwnerID: resolved.OwnerID, ProjectID: resolved.ProjectID, Name: resolved.Name},
 	).Get(ctx, &audio); err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 	if err := workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, asrOpts),
 		ActivityTranscribe,
-		TranscribeInput{JobID: in.JobID, OwnerID: audio.OwnerID, FileID: audio.FileID, Name: audio.Name},
+		TranscribeInput{JobID: in.JobID, OwnerID: audio.OwnerID, ProjectID: resolved.ProjectID, FileID: audio.FileID, Name: audio.Name},
 	).Get(ctx, &transcript); err != nil {
 		return nil, err
 	}
@@ -83,6 +83,7 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 		ExtractKeyFramesInput{
 			JobID:       in.JobID,
 			OwnerID:     resolved.OwnerID,
+			ProjectID:   resolved.ProjectID,
 			Name:        resolved.Name,
 			ContentType: resolved.ContentType,
 		},
@@ -97,6 +98,7 @@ func ProcessSourceWorkflow(ctx workflow.Context, in ProcessSourceInput) (*Proces
 		ComposeExportInput{
 			JobID:            in.JobID,
 			OwnerID:          resolved.OwnerID,
+			ProjectID:        resolved.ProjectID,
 			FileID:           in.FileID,
 			Name:             resolved.Name,
 			TranscriptFileID: transcript.FileID,

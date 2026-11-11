@@ -58,6 +58,7 @@ func (a *Activities) ResolveSource(ctx context.Context, in workflow.ResolveSourc
 	return workflow.ResolveSourceOutput{
 		JobID:       in.JobID,
 		OwnerID:     art.OwnerID.String(),
+		ProjectID:   art.ProjectID.String(),
 		FileID:      art.FileID.String(),
 		Name:        name,
 		ContentType: art.ContentType,
@@ -74,7 +75,11 @@ func (a *Activities) ExtractAudio(ctx context.Context, in workflow.ExtractAudioI
 		return workflow.ExtractAudioOutput{}, fmt.Errorf("owner id: %w", err)
 	}
 	name := stem(in.Name) + ".wav"
-	fileID, err := a.publish(ctx, in.JobID, ownerID, artifactbus.KindAudio, name, "audio/wav", toneWAV())
+	projectID, err := parseProjectID(in.ProjectID)
+	if err != nil {
+		return workflow.ExtractAudioOutput{}, err
+	}
+	fileID, err := a.publish(ctx, in.JobID, ownerID, projectID, artifactbus.KindAudio, name, "audio/wav", toneWAV())
 	if err != nil {
 		return workflow.ExtractAudioOutput{}, err
 	}
@@ -100,7 +105,11 @@ func (a *Activities) Transcribe(ctx context.Context, in workflow.TranscribeInput
 	if err != nil {
 		return workflow.TranscribeOutput{}, err
 	}
-	fileID, err := a.publish(ctx, in.JobID, ownerID, artifactbus.KindTranscript, stem(in.Name)+".transcript.json", "application/json", body)
+	projectID, err := parseProjectID(in.ProjectID)
+	if err != nil {
+		return workflow.TranscribeOutput{}, err
+	}
+	fileID, err := a.publish(ctx, in.JobID, ownerID, projectID, artifactbus.KindTranscript, stem(in.Name)+".transcript.json", "application/json", body)
 	if err != nil {
 		return workflow.TranscribeOutput{}, err
 	}
@@ -124,7 +133,11 @@ func (a *Activities) ExtractKeyFrames(ctx context.Context, in workflow.ExtractKe
 	if err != nil {
 		return workflow.ExtractKeyFramesOutput{}, err
 	}
-	fileID, err := a.publish(ctx, in.JobID, ownerID, artifactbus.KindFrames, stem(in.Name)+"-frame.png", "image/png", body)
+	projectID, err := parseProjectID(in.ProjectID)
+	if err != nil {
+		return workflow.ExtractKeyFramesOutput{}, err
+	}
+	fileID, err := a.publish(ctx, in.JobID, ownerID, projectID, artifactbus.KindFrames, stem(in.Name)+"-frame.png", "image/png", body)
 	if err != nil {
 		return workflow.ExtractKeyFramesOutput{}, err
 	}
@@ -142,7 +155,11 @@ func (a *Activities) ComposeExport(ctx context.Context, in workflow.ComposeExpor
 		return workflow.ComposeExportOutput{}, fmt.Errorf("owner id: %w", err)
 	}
 	body := []byte(documentMarkdown(in.Name, in.KeyFramesFileID != ""))
-	fileID, err := a.publish(ctx, in.JobID, ownerID, artifactbus.KindDocument, stem(in.Name)+".md", "text/markdown", body)
+	projectID, err := parseProjectID(in.ProjectID)
+	if err != nil {
+		return workflow.ComposeExportOutput{}, err
+	}
+	fileID, err := a.publish(ctx, in.JobID, ownerID, projectID, artifactbus.KindDocument, stem(in.Name)+".md", "text/markdown", body)
 	if err != nil {
 		return workflow.ComposeExportOutput{}, err
 	}
@@ -150,7 +167,18 @@ func (a *Activities) ComposeExport(ctx context.Context, in workflow.ComposeExpor
 	return workflow.ComposeExportOutput{JobID: in.JobID, FileID: fileID.String()}, nil
 }
 
-func (a *Activities) publish(ctx context.Context, jobID string, ownerID uuid.UUID, kind, name, contentType string, body []byte) (uuid.UUID, error) {
+func parseProjectID(raw string) (uuid.UUID, error) {
+	if raw == "" {
+		return uuid.Nil, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("project id: %w", err)
+	}
+	return id, nil
+}
+
+func (a *Activities) publish(ctx context.Context, jobID string, ownerID, projectID uuid.UUID, kind, name, contentType string, body []byte) (uuid.UUID, error) {
 	fileID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(jobID+"/"+kind))
 	key := fmt.Sprintf("outputs/%s/%s", ownerID, fileID)
 	if err := a.objects.PutObject(ctx, "", key, contentType, body); err != nil {
@@ -159,6 +187,7 @@ func (a *Activities) publish(ctx context.Context, jobID string, ownerID uuid.UUI
 	if _, err := a.artifacts.Register(ctx, artifactbus.NewArtifact{
 		FileID:      fileID,
 		OwnerID:     ownerID,
+		ProjectID:   projectID,
 		Bucket:      a.objects.Bucket(),
 		ObjectKey:   key,
 		Kind:        artifactbus.MustParseKind(kind),

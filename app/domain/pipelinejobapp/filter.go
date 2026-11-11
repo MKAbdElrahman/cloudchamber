@@ -9,22 +9,24 @@ import (
 )
 
 type queryParams struct {
-	Page    string
-	Rows    string
-	OrderBy string
-	JobID   string
-	Status  string
+	Page      string
+	Rows      string
+	OrderBy   string
+	JobID     string
+	ProjectID string
+	Status    string
 }
 
 func parseQueryParams(r *http.Request) queryParams {
 	values := r.URL.Query()
 
 	return queryParams{
-		Page:    values.Get("page"),
-		Rows:    values.Get("rows"),
-		OrderBy: values.Get("orderBy"),
-		JobID:   values.Get("job_id"),
-		Status:  values.Get("status"),
+		Page:      values.Get("page"),
+		Rows:      values.Get("rows"),
+		OrderBy:   values.Get("orderBy"),
+		JobID:     values.Get("job_id"),
+		ProjectID: values.Get("project_id"),
+		Status:    values.Get("status"),
 	}
 }
 
@@ -39,6 +41,16 @@ func parseFilter(qp queryParams) (pipelinejobbus.QueryFilter, error) {
 			filter.ID = &id
 		default:
 			fieldErrors.Add("job_id", err)
+		}
+	}
+
+	if qp.ProjectID != "" {
+		id, err := uuid.Parse(qp.ProjectID)
+		switch err {
+		case nil:
+			filter.ProjectID = &id
+		default:
+			fieldErrors.Add("project_id", err)
 		}
 	}
 

@@ -81,6 +81,7 @@ func (s Status) IsTerminal() bool {
 type Job struct {
 	ID                 uuid.UUID
 	OwnerID            uuid.UUID
+	ProjectID          uuid.UUID
 	WorkflowID         string
 	RunID              string
 	InputFileID        uuid.UUID
@@ -99,6 +100,7 @@ type Job struct {
 type NewJob struct {
 	ID                 uuid.UUID
 	OwnerID            uuid.UUID
+	ProjectID          uuid.UUID
 	WorkflowID         string
 	RunID              string
 	InputFileID        uuid.UUID

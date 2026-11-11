@@ -50,6 +50,22 @@ func (ext *Extension) Register(ctx context.Context, na artifactbus.NewArtifact) 
 	return art, nil
 }
 
+// Delete applies otel to removing a file.
+func (ext *Extension) Delete(ctx context.Context, ownerID, fileID uuid.UUID) error {
+	ctx, span := otel.AddSpan(ctx, "business.artifactbus.delete")
+	defer span.End()
+
+	return ext.bus.Delete(ctx, ownerID, fileID)
+}
+
+// QueryByProject applies otel to a project's files.
+func (ext *Extension) QueryByProject(ctx context.Context, ownerID, projectID uuid.UUID) ([]artifactbus.Artifact, error) {
+	ctx, span := otel.AddSpan(ctx, "business.artifactbus.querybyproject")
+	defer span.End()
+
+	return ext.bus.QueryByProject(ctx, ownerID, projectID)
+}
+
 // ReadURL applies otel to the short-lived read URL.
 func (ext *Extension) ReadURL(ctx context.Context, ownerID, fileID uuid.UUID) (artifactbus.Playback, error) {
 	ctx, span := otel.AddSpan(ctx, "business.artifactbus.readurl")

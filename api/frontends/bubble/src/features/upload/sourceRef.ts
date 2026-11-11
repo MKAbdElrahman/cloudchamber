@@ -1,16 +1,4 @@
-import { env } from '@/shared/config'
 import { fileIdFromObjectKey } from '@/shared/media'
-
-/**
- * Derive the canonical sourceRef recorded by the backend from a tus upload URL.
- * tus Location / upload.url is like: {endpoint}/{objectKey}+{uploadId}
- * Backend finalizes: s3://{bucket}/{objectKey}  (objectKey = owner-scoped path).
- */
-export function sourceRefFromUploadUrl(uploadUrl: string): string | null {
-  const objectKey = objectKeyFromUploadUrl(uploadUrl)
-  if (!objectKey) return null
-  return `s3://${env.artifactsBucket}/${objectKey}`
-}
 
 /** File id from a tus upload URL. The storage location stays on the server. */
 export function fileIdFromUploadUrl(uploadUrl: string): string | null {

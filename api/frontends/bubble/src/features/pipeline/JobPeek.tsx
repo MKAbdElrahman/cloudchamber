@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer'
@@ -8,7 +7,7 @@ import { Lightbox } from '@astryxdesign/core/Lightbox'
 import { PendingLines } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
-import { readFileURL, reportPlayback } from './api'
+import { readFileURL } from './api'
 import { JobStages } from './JobStages'
 import { JobStatusLabel } from './JobStatusLabel'
 import { jobOutcomeBanner, visibleJobStatus } from './jobStatus'
@@ -55,45 +54,13 @@ export function JobPeek({
     refetchOnWindowFocus: false,
   })
   const playbackUrl = urlQuery.data?.url
-  const traceparent = urlQuery.data?.traceparent
   const videoName = video?.name ?? 'Recording'
   const caption = playbackUrl ? videoName : urlQuery.isPending ? `Opening ${videoName}` : `${videoName} cannot be played from here.`
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const root = dialogRef.current
-    if (!fileId || !playbackUrl || !traceparent || !root) return
-    const media = root.querySelector('video')
-    if (!media) return
-
-    let sent = false
-    const started = performance.now()
-    const send = (outcome: 'loaded' | 'error') => {
-      if (sent) return
-      sent = true
-      void reportPlayback(token, fileId, traceparent, {
-        outcome,
-        readyState: media.readyState,
-        waitedMs: Math.round(performance.now() - started),
-        mediaError: media.error?.code,
-      }).catch(() => undefined)
-    }
-    const onLoaded = () => send('loaded')
-    const onError = () => send('error')
-    media.addEventListener('loadeddata', onLoaded)
-    media.addEventListener('error', onError)
-    if (media.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) send('loaded')
-    return () => {
-      media.removeEventListener('loadeddata', onLoaded)
-      media.removeEventListener('error', onError)
-    }
-  }, [fileId, playbackUrl, token, traceparent])
 
   return (
     <>
       {video ? (
         <Lightbox
-          ref={dialogRef}
           isOpen={videoOpen}
           onOpenChange={onVideoOpenChange}
           media={{

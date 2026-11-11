@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchResult } from '@/shared/api'
+import { apiFetch } from '@/shared/api'
 import type { JobsQuery, PipelineJob } from './types'
 
 export function createJob(token: string, fileId: string, idempotencyKey?: string) {
@@ -9,29 +9,10 @@ export function createJob(token: string, fileId: string, idempotencyKey?: string
   })
 }
 
-export async function readFileURL(token: string, fileId: string) {
-  const result = await apiFetchResult<{ url: string; expiresAt: string }>(
-    `/v1/files/${encodeURIComponent(fileId)}/url`,
-    { method: 'GET', token },
-  )
-  return {
-    url: result.body.url,
-    expiresAt: result.body.expiresAt,
-    traceparent: result.headers.get('traceparent'),
-  }
-}
-
-export function reportPlayback(
-  token: string,
-  fileId: string,
-  traceparent: string,
-  report: { outcome: 'loaded' | 'error'; readyState: number; waitedMs: number; mediaError?: number },
-) {
-  return apiFetch<null>(`/v1/files/${encodeURIComponent(fileId)}/playback`, {
-    method: 'POST',
+export function readFileURL(token: string, fileId: string) {
+  return apiFetch<{ url: string; expiresAt: string }>(`/v1/files/${encodeURIComponent(fileId)}/url`, {
+    method: 'GET',
     token,
-    headers: { traceparent },
-    body: JSON.stringify(report),
   })
 }
 

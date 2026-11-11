@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/google/uuid"
 )
 
@@ -75,6 +76,8 @@ type fakeStore struct {
 	byID map[uuid.UUID]Artifact
 }
 
+func (f *fakeStore) NewWithTx(sqldb.CommitRollbacker) (Storer, error) { return f, nil }
+
 func (f *fakeStore) Upsert(context.Context, Artifact) error { return nil }
 
 func (f *fakeStore) QueryByFileID(_ context.Context, fileID uuid.UUID) (Artifact, error) {
@@ -83,10 +86,6 @@ func (f *fakeStore) QueryByFileID(_ context.Context, fileID uuid.UUID) (Artifact
 		return Artifact{}, ErrNotFound
 	}
 	return art, nil
-}
-
-func (f *fakeStore) QueryBySourceRef(context.Context, string) (Artifact, error) {
-	return Artifact{}, ErrNotFound
 }
 
 func (f *fakeStore) QueryBySourceRefs(context.Context, []string) ([]Artifact, error) {

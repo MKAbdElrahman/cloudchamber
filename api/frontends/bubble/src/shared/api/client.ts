@@ -33,10 +33,10 @@ function errorMessage(body: unknown, fallback: string): string {
   return fallback
 }
 
-export async function apiFetchResult<T>(
+export async function apiFetch<T>(
   path: string,
   init: RequestInit & { token?: string | null; base?: string } = {},
-): Promise<{ body: T; headers: Headers }> {
+): Promise<T> {
   const { token, base = env.cloudchamberApiBase, headers, ...rest } = init
   const res = await fetch(`${base}${path}`, {
     ...rest,
@@ -50,13 +50,5 @@ export async function apiFetchResult<T>(
   if (!res.ok) {
     throw new ApiError(errorMessage(body, `Request failed (${res.status})`), res.status, body)
   }
-  return { body: body as T, headers: res.headers }
-}
-
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit & { token?: string | null; base?: string } = {},
-): Promise<T> {
-  const result = await apiFetchResult<T>(path, init)
-  return result.body
+  return body as T
 }

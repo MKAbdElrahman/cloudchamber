@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/google/uuid"
 )
@@ -22,9 +23,9 @@ var (
 
 // Storer persists artifacts.
 type Storer interface {
+	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	Upsert(ctx context.Context, art Artifact) error
 	QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifact, error)
-	QueryBySourceRef(ctx context.Context, sourceRef string) (Artifact, error)
 	QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]Artifact, error)
 }
 
@@ -35,10 +36,12 @@ type Presigner interface {
 
 // ExtBusiness lists every public method an extension can wrap.
 type ExtBusiness interface {
+	// NewWithTx returns a transaction-bound copy. Extensions must bind their
+	// dependencies to the transaction and wrap the returned business themselves.
+	NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error)
 	Register(ctx context.Context, na NewArtifact) (Artifact, error)
 	ReadURL(ctx context.Context, ownerID, fileID uuid.UUID) (Playback, error)
 	QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifact, error)
-	QueryBySourceRef(ctx context.Context, sourceRef string) (Artifact, error)
 	QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]Artifact, error)
 }
 
@@ -54,25 +57,42 @@ type Business struct {
 
 // NewBusiness constructs an artifact business API for use.
 func NewBusiness(log *logger.Logger, storer Storer, presigner Presigner, extensions ...Extension) ExtBusiness {
-	b := ExtBusiness(&Business{
-		log:       log,
-		storer:    storer,
-		presigner: presigner,
-	})
+	b := newBusiness(log, storer, presigner)
+
+	extBus := ExtBusiness(b)
 
 	for _, ext := range slices.Backward(extensions) {
 		if ext != nil {
-			b = ext(b)
+			extBus = ext(extBus)
 		}
 	}
 
-	return b
+	return extBus
+}
+
+func newBusiness(log *logger.Logger, storer Storer, presigner Presigner) *Business {
+	return &Business{
+		log:       log,
+		storer:    storer,
+		presigner: presigner,
+	}
+}
+
+// NewWithTx constructs a new business value that will use the
+// specified transaction in any store related calls.
+func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (ExtBusiness, error) {
+	storer, err := b.storer.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Each extension rebuilds its own wrapper in NewWithTx.
+	return newBusiness(b.log, storer, b.presigner), nil
 }
 
 // Register records an object that is already in the bucket.
 func (b *Business) Register(ctx context.Context, na NewArtifact) (Artifact, error) {
-	now := time.Now()
-	b.log.Info(ctx, "artifact.register", "file_id", na.FileID.String(), "kind", na.Kind.String())
+	now := time.Now().UTC()
 	art := Artifact{
 		FileID:      na.FileID,
 		OwnerID:     na.OwnerID,
@@ -119,15 +139,6 @@ func (b *Business) QueryByFileID(ctx context.Context, fileID uuid.UUID) (Artifac
 	art, err := b.storer.QueryByFileID(ctx, fileID)
 	if err != nil {
 		return Artifact{}, fmt.Errorf("query by file id: %w", err)
-	}
-	return art, nil
-}
-
-// QueryBySourceRef returns the artifact stored at a source ref.
-func (b *Business) QueryBySourceRef(ctx context.Context, sourceRef string) (Artifact, error) {
-	art, err := b.storer.QueryBySourceRef(ctx, sourceRef)
-	if err != nil {
-		return Artifact{}, fmt.Errorf("query by source ref: %w", err)
 	}
 	return art, nil
 }

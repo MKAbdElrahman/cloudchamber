@@ -28,5 +28,4 @@ func Routes(app *web.App, cfg Config) {
 	api := newApp(cfg.Log, cfg.ArtifactBus)
 
 	app.HandlerFunc(http.MethodGet, version, "/files/{file_id}/url", api.readURL, authen, ruleAny)
-	app.HandlerFunc(http.MethodPost, version, "/files/{file_id}/playback", api.observePlayback, authen, ruleAny)
 }

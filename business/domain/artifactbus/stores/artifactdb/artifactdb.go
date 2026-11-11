@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
@@ -25,68 +24,20 @@ func NewStore(log *logger.Logger, db *sqlx.DB) *Store {
 	return &Store{log: log, db: db}
 }
 
-type artifactRow struct {
-	FileID      uuid.UUID `db:"file_id"`
-	OwnerID     uuid.UUID `db:"owner_id"`
-	Bucket      string    `db:"bucket"`
-	ObjectKey   string    `db:"object_key"`
-	SourceRef   string    `db:"source_ref"`
-	Kind        string    `db:"kind"`
-	ContentType string    `db:"content_type"`
-	Status      string    `db:"status"`
-	DateCreated time.Time `db:"date_created"`
-	DateUpdated time.Time `db:"date_updated"`
-}
-
-func toDBArtifact(bus artifactbus.Artifact) artifactRow {
-	return artifactRow{
-		FileID:      bus.FileID,
-		OwnerID:     bus.OwnerID,
-		Bucket:      bus.Bucket,
-		ObjectKey:   bus.ObjectKey,
-		SourceRef:   bus.SourceRef,
-		Kind:        bus.Kind.String(),
-		ContentType: bus.ContentType,
-		Status:      bus.Status.String(),
-		DateCreated: bus.DateCreated.UTC(),
-		DateUpdated: bus.DateUpdated.UTC(),
-	}
-}
-
-func toBusArtifact(row artifactRow) (artifactbus.Artifact, error) {
-	kind, err := artifactbus.ParseKind(row.Kind)
+// NewWithTx constructs a new Store value replacing the sqlx DB
+// value with a sqlx DB value that is currently inside a transaction.
+func (s *Store) NewWithTx(tx sqldb.CommitRollbacker) (artifactbus.Storer, error) {
+	ec, err := sqldb.GetExtContext(tx)
 	if err != nil {
-		return artifactbus.Artifact{}, fmt.Errorf("parse kind: %w", err)
-	}
-	status, err := artifactbus.ParseStatus(row.Status)
-	if err != nil {
-		return artifactbus.Artifact{}, fmt.Errorf("parse status: %w", err)
+		return nil, err
 	}
 
-	return artifactbus.Artifact{
-		FileID:      row.FileID,
-		OwnerID:     row.OwnerID,
-		Bucket:      row.Bucket,
-		ObjectKey:   row.ObjectKey,
-		SourceRef:   row.SourceRef,
-		Kind:        kind,
-		ContentType: row.ContentType,
-		Status:      status,
-		DateCreated: row.DateCreated.In(time.Local),
-		DateUpdated: row.DateUpdated.In(time.Local),
-	}, nil
-}
-
-func toBusArtifacts(rows []artifactRow) ([]artifactbus.Artifact, error) {
-	arts := make([]artifactbus.Artifact, len(rows))
-	for i, row := range rows {
-		art, err := toBusArtifact(row)
-		if err != nil {
-			return nil, err
-		}
-		arts[i] = art
+	store := Store{
+		log: s.log,
+		db:  ec,
 	}
-	return arts, nil
+
+	return &store, nil
 }
 
 const artifactColumns = `
@@ -126,28 +77,7 @@ func (s *Store) QueryByFileID(ctx context.Context, fileID uuid.UUID) (artifactbu
 
 	q := `SELECT ` + artifactColumns + ` FROM artifacts WHERE file_id = :file_id`
 
-	var row artifactRow
-	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &row); err != nil {
-		if errors.Is(err, sqldb.ErrDBNotFound) {
-			return artifactbus.Artifact{}, fmt.Errorf("db: %w", artifactbus.ErrNotFound)
-		}
-		return artifactbus.Artifact{}, fmt.Errorf("db: %w", err)
-	}
-
-	return toBusArtifact(row)
-}
-
-// QueryBySourceRef retrieves an artifact by its internal source ref.
-func (s *Store) QueryBySourceRef(ctx context.Context, sourceRef string) (artifactbus.Artifact, error) {
-	data := struct {
-		SourceRef string `db:"source_ref"`
-	}{
-		SourceRef: sourceRef,
-	}
-
-	q := `SELECT ` + artifactColumns + ` FROM artifacts WHERE source_ref = :source_ref`
-
-	var row artifactRow
+	var row artifactDB
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, q, data, &row); err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return artifactbus.Artifact{}, fmt.Errorf("db: %w", artifactbus.ErrNotFound)
@@ -169,7 +99,7 @@ func (s *Store) QueryBySourceRefs(ctx context.Context, sourceRefs []string) ([]a
 	}
 	q := `SELECT ` + artifactColumns + ` FROM artifacts WHERE source_ref IN (:source_refs)`
 
-	var rows []artifactRow
+	var rows []artifactDB
 	if err := sqldb.NamedQuerySliceUsingIn(ctx, s.log, s.db, q, data, &rows); err != nil {
 		return nil, fmt.Errorf("db: %w", err)
 	}

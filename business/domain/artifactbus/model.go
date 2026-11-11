@@ -50,6 +50,16 @@ func (k Kind) String() string {
 	return k.value
 }
 
+// Equal reports whether two kinds are the same.
+func (k Kind) Equal(other Kind) bool {
+	return k.value == other.value
+}
+
+// MarshalText provides support for logging and marshaling.
+func (k Kind) MarshalText() ([]byte, error) {
+	return []byte(k.value), nil
+}
+
 const (
 	StatusReady = "ready"
 )
@@ -88,6 +98,11 @@ func (s Status) String() string {
 // Equal reports whether two statuses are the same.
 func (s Status) Equal(other Status) bool {
 	return s.value == other.value
+}
+
+// MarshalText provides support for logging and marshaling.
+func (s Status) MarshalText() ([]byte, error) {
+	return []byte(s.value), nil
 }
 
 // Artifact is one durable object a person can read.

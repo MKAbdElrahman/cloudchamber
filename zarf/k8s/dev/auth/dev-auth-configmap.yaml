@@ -8,3 +8,5 @@ data:
   db_user: "postgres"
   db_password: "postgres"
   db_disabletls: "true"
+  google_key: "415113668729-mmclvqjo5i8u6ubq0h78q8e4gf7cinp7.apps.googleusercontent.com"
+  google_secret: "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"

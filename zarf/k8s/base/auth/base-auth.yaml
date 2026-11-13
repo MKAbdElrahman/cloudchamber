@@ -85,15 +85,15 @@ spec:
                   optional: true
             - name: AUTH_GOOGLE_KEY
               valueFrom:
-                secretKeyRef:
-                  name: auth-google
-                  key: key
+                configMapKeyRef:
+                  name: app-config
+                  key: google_key
                   optional: true
             - name: AUTH_GOOGLE_SECRET
               valueFrom:
-                secretKeyRef:
-                  name: auth-google
-                  key: secret
+                configMapKeyRef:
+                  name: app-config
+                  key: google_secret
                   optional: true
 
             - name: KUBERNETES_NAMESPACE

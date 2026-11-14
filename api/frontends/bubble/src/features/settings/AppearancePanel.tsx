@@ -13,7 +13,7 @@ export function AppearancePanel() {
   return (
     <VStack gap={WORKSPACE_GAP.group} width="100%">
       <VStack gap={WORKSPACE_GAP.local}>
-        <Text type="label">Color theme</Text>
+        <Text type="label">Color mode</Text>
         <Text type="supporting">Applies to this browser only.</Text>
       </VStack>
       <ColorModeChoiceCards

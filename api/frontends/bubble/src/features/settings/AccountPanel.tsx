@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { Avatar } from '@astryxdesign/core/Avatar'
+import { Banner } from '@astryxdesign/core/Banner'
 import { Button } from '@astryxdesign/core/Button'
 import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { List } from '@astryxdesign/core/List'
@@ -45,30 +46,27 @@ export function AccountPanel() {
 
   const name = account?.name?.trim() || accountDisplayLabel(claims, displayName)
   const roles = account?.roles ?? claims?.roles ?? []
+  const email = account?.email ?? (error ? 'Not available.' : userId ? 'Loading the account…' : 'No account is attached to this session.')
 
   return (
     <VStack gap={WORKSPACE_GAP.group} width="100%">
       <HStack gap={WORKSPACE_GAP.group} vAlign="center">
         <Avatar name={name} size="lg" />
         <VStack gap={0}>
-          <Text type="body" weight="bold">
+          <Text type="label" weight="semibold">
             {name}
           </Text>
-          <Text type="supporting" color="secondary">
-            {rolesLine(roles)}
-          </Text>
+          <Text type="supporting">{rolesLine(roles)}</Text>
         </VStack>
       </HStack>
 
+      {error ? <Banner status="error" title="Could not load the account" description={error} /> : null}
+      {account && !account.enabled ? (
+        <Banner status="warning" title="This account is disabled" />
+      ) : null}
+
       <List density="spacious" hasDividers aria-label="Account">
-        <SettingsRow
-          title="Email"
-          icon={EnvelopeIcon}
-          description={
-            account?.email ??
-            (error ? error : userId ? 'Loading the account…' : 'No account is attached to this session.')
-          }
-        />
+        <SettingsRow title="Email" icon={EnvelopeIcon} description={email} />
         {account ? (
           <SettingsRow
             title="Member since"
@@ -83,12 +81,6 @@ export function AccountPanel() {
           control={<Button label="Sign out" variant="ghost" size="sm" onClick={signOut} />}
         />
       </List>
-
-      {account && !account.enabled ? (
-        <Text type="supporting" color="secondary">
-          This account is disabled.
-        </Text>
-      ) : null}
     </VStack>
   )
 }

@@ -5,7 +5,7 @@ import { Drawer, DrawerHeader } from '@astryxdesign/core/Drawer'
 import { Layout, LayoutContent, VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Lightbox } from '@astryxdesign/core/Lightbox'
-import { PendingLines } from '@/shared/layout'
+import { PendingLines, PIPELINE_DRAWER_WIDTH } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { readFileURL } from './api'
@@ -121,7 +121,7 @@ export function JobPeek({
         />
       ) : null}
       {pipelineJobId ? (
-        <Drawer isOpen={pipelineOpen} onOpenChange={onPipelineOpenChange} label="Pipeline" width="28rem">
+        <Drawer isOpen={pipelineOpen} onOpenChange={onPipelineOpenChange} label="Pipeline" width={PIPELINE_DRAWER_WIDTH}>
           <Layout
             header={
               <DrawerHeader

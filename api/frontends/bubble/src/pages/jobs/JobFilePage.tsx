@@ -14,7 +14,7 @@ import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKind
 import { JobOpenIcons, JobPeek, JobStages, JobStatusLabel, cancelJob, createJob, isTerminalJobStatus, jobPhase, useJobProgress, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
 import { ForeignProjectNotice, ProjectTrail, type ProjectFile } from '@/features/projects'
 import { ApiError } from '@/shared/api'
-import { PageHeader, PendingLines, SHELL_NARROW_QUERY, TEXT_CONTENT_WIDTH, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
+import { PageHeader, PendingLines, SHELL_NARROW_QUERY, SIDE_PANEL_WIDTH, TEXT_CONTENT_WIDTH, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 import { useProjectFiles } from '../projects/useProjectFiles'
@@ -167,7 +167,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
       contentWidth={outlinePanel ? undefined : TEXT_CONTENT_WIDTH}
       start={
         outlinePanel ? (
-          <LayoutPanel width="17.5rem" hasDivider>
+          <LayoutPanel width={SIDE_PANEL_WIDTH} hasDivider>
             {outline}
           </LayoutPanel>
         ) : undefined
@@ -186,6 +186,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
                       kind={kind}
                       hasPipeline={Boolean(pipelineJobId ?? resolvedJobId)}
                       status={badgeStatus}
+                      size="md"
                       onOpen={(target) => {
                         if (target === 'video') {
                           setVideoOpen(true)
@@ -202,7 +203,6 @@ export function JobFilePage({ token }: JobFilePageProps) {
                     <Button
                       label={cancel.isSuccess ? 'Canceling' : 'Cancel'}
                       variant="secondary"
-                      size="sm"
                       onClick={() => cancel.mutate()}
                       isLoading={cancel.isPending || cancel.isSuccess}
                       isDisabled={cancel.isPending || cancel.isSuccess}

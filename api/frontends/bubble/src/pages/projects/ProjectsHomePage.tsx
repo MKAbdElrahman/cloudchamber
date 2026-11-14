@@ -212,12 +212,11 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       header={
         <PageHeader
           title="Projects"
-            description="Open a project to see its documents."
+          description="Open a project to see its documents."
           end={<Button label="New project" variant="primary" onClick={() => setCreating(true)} />}
         />
       }
     >
-      {projects.isPending ? <PendingLines /> : null}
       {projects.isError ? (
         <Banner status="error" title="Could not load projects" description={projectErrorMessage(projects.error)} />
       ) : null}
@@ -229,12 +228,13 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
           isCompact
         />
       ) : null}
-      {rows.length > 0 ? (
+      {projects.isPending || rows.length > 0 ? (
         <VStack gap={WORKSPACE_GAP.group}>
           <HStack justify="end" vAlign="center">
             <LibraryViewControl value={view} onChange={setView} />
           </HStack>
-          {view === 'grid' ? (
+          {projects.isPending && rows.length === 0 ? <PendingLines variant={view === 'grid' ? 'cards' : 'rows'} /> : null}
+          {rows.length > 0 && view === 'grid' ? (
             <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Projects">
               {rows.map((project) => (
                 <ProjectTile
@@ -248,7 +248,8 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
                 />
               ))}
             </Grid>
-          ) : (
+          ) : null}
+          {rows.length > 0 && view === 'list' ? (
             <List density="spacious" aria-label="Projects">
               {rows.map((project) => {
                 const files = projectFileCount(project.id, scope.data, scope.isPending)
@@ -275,12 +276,12 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
                 )
               })}
             </List>
-          )}
+          ) : null}
         </VStack>
       ) : null}
 
       <Dialog isOpen={isCreating} onOpenChange={setCreating} purpose="form">
-        <DialogHeader title="New project" subtitle="Jobs stay inside it." onOpenChange={setCreating} />
+        <DialogHeader title="New project" subtitle="Recordings stay inside it." onOpenChange={setCreating} />
         <VStack gap={WORKSPACE_GAP.group}>
           {create.isError ? (
             <Banner status="error" title="Could not create the project" description={projectErrorMessage(create.error)} />

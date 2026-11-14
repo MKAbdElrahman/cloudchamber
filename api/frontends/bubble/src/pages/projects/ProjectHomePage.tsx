@@ -206,20 +206,20 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
       <VStack gap={WORKSPACE_GAP.group}>
         {startError ? (
           <Banner
-            status="error"
-            title="The recording was saved"
-            description={`${startError} You can start the conversion from the file.`}
+            status="warning"
+            title="The document did not start"
+            description={`${startError} The recording is saved. You can start the conversion from the file.`}
           />
         ) : null}
-        {entries.length > 0 ? (
+        {pending || entries.length > 0 ? (
           <HStack justify="end" vAlign="center">
             <LibraryViewControl value={view} onChange={setView} />
           </HStack>
         ) : null}
-        {pending ? <PendingLines /> : null}
+        {pending && entries.length === 0 ? <PendingLines variant={view === 'grid' ? 'cards' : 'rows'} /> : null}
         {entries.length === 0 && !pending ? (
           <EmptyState
-            title="No jobs yet"
+            title="No recordings yet"
             description="Add a recording. It shows up here as one file, and you can turn it into a document when you want."
             icon={<Icon icon={Square2StackIcon} size="lg" color={MUTED_ICON_COLOR} />}
             isCompact

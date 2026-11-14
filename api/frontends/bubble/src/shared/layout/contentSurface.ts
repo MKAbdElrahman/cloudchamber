@@ -13,3 +13,9 @@ export const PAGE_CONTENT_WIDTH = 960
 
 /** Settings, and a document when it is the only region. */
 export const TEXT_CONTENT_WIDTH = 640
+
+/** Settings nav and the document outline. Same width on every page that has a start panel. */
+export const SIDE_PANEL_WIDTH = '17.5rem'
+
+/** Pipeline drawer. Wider than the start panel so the stepper can be read. */
+export const PIPELINE_DRAWER_WIDTH = '28rem'

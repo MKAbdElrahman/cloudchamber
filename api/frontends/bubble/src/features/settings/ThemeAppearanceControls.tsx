@@ -123,7 +123,7 @@ export function ColorModeChoiceCards({
               <ThemeModePreview scheme={choice.scheme} previewTheme={previewTheme} />
               <HStack gap={WORKSPACE_GAP.local} vAlign="center" hAlign="center">
                 <Icon icon={choice.icon} size="sm" color={MUTED_ICON_COLOR} />
-                <Text type={selected ? 'label' : 'supporting'}>{choice.label}</Text>
+                <Text type="label">{choice.label}</Text>
               </HStack>
             </VStack>
           </SelectableCard>

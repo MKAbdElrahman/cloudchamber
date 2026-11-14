@@ -19,7 +19,7 @@ import {
   useSettingsSectionSearch,
   type SettingsSectionId,
 } from '@/features/settings'
-import { PageHeader, SHELL_NARROW_QUERY, TEXT_CONTENT_WIDTH, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
+import { PageHeader, SHELL_NARROW_QUERY, SIDE_PANEL_WIDTH, TEXT_CONTENT_WIDTH, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 import { SHELL_ICON_COLOR } from '@/shared/theme'
 
@@ -30,7 +30,7 @@ const NAV: { id: SettingsSectionId; label: string; icon: typeof PaintBrushIcon }
 
 /**
  * Settings regions, and the mechanism for each:
- *   > lg (1024)  start panel 17.5rem holds its width; content extends to the open edge
+ *   > lg (1024)  start panel holds its width; content extends to the open edge
  *   <= lg        the panel is swapped off; the section list stacks above the pane,
  *                and that single region centers on the 640 settings measure
  */
@@ -90,9 +90,8 @@ export function SettingsPanel() {
 
   if (isNarrow) {
     return (
-      <WorkspacePage contentWidth={TEXT_CONTENT_WIDTH}>
+      <WorkspacePage contentWidth={TEXT_CONTENT_WIDTH} header={<PageHeader title="Settings" />}>
         <VStack gap={WORKSPACE_GAP.section}>
-          <Heading level={1}>Settings</Heading>
           {sectionList}
           {sectionBody}
         </VStack>
@@ -103,7 +102,7 @@ export function SettingsPanel() {
   return (
     <WorkspacePage
       start={
-        <LayoutPanel width="17.5rem" hasDivider>
+        <LayoutPanel width={SIDE_PANEL_WIDTH} hasDivider>
           {sectionList}
         </LayoutPanel>
       }

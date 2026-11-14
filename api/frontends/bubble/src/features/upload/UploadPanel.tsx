@@ -15,7 +15,7 @@ import { env } from '@/shared/config'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
 import { fileIdFromUploadUrl } from './sourceRef'
 
-type Status = 'idle' | 'uploading' | 'success' | 'error'
+type Status = 'idle' | 'uploading' | 'success' | 'warning' | 'error'
 
 export function UploadPanel({
   token,
@@ -80,13 +80,14 @@ export function UploadPanel({
       },
       onSuccess() {
         const fileId = upload.url ? fileIdFromUploadUrl(upload.url) : null
-        setStatus('success')
         setProgress(100)
         if (fileId) {
+          setStatus('success')
           setMessage(null)
           onUploaded({ fileId, fileName: file.name })
         } else {
-          setMessage(`Upload complete at ${upload.url ?? '(unknown url)'}, but the recording could not be saved.`)
+          setStatus('warning')
+          setMessage('The upload finished, but the recording could not be saved.')
         }
       },
     })
@@ -139,8 +140,8 @@ export function UploadPanel({
 
       {message ? (
         <Banner
-          status={status === 'error' ? 'error' : 'success'}
-          title={status === 'error' ? 'Upload failed' : 'Ready'}
+          status={status === 'warning' ? 'warning' : 'error'}
+          title={status === 'warning' ? 'Recording was not saved' : 'Upload failed'}
           description={message}
         />
       ) : null}
@@ -149,7 +150,6 @@ export function UploadPanel({
         type="button"
         label={status === 'uploading' ? 'Uploading…' : 'Start upload'}
         variant="primary"
-        size="lg"
         icon={<Icon icon={ArrowUpTrayIcon} />}
         onClick={start}
         isDisabled={!canStart}

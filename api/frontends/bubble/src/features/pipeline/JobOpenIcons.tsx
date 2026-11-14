@@ -17,6 +17,8 @@ type JobOpenIconsProps = {
   hasPipeline?: boolean
   onOpen: (target: JobPeekTarget) => void
   status?: string
+  /** Match the other controls in the same row. Library rows stay small. */
+  size?: 'sm' | 'md'
 }
 
 function openLabel(kind: SourceMediaKind): string {
@@ -31,7 +33,7 @@ function openLabel(kind: SourceMediaKind): string {
 }
 
 /** Icons that open the recording or the pipeline over the current page. */
-export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status }: JobOpenIconsProps) {
+export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status, size = 'sm' }: JobOpenIconsProps) {
   const mediaIcon = kind === 'audio' ? MusicalNoteIcon : FilmIcon
   const label = openLabel(kind)
 
@@ -49,7 +51,7 @@ export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status }: JobO
         label={label}
         tooltip={`Open ${label.toLowerCase()}`}
         variant="ghost"
-        size="sm"
+        size={size}
         icon={<Icon icon={mediaIcon} />}
         onClick={press('video')}
       />
@@ -58,7 +60,7 @@ export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status }: JobO
           label="Pipeline"
           tooltip="Open pipeline"
           variant="ghost"
-          size="sm"
+          size={size}
           isLoading={jobPhase(status) === 'running'}
           icon={<Icon icon={QueueListIcon} />}
           onClick={press('pipeline')}

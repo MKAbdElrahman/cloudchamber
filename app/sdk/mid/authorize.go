@@ -107,6 +107,16 @@ func AuthorizeUser(client authclient.Authenticator, userBus userbus.ExtBusiness,
 // pipeline job from the DB if a job id is specified in the call. The caller
 // must be the owner of the job or an admin.
 func AuthorizePipeline(client authclient.Authenticator, pipelineJobBus pipelinejobbus.ExtBusiness) web.MidFunc {
+	return authorizePipeline(client, pipelineJobBus, false)
+}
+
+// AuthorizePipelineKeep is AuthorizePipeline for a handler that waits.
+// The timeout covers only the authorization call, so the handler keeps the request context.
+func AuthorizePipelineKeep(client authclient.Authenticator, pipelineJobBus pipelinejobbus.ExtBusiness) web.MidFunc {
+	return authorizePipeline(client, pipelineJobBus, true)
+}
+
+func authorizePipeline(client authclient.Authenticator, pipelineJobBus pipelinejobbus.ExtBusiness, keep bool) web.MidFunc {
 	m := func(next web.HandlerFunc) web.HandlerFunc {
 		h := func(ctx context.Context, r *http.Request) web.Encoder {
 			id := web.Param(r, "job_id")
@@ -134,14 +144,24 @@ func AuthorizePipeline(client authclient.Authenticator, pipelineJobBus pipelinej
 				ctx = setPipelineJob(ctx, job)
 			}
 
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-
 			auth := authclient.Authorize{
 				Claims: GetClaims(ctx),
 				UserID: userID,
 				Rule:   auth.RuleAdminOrSubject,
 			}
+
+			if keep {
+				authCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				err := client.Authorize(authCtx, auth)
+				cancel()
+				if err != nil {
+					return errs.New(errs.Unauthenticated, err)
+				}
+				return next(ctx, r)
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
 
 			if err := client.Authorize(ctx, auth); err != nil {
 				return errs.New(errs.Unauthenticated, err)

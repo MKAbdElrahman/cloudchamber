@@ -16,7 +16,8 @@ RUN go build -ldflags "-X main.build=${BUILD_TAG}"
 FROM alpine:3.24
 ARG BUILD_DATE
 ARG BUILD_TAG
-RUN addgroup -g 1000 -S pipeline && \
+RUN apk add --no-cache ffmpeg && \
+    addgroup -g 1000 -S pipeline && \
     adduser -u 1000 -h /service -G pipeline -S pipeline
 COPY --from=build_pipeline_media --chown=pipeline:pipeline /service/api/workers/media/media /service/media
 WORKDIR /service

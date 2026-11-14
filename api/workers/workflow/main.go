@@ -8,12 +8,19 @@ import (
 	"runtime"
 
 	"github.com/ardanlabs/conf/v3"
+	"go.temporal.io/sdk/activity"
 	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/activities/sim"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/runclose"
 	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/sdk/pipelineworkflow"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/extensions/pipelinejobotel"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/stores/pipelinejobpg"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
 )
@@ -54,6 +61,15 @@ func run(ctx context.Context, log *logger.Logger) error {
 			HostPort  string `conf:"default:localhost:7233"`
 			Namespace string `conf:"default:default"`
 		}
+		DB struct {
+			User         string `conf:"default:postgres"`
+			Password     string `conf:"default:postgres,mask"`
+			Host         string `conf:"default:database-service"`
+			Name         string `conf:"default:postgres"`
+			MaxIdleConns int    `conf:"default:0"`
+			MaxOpenConns int    `conf:"default:0"`
+			DisableTLS   bool   `conf:"default:true"`
+		}
 		Tempo struct {
 			Host        string  `conf:"default:tempo:4317"`
 			ServiceName string  `conf:"default:pipeline-workflow"`
@@ -89,6 +105,25 @@ func run(ctx context.Context, log *logger.Logger) error {
 	log.BuildInfo(ctx)
 
 	// -------------------------------------------------------------------------
+	// Database Support
+
+	log.Info(ctx, "startup", "status", "initializing database support", "hostport", cfg.DB.Host)
+
+	db, err := sqldb.Open(sqldb.Config{
+		User:         cfg.DB.User,
+		Password:     cfg.DB.Password,
+		Host:         cfg.DB.Host,
+		Name:         cfg.DB.Name,
+		MaxIdleConns: cfg.DB.MaxIdleConns,
+		MaxOpenConns: cfg.DB.MaxOpenConns,
+		DisableTLS:   cfg.DB.DisableTLS,
+	})
+	if err != nil {
+		return fmt.Errorf("connecting to db: %w", err)
+	}
+	defer db.Close()
+
+	// -------------------------------------------------------------------------
 	// Start Tracing Support
 
 	log.Info(ctx, "startup", "status", "initializing tracing support")
@@ -122,10 +157,18 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	defer c.Close()
 
+	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelinejobpg.NewStore(log, db), pipelinejobotel.NewExtension())
+	acts := sim.New(nil, pipelineJobBus, nil, tracer)
+
 	// The client copies interceptors that implement WorkerInterceptor onto the
 	// worker. Passing the tracing interceptor here as well records every span twice.
 	w := worker.New(c, pipelinewf.TaskQueueWorkflow, worker.Options{})
 	w.RegisterWorkflow(pipelinewf.ProcessSourceWorkflow)
+	w.RegisterActivityWithOptions(acts.RecordRun, activity.RegisterOptions{Name: pipelinewf.ActivityRecordRun})
+
+	sweepCtx, stopSweep := context.WithCancel(context.Background())
+	defer stopSweep()
+	go runclose.Run(sweepCtx, log, c, pipelineJobBus)
 
 	log.Info(ctx, "startup", "status", "worker started", "taskQueue", pipelinewf.TaskQueueWorkflow, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
 

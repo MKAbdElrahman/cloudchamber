@@ -36,6 +36,7 @@ var baselineOrder = []activityStep{
 	{name: ActivityTranscribe, queue: TaskQueueASR},
 	{name: ActivityExtractKeyFrames, queue: TaskQueueFrames},
 	{name: ActivityComposeExport, queue: TaskQueueRender},
+	{name: ActivityRecordRun, queue: TaskQueueWorkflow},
 }
 
 type activityStep struct {
@@ -203,6 +204,7 @@ func registerStubActivities(env *testsuite.TestWorkflowEnvironment) {
 	env.RegisterActivityWithOptions(transcribeActivity, activity.RegisterOptions{Name: ActivityTranscribe})
 	env.RegisterActivityWithOptions(extractKeyFramesActivity, activity.RegisterOptions{Name: ActivityExtractKeyFrames})
 	env.RegisterActivityWithOptions(composeExportActivity, activity.RegisterOptions{Name: ActivityComposeExport})
+	env.RegisterActivityWithOptions(func(context.Context, RecordRunInput) error { return nil }, activity.RegisterOptions{Name: ActivityRecordRun})
 }
 
 func resolveSourceActivity(_ context.Context, in ResolveSourceInput) (ResolveSourceOutput, error) {

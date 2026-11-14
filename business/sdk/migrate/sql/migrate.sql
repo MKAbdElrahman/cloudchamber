@@ -253,3 +253,133 @@ UPDATE pipeline_jobs SET status = 'failed' WHERE status = 'unknown';
 -- Description: Name the closed activity type and the failure message.
 ALTER TABLE pipeline_jobs RENAME COLUMN stopped_step TO stopped_activity_type;
 ALTER TABLE pipeline_jobs RENAME COLUMN error_message TO failure_message;
+
+-- Version: 1.18
+-- Description: Record each pipeline step on the job. The closed activity type is no longer the progress record.
+CREATE TABLE pipeline_job_steps (
+    job_id       UUID             NOT NULL,
+    step         TEXT             NOT NULL,
+    status       TEXT             NOT NULL,
+    message      TEXT             NULL,
+    progress     DOUBLE PRECISION NULL,
+    date_updated TIMESTAMP        NOT NULL,
+
+    PRIMARY KEY (job_id, step),
+    FOREIGN KEY (job_id) REFERENCES pipeline_jobs(job_id) ON DELETE CASCADE
+);
+
+INSERT INTO pipeline_job_steps (job_id, step, status, date_updated)
+SELECT job_id, 'extract_audio', 'succeeded', date_updated
+FROM pipeline_jobs
+WHERE audio_file_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+INSERT INTO pipeline_job_steps (job_id, step, status, date_updated)
+SELECT job_id, 'transcribe', 'succeeded', date_updated
+FROM pipeline_jobs
+WHERE transcript_file_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+INSERT INTO pipeline_job_steps (job_id, step, status, date_updated)
+SELECT job_id, 'extract_keyframes', 'succeeded', date_updated
+FROM pipeline_jobs
+WHERE key_frames_file_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+INSERT INTO pipeline_job_steps (job_id, step, status, date_updated)
+SELECT job_id, 'compose_export', 'succeeded', date_updated
+FROM pipeline_jobs
+WHERE document_file_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+INSERT INTO pipeline_job_steps (job_id, step, status, date_updated)
+SELECT job_id, 'resolve_source', 'succeeded', date_updated
+FROM pipeline_jobs
+WHERE audio_file_id IS NOT NULL OR status = 'completed'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO pipeline_job_steps (job_id, step, status, date_updated)
+SELECT job_id, 'extract_keyframes', 'skipped', date_updated
+FROM pipeline_jobs
+WHERE status = 'completed' AND key_frames_file_id IS NULL
+ON CONFLICT DO NOTHING;
+
+ALTER TABLE pipeline_jobs DROP COLUMN stopped_activity_type;
+
+-- Version: 1.19
+-- Description: Append pipeline facts to the message store and drop the step rows.
+DO $$
+DECLARE
+    rec record;
+    produced uuid;
+BEGIN
+    FOR rec IN
+        SELECT s.job_id, s.step, s.status, s.message, s.progress,
+               j.project_id, j.owner_id,
+               j.audio_file_id, j.transcript_file_id, j.key_frames_file_id, j.document_file_id
+        FROM pipeline_job_steps s
+        JOIN pipeline_jobs j ON j.job_id = s.job_id
+        ORDER BY s.job_id,
+            CASE s.step
+                WHEN 'resolve_source' THEN 1
+                WHEN 'extract_audio' THEN 2
+                WHEN 'transcribe' THEN 3
+                WHEN 'extract_keyframes' THEN 4
+                WHEN 'compose_export' THEN 5
+                ELSE 9
+            END,
+            s.date_updated
+    LOOP
+        produced := CASE rec.step
+            WHEN 'extract_audio' THEN rec.audio_file_id
+            WHEN 'transcribe' THEN rec.transcript_file_id
+            WHEN 'extract_keyframes' THEN rec.key_frames_file_id
+            WHEN 'compose_export' THEN rec.document_file_id
+            ELSE NULL
+        END;
+
+        PERFORM message_store.write_message(
+            gen_random_uuid()::text,
+            'job-' || rec.job_id::text,
+            'Fact',
+            jsonb_strip_nulls(jsonb_build_object(
+                'step', rec.step,
+                'state', rec.status,
+                'progress', rec.progress,
+                'message', NULLIF(rec.message, ''),
+                'fileId', produced
+            )),
+            jsonb_build_object(
+                'projectId', rec.project_id::text,
+                'ownerId', rec.owner_id::text
+            )
+        );
+    END LOOP;
+
+    FOR rec IN
+        SELECT j.job_id, j.project_id, j.owner_id, j.status, j.failure_message
+        FROM pipeline_jobs j
+        WHERE j.status IN ('failed', 'canceled')
+          AND NOT EXISTS (
+              SELECT 1
+              FROM pipeline_job_steps s
+              WHERE s.job_id = j.job_id AND s.status = j.status
+          )
+    LOOP
+        PERFORM message_store.write_message(
+            gen_random_uuid()::text,
+            'job-' || rec.job_id::text,
+            'Fact',
+            jsonb_strip_nulls(jsonb_build_object(
+                'state', rec.status,
+                'message', NULLIF(rec.failure_message, '')
+            )),
+            jsonb_build_object(
+                'projectId', rec.project_id::text,
+                'ownerId', rec.owner_id::text
+            )
+        );
+    END LOOP;
+END $$;
+
+DROP TABLE pipeline_job_steps;

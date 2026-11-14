@@ -19,7 +19,6 @@ export function jobPhase(status: string | undefined): JobPhase {
     case 'completed':
       return 'finished'
     case 'running':
-    case 'submitted':
       return 'running'
     case 'failed':
       return 'failed'
@@ -103,22 +102,29 @@ export function jobStatusBannerStatus(status: string): 'success' | 'info' | 'war
   }
 }
 
+export type JobFactStatus = {
+  fact?: string
+  position: number
+}
+
 /**
- * Status the badge should read. A document means the conversion finished,
- * even when the list still has the status from the moment the job was created.
+ * Status the badge should read. That is the stored row, which is the fold of the whole log.
+ * A fact list on the screen can be only the latest fact of each step, so it does not decide status.
  */
-export function visibleJobStatus(job: { status: string; documentFileId?: string | null }): string {
-  const hasDocument = Boolean(job.documentFileId?.trim())
-  switch (jobPhase(job.status)) {
-    case 'running':
-    case 'waiting':
-      if (hasDocument) return 'completed'
-      return job.status
-    case 'finished':
-    case 'failed':
-    case 'canceled':
-      return job.status
-  }
+export function visibleJobStatus(job: {
+  status: string
+  documentFileId?: string | null
+  facts?: JobFactStatus[] | null
+}): string {
+  return projectedStatus(job)
+}
+
+export function projectedStatus(job: {
+  status: string
+  documentFileId?: string | null
+  facts?: JobFactStatus[] | null
+}): string {
+  return job.status
 }
 
 /** Banner for a job that failed or was canceled. A running job has none. */

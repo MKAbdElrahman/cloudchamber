@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -22,7 +22,9 @@ import {
   useProjects,
   type Project,
 } from '@/features/projects'
-import { jobNeedsOpen, listJobs, normalizeJobs, openUnsettledJobs, type PipelineJob } from '@/features/pipeline'
+import { factsCursor, followProjectFacts, jobNeedsOpen, listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
+import { mergeFactPage, pageHasUpdates } from '@/features/pipeline/facts'
+import { delay } from '@/features/pipeline/wait'
 import { filesFromJob } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
@@ -121,14 +123,19 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   const [renameName, setRenameName] = useState('')
   const [deleting, setDeleting] = useState<Project | null>(null)
 
+  const cursors = useRef<Record<string, number>>({})
+
   const scope = useQuery({
     queryKey: ['pipeline-jobs', 'home'],
     queryFn: async () => {
       const projectList = await listProjects(token)
       const pairs = await Promise.all(
         projectList.map(async (project) => {
-          const listed = normalizeJobs(await listJobs(token, project.id)).filter((job) => job.projectId === project.id)
-          const jobs = await openUnsettledJobs(token, listed)
+          const raw = await listJobs(token, project.id)
+          const next = factsCursor(raw)
+          const current = cursors.current[project.id]
+          cursors.current[project.id] = current == null ? next : Math.max(current, next)
+          const jobs = normalizeJobs(raw).filter((job) => job.projectId === project.id)
           return [project.id, jobs] as const
         }),
       )
@@ -137,9 +144,54 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       }
     },
     staleTime: 30_000,
-    refetchInterval: (query) =>
-      Object.values(query.state.data?.jobsByProject ?? {}).some((jobs) => jobs.some(jobNeedsOpen)) ? 3_000 : false,
   })
+
+  const openProjects = Object.entries(scope.data?.jobsByProject ?? {})
+    .filter(([, jobs]) => jobs.some(jobNeedsOpen))
+    .map(([id]) => id)
+    .join('\n')
+
+  useEffect(() => {
+    if (!token || !openProjects) return
+    const ids = openProjects.split('\n')
+    let stopped = false
+
+    const loop = async () => {
+      while (!stopped) {
+        await Promise.all(
+          ids.map(async (projectId) => {
+            const after = cursors.current[projectId]
+            if (after == null) return
+            try {
+              const page = await followProjectFacts(token, projectId, after)
+              if (stopped) return
+              cursors.current[projectId] = Math.max(after, page.cursor)
+              if (!pageHasUpdates(page)) return
+              let unknown = false
+              queryClient.setQueryData<{ jobsByProject: Record<string, PipelineJob[]> }>(['pipeline-jobs', 'home'], (current) => {
+                if (!current) return current
+                const merged = mergeFactPage(current.jobsByProject[projectId] ?? [], page)
+                unknown = merged.unknown
+                return {
+                  jobsByProject: {
+                    ...current.jobsByProject,
+                    [projectId]: merged.jobs,
+                  },
+                }
+              })
+              if (unknown) void queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', 'home'] })
+            } catch {
+              await delay(1000)
+            }
+          }),
+        )
+      }
+    }
+    void loop()
+    return () => {
+      stopped = true
+    }
+  }, [openProjects, queryClient, token])
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ['projects'] })

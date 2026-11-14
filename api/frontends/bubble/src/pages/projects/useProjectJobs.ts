@@ -1,25 +1,50 @@
+import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { jobNeedsOpen, listJobs, normalizeJobs, openUnsettledJobs, type PipelineJob } from '@/features/pipeline'
+import { factsCursor, followProjectFacts, listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
+import { applyProjectFacts, pageHasUpdates } from '@/features/pipeline/facts'
+import { delay } from '@/features/pipeline/wait'
 
-const POLL_MS = 3_000
-
-/** Jobs that belong to one project. Open jobs are refreshed until they settle. */
+/** Jobs that belong to one project. New facts arrive on the project stream. */
 export function useProjectJobs(token: string, projectId: string) {
   const queryClient = useQueryClient()
-  return useQuery({
+  const cursor = useRef(0)
+  const query = useQuery({
     queryKey: ['pipeline-jobs', projectId],
     queryFn: async (): Promise<PipelineJob[]> => {
-      const jobs = normalizeJobs(await listJobs(token, projectId)).filter((job) => job.projectId === projectId)
-      const mine = await openUnsettledJobs(token, jobs)
-      for (const job of mine) {
-        if (!jobNeedsOpen(job)) queryClient.setQueryData(['pipeline-job', job.id], job)
-      }
-      return mine
+      const listed = await listJobs(token, projectId)
+      const next = factsCursor(listed)
+      cursor.current = Math.max(cursor.current, next)
+      return normalizeJobs(listed).filter((job) => job.projectId === projectId)
     },
     enabled: Boolean(token) && Boolean(projectId),
     staleTime: 30_000,
     refetchOnMount: 'always',
-    refetchInterval: (query) => (query.state.data?.some(jobNeedsOpen) ? POLL_MS : false),
   })
+
+  useEffect(() => {
+    if (!token || !projectId || !query.isFetched) return
+    let stopped = false
+
+    const loop = async () => {
+      while (!stopped) {
+        try {
+          const page = await followProjectFacts(token, projectId, cursor.current)
+          if (stopped) return
+          cursor.current = Math.max(cursor.current, page.cursor)
+          if (!pageHasUpdates(page)) continue
+          const unknown = applyProjectFacts(queryClient, projectId, page)
+          if (unknown) void queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
+        } catch {
+          await delay(1000)
+        }
+      }
+    }
+    void loop()
+    return () => {
+      stopped = true
+    }
+  }, [query.isFetched, queryClient, projectId, token])
+
+  return query
 }

@@ -73,26 +73,6 @@ func (s Status) IsTerminal() bool {
 
 // Job represents a pipeline job owned by a user.
 type Job struct {
-	ID                  uuid.UUID
-	OwnerID             uuid.UUID
-	ProjectID           uuid.UUID
-	WorkflowID          string
-	RunID               string
-	InputFileID         uuid.UUID
-	IdempotencyKeyHash  *string
-	Status              Status
-	FailureMessage      *string
-	StoppedActivityType string
-	AudioFileID         uuid.UUID
-	TranscriptFileID    uuid.UUID
-	KeyFramesFileID     uuid.UUID
-	DocumentFileID      uuid.UUID
-	DateCreated         time.Time
-	DateUpdated         time.Time
-}
-
-// NewJob contains information needed to create a pipeline job.
-type NewJob struct {
 	ID                 uuid.UUID
 	OwnerID            uuid.UUID
 	ProjectID          uuid.UUID
@@ -101,17 +81,34 @@ type NewJob struct {
 	InputFileID        uuid.UUID
 	IdempotencyKeyHash *string
 	Status             Status
+	FailureMessage     *string
+	Facts              []Fact
+	AudioFileID        uuid.UUID
+	TranscriptFileID   uuid.UUID
+	KeyFramesFileID    uuid.UUID
+	DocumentFileID     uuid.UUID
+	DateCreated        time.Time
+	DateUpdated        time.Time
+	Progress           []Progress
 }
 
-// UpdateJob contains information that can be updated for a pipeline job.
-type UpdateJob struct {
-	RunID               *string
-	Status              *Status
-	FailureMessage      *string
-	ClearFailure        bool
-	StoppedActivityType *string
-	AudioFileID         *uuid.UUID
-	TranscriptFileID    *uuid.UUID
-	KeyFramesFileID     *uuid.UUID
-	DocumentFileID      *uuid.UUID
+// NewJob contains the accepted fact for a pipeline job.
+// The fold derives the workflow id and the submitted status.
+type NewJob struct {
+	ID                 uuid.UUID
+	OwnerID            uuid.UUID
+	ProjectID          uuid.UUID
+	InputFileID        uuid.UUID
+	IdempotencyKeyHash *string
+}
+
+// Fact is one stored message. Time, when set before the write, is the message time.
+// A zero Time leaves the database clock. Cause is the sentence this message records.
+type Fact struct {
+	ID             uuid.UUID
+	JobID          uuid.UUID
+	Position       int64
+	GlobalPosition int64
+	Time           time.Time
+	Cause          Cause
 }

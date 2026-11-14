@@ -46,7 +46,7 @@ export function JobPeek({
   const jobQuery = usePipelineJob(token, pipelineJobId)
   const job = jobQuery.data
   const progress = useJobProgress(job)
-  const notice = progress ? conversionNotice(progress.phase, progress.stages) : null
+  const notice = progress ? conversionNotice(progress.phase, progress.stages, progress.reason) : null
   const fileId = videoOpen ? video?.fileId : undefined
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [held, setHeld] = useState<{ fileId: string; src: string } | null>(null)
@@ -138,7 +138,7 @@ export function JobPeek({
                   {jobQuery.isError ? (
                     <Banner status="error" title="Could not load the job" description={(jobQuery.error as Error).message} />
                   ) : null}
-                  {job && progress ? <JobStages progress={progress} /> : null}
+                  {job && progress ? <JobStages progress={progress} facts={job.facts} updates={job.progress} /> : null}
                 </VStack>
               </LayoutContent>
             }

@@ -43,6 +43,30 @@ func Authenticate(client authclient.Authenticator) web.MidFunc {
 	return m
 }
 
+// AuthenticateKeep validates the caller, then runs the handler on the request context.
+// The timeout covers only the authentication call, so a handler can wait longer than that.
+func AuthenticateKeep(client authclient.Authenticator) web.MidFunc {
+	m := func(next web.HandlerFunc) web.HandlerFunc {
+		h := func(ctx context.Context, r *http.Request) web.Encoder {
+			authCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			resp, err := client.Authenticate(authCtx, r.Header.Get("authorization"))
+			cancel()
+			if err != nil {
+				return errs.New(errs.Unauthenticated, err)
+			}
+
+			ctx = setUserID(ctx, resp.UserID)
+			ctx = setClaims(ctx, resp.Claims)
+
+			return next(ctx, r)
+		}
+
+		return h
+	}
+
+	return m
+}
+
 // Bearer processes JWT authentication logic.
 func Bearer(ath *auth.Auth) web.MidFunc {
 	m := func(next web.HandlerFunc) web.HandlerFunc {

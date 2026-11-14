@@ -41,6 +41,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/usercache"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/userdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/delegate"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/messagedb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
@@ -188,6 +189,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	defer db.Close()
 
+	hubCtx, stopHub := context.WithCancel(ctx)
+	defer stopHub()
+	messageHub := messagedb.NewHub(log, db)
+	messageHub.Start(hubCtx)
+
 	// -------------------------------------------------------------------------
 	// Create Business Packages
 
@@ -328,10 +334,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 			ArtifactBus:    artifactBus,
 		},
 		CloudChamberConfig: mux.CloudChamberConfig{
-			AuthClient:        authClient,
-			TemporalClient:    temporalClient,
-			TemporalNamespace: cfg.Temporal.Namespace,
-			ObjectStore:       objectStore,
+			AuthClient:     authClient,
+			TemporalClient: temporalClient,
+			ObjectStore:    objectStore,
+			MessageHub:     messageHub,
 		},
 	}
 

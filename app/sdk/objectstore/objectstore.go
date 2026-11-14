@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"time"
 
@@ -119,6 +120,35 @@ func (c *Client) HeadObject(ctx context.Context, bucket, key string) (info Info,
 
 	span.SetAttributes(attribute.Int64("object.size", size))
 	return Info{Size: size, ETag: etag}, nil
+}
+
+// GetObject writes the object body to dst. The caller closes nothing on dst.
+func (c *Client) GetObject(ctx context.Context, bucket, key string, dst io.Writer) (err error) {
+	if bucket == "" {
+		bucket = c.bucket
+	}
+
+	ctx, span := startSpan(ctx, "objectstore.get_object",
+		attribute.String("object.bucket", bucket),
+		attribute.String("object.key", key),
+	)
+	defer func() { endSpan(span, err) }()
+
+	out, err := c.svc.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("get object bucket[%s] key[%s]: %w", bucket, key, err)
+	}
+	defer out.Body.Close()
+
+	n, err := io.Copy(dst, out.Body)
+	if err != nil {
+		return fmt.Errorf("read object bucket[%s] key[%s]: %w", bucket, key, err)
+	}
+	span.SetAttributes(attribute.Int64("object.size", n))
+	return nil
 }
 
 // PutObject writes one object. The caller registers the artifact after this returns.

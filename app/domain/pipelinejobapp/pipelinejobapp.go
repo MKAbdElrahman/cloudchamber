@@ -15,9 +15,9 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/query"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/messagedb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/order"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/page"
-	"github.com/MKAbdElrahman/cloudchamber/business/types/role"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
@@ -30,16 +30,16 @@ type app struct {
 	pipelineJobBus pipelinejobbus.ExtBusiness
 	artifactBus    artifactbus.ExtBusiness
 	temporal       client.Client
-	temporalNS     string
+	hub            *messagedb.Hub
 }
 
-func newApp(log *logger.Logger, pipelineJobBus pipelinejobbus.ExtBusiness, artifactBus artifactbus.ExtBusiness, temporal client.Client, temporalNS string) *app {
+func newApp(log *logger.Logger, pipelineJobBus pipelinejobbus.ExtBusiness, artifactBus artifactbus.ExtBusiness, temporal client.Client, hub *messagedb.Hub) *app {
 	return &app{
 		log:            log,
 		pipelineJobBus: pipelineJobBus,
 		artifactBus:    artifactBus,
 		temporal:       temporal,
-		temporalNS:     temporalNS,
+		hub:            hub,
 	}
 }
 
@@ -88,16 +88,12 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 		hash := hex.EncodeToString(h[:])
 		idempotencyHash = &hash
 
-		filter := pipelinejobbus.QueryFilter{
-			OwnerID:            &ownerID,
-			IdempotencyKeyHash: &hash,
-		}
-		existing, err := a.pipelineJobBus.Query(ctx, filter, pipelinejobbus.DefaultOrderBy, page.MustParse("1", "1"))
+		existing, found, err := a.jobByIdempotency(ctx, ownerID, hash)
 		if err != nil {
-			return errs.Errorf(errs.Internal, "query idempotency: %s", err)
+			return errs.Errorf(errs.Internal, "query: %s", err)
 		}
-		if len(existing) > 0 {
-			return a.respondCreated(ctx, existing[0])
+		if found {
+			return a.created(ctx, existing)
 		}
 
 		jobID = uuid.NewSHA1(uuid.NameSpaceURL, []byte(ownerID.String()+":"+key))
@@ -105,30 +101,23 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 		jobID = uuid.New()
 	}
 
-	workflowID := "cloudchamber-job-" + jobID.String()
+	workflowID := pipelinejobbus.WorkflowID(jobID)
 
-	status, _ := pipelinejobbus.ParseStatus(pipelinejobbus.StatusSubmitted)
 	nj := pipelinejobbus.NewJob{
 		ID:                 jobID,
 		OwnerID:            ownerID,
 		ProjectID:          art.ProjectID,
-		WorkflowID:         workflowID,
 		InputFileID:        art.FileID,
 		IdempotencyKeyHash: idempotencyHash,
-		Status:             status,
 	}
 
-	job, err := a.pipelineJobBus.Create(ctx, nj)
+	job, err := a.pipelineJobBus.Submit(ctx, nj)
 	if err != nil {
 		// Race on idempotency key: return existing.
 		if idempotencyHash != nil {
-			filter := pipelinejobbus.QueryFilter{
-				OwnerID:            &ownerID,
-				IdempotencyKeyHash: idempotencyHash,
-			}
-			existing, qerr := a.pipelineJobBus.Query(ctx, filter, pipelinejobbus.DefaultOrderBy, page.MustParse("1", "1"))
-			if qerr == nil && len(existing) > 0 {
-				return a.respondCreated(ctx, existing[0])
+			existing, found, qerr := a.jobByIdempotency(ctx, ownerID, *idempotencyHash)
+			if qerr == nil && found {
+				return a.created(ctx, existing)
 			}
 		}
 		return errs.Errorf(errs.Internal, "create: %s", err)
@@ -148,33 +137,45 @@ func (a *app) create(ctx context.Context, r *http.Request) web.Encoder {
 	})
 	if err != nil {
 		a.log.Error(ctx, "pipelinejob.create.start", "err", err)
-		msg := "could not start the run"
-		st, _ := pipelinejobbus.ParseStatus(pipelinejobbus.StatusFailed)
-		if _, uerr := a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{Status: &st, FailureMessage: &msg}); uerr != nil {
-			a.log.Error(ctx, "pipelinejob.create.update-failed", "err", uerr)
+		note := "could not start the run"
+		if _, rerr := a.pipelineJobBus.RecordRun(ctx, job, pipelinejobbus.RunFailed{Note: &note}); rerr != nil {
+			a.log.Error(ctx, "pipelinejob.create.record-failed", "err", rerr)
 		}
 		return errs.Errorf(errs.Internal, "start workflow: %s", err)
 	}
 
-	runID := run.GetRunID()
-	st, _ := pipelinejobbus.ParseStatus(pipelinejobbus.StatusRunning)
-	job, err = a.pipelineJobBus.Update(ctx, job, pipelinejobbus.UpdateJob{RunID: &runID, Status: &st, ClearFailure: true})
+	started, err := a.pipelineJobBus.RecordStarted(ctx, job, run.GetRunID())
 	if err != nil {
-		a.log.Error(ctx, "pipelinejob.create.update-running", "err", err)
+		a.log.Error(ctx, "pipelinejob.create.record-started", "err", err)
+	} else {
+		job = started
 	}
 
-	return a.respondCreated(ctx, job)
+	return a.created(ctx, job)
 }
 
-func (a *app) respondCreated(ctx context.Context, job pipelinejobbus.Job) web.Encoder {
-	w, err := midGetWriter(ctx)
+func (a *app) created(ctx context.Context, job pipelinejobbus.Job) web.Encoder {
+	jobs, err := a.pipelineJobBus.AttachHeadFacts(ctx, []pipelinejobbus.Job{job})
 	if err != nil {
-		return errs.Errorf(errs.Internal, "response writer: %s", err)
+		a.log.Error(ctx, "pipelinejob.create.facts", "err", err)
+	} else if len(jobs) == 1 {
+		job = jobs[0]
 	}
-	if err := WriteResponse(w, a.appJob(ctx, job)); err != nil {
-		return errs.Errorf(errs.Internal, "write response: %s", err)
+	return CreatedJob{Job: a.appJob(ctx, job)}
+}
+
+func (a *app) jobByIdempotency(ctx context.Context, ownerID uuid.UUID, hash string) (pipelinejobbus.Job, bool, error) {
+	existing, err := a.pipelineJobBus.Query(ctx, pipelinejobbus.QueryFilter{
+		OwnerID:            &ownerID,
+		IdempotencyKeyHash: &hash,
+	}, pipelinejobbus.DefaultOrderBy, page.MustParse("1", "1"))
+	if err != nil {
+		return pipelinejobbus.Job{}, false, err
 	}
-	return web.NewNoResponse()
+	if len(existing) == 0 {
+		return pipelinejobbus.Job{}, false, nil
+	}
+	return existing[0], true, nil
 }
 
 func (a *app) query(ctx context.Context, r *http.Request) web.Encoder {
@@ -190,28 +191,32 @@ func (a *app) query(ctx context.Context, r *http.Request) web.Encoder {
 		return err.(*errs.Error)
 	}
 
+	ownerID, enc := a.ownerFilter(ctx)
+	if enc != nil {
+		return enc
+	}
+	if ownerID != nil {
+		filter.OwnerID = ownerID
+	}
+
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, pipelinejobbus.DefaultOrderBy)
 	if err != nil {
 		return errs.NewFieldErrors("order", err)
 	}
 
-	claims := mid.GetClaims(ctx)
-	isAdmin := false
-	for _, r := range claims.Roles {
-		if r == role.Admin.String() {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
-		ownerID, err := mid.GetUserID(ctx)
+	var cursor int64
+	if filter.ProjectID != nil {
+		cursor, err = a.pipelineJobBus.ProjectCursor(ctx, filter)
 		if err != nil {
-			return errs.New(errs.Unauthenticated, err)
+			return errs.Errorf(errs.Internal, "query: %s", err)
 		}
-		filter.OwnerID = &ownerID
 	}
 
 	jobs, err := a.pipelineJobBus.Query(ctx, filter, orderBy, pg)
+	if err != nil {
+		return errs.Errorf(errs.Internal, "query: %s", err)
+	}
+	jobs, err = a.pipelineJobBus.AttachHeadFacts(ctx, jobs)
 	if err != nil {
 		return errs.Errorf(errs.Internal, "query: %s", err)
 	}
@@ -221,7 +226,10 @@ func (a *app) query(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "count: %s", err)
 	}
 
-	return query.NewResult(toAppJobs(jobs, a.fileNames(ctx, jobs)), total, pg)
+	return JobList{
+		Result:      query.NewResult(toAppJobs(jobs, a.fileNames(ctx, jobs)), total, pg),
+		FactsCursor: cursor,
+	}
 }
 
 func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
@@ -229,15 +237,14 @@ func (a *app) queryByID(ctx context.Context, _ *http.Request) web.Encoder {
 	if err != nil {
 		return errs.Errorf(errs.Internal, "pipeline job missing in context: %s", err)
 	}
-
-	activity, err := a.progressActivity(ctx, job)
+	log, err := a.pipelineJobBus.StreamLog(ctx, job.ID, 0, jobStreamRows)
 	if err != nil {
-		a.log.Error(ctx, "pipelinejob.activity", "err", err, "job_id", job.ID)
+		return errs.Errorf(errs.Internal, "query: %s", err)
 	}
+	job.Facts = log.Facts
+	job.Progress = log.Progress
 
-	appJob := a.appJob(ctx, job)
-	appJob.ProgressActivity = activity
-	return appJob
+	return a.appJob(ctx, job)
 }
 
 func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
@@ -246,8 +253,7 @@ func (a *app) cancel(ctx context.Context, _ *http.Request) web.Encoder {
 		return errs.Errorf(errs.Internal, "pipeline job missing in context: %s", err)
 	}
 
-	// The request asks the run to stop. The activity that is running, or
-	// MarkCanceled when none is, stores the job before that run closes.
+	// The request asks the run to stop. The workflow records the run on the way out.
 	if err := a.temporal.CancelWorkflow(ctx, job.WorkflowID, job.RunID); err != nil {
 		a.log.Error(ctx, "pipelinejob.cancel", "err", err, "job_id", job.ID)
 		return errs.Errorf(errs.Internal, "cancel workflow: %s", err)
@@ -282,12 +288,4 @@ func (a *app) fileNames(ctx context.Context, jobs []pipelinejobbus.Job) map[uuid
 		names[art.FileID] = art.Name
 	}
 	return names
-}
-
-func midGetWriter(ctx context.Context) (http.ResponseWriter, error) {
-	w := web.GetWriter(ctx)
-	if w == nil {
-		return nil, errs.Errorf(errs.Internal, "response writer missing in context")
-	}
-	return w, nil
 }

@@ -73,3 +73,10 @@ func headSourceFailure(ctx context.Context, err error) error {
 	}
 	return fmt.Errorf("head source: %w", err)
 }
+
+func readSourceFailure(ctx context.Context, err error) error {
+	if objectstore.IsMissing(err) {
+		return permanent(ctx, errTypeSourceNotFound, "read source", err)
+	}
+	return fmt.Errorf("read source: %w", err)
+}

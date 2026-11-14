@@ -248,7 +248,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
           <Banner status="error" title="Missing job" />
         ) : null}
 
-        {!foreign && !file && progress && !pending ? <JobStages progress={progress} /> : null}
+        {!foreign && !file && progress && !pending ? <JobStages progress={progress} facts={job?.facts} updates={job?.progress} /> : null}
 
         {!foreign && file ? (
           <VStack gap={WORKSPACE_GAP.group}>

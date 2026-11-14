@@ -49,12 +49,12 @@ func (all) Add(app *web.App, cfg mux.Config) {
 	})
 
 	pipelinejobapp.Routes(app, pipelinejobapp.Config{
-		Log:               cfg.Log,
-		PipelineJobBus:    cfg.BusConfig.PipelineJobBus,
-		ArtifactBus:       cfg.BusConfig.ArtifactBus,
-		AuthClient:        cfg.CloudChamberConfig.AuthClient,
-		TemporalClient:    cfg.CloudChamberConfig.TemporalClient,
-		TemporalNamespace: cfg.CloudChamberConfig.TemporalNamespace,
+		Log:            cfg.Log,
+		PipelineJobBus: cfg.BusConfig.PipelineJobBus,
+		ArtifactBus:    cfg.BusConfig.ArtifactBus,
+		AuthClient:     cfg.CloudChamberConfig.AuthClient,
+		TemporalClient: cfg.CloudChamberConfig.TemporalClient,
+		Hub:            cfg.CloudChamberConfig.MessageHub,
 	})
 
 	artifactapp.Routes(app, artifactapp.Config{

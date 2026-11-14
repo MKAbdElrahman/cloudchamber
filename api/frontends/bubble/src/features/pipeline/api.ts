@@ -1,5 +1,5 @@
 import { apiFetch } from '@/shared/api'
-import type { JobsQuery, PipelineJob } from './types'
+import type { FactPage, JobsQuery, PipelineJob } from './types'
 
 export function createJob(token: string, fileId: string, idempotencyKey?: string) {
   return apiFetch<PipelineJob>('/v1/pipeline/jobs', {
@@ -41,6 +41,30 @@ export function cancelJob(token: string, jobId: string) {
     method: 'POST',
     token,
   })
+}
+
+export function followProjectFacts(token: string, projectId: string, after: number) {
+  const query = new URLSearchParams({
+    project_id: projectId,
+    after: String(after),
+  })
+  return apiFetch<FactPage>(`/v1/pipeline/facts?${query.toString()}`, {
+    method: 'GET',
+    token,
+  })
+}
+
+export function followJobFacts(token: string, jobId: string, after: number) {
+  const query = new URLSearchParams({ after: String(after) })
+  return apiFetch<FactPage>(`/v1/pipeline/jobs/${encodeURIComponent(jobId)}/facts?${query.toString()}`, {
+    method: 'GET',
+    token,
+  })
+}
+
+export function factsCursor(data: JobsQuery): number {
+  if (Array.isArray(data) || data?.factsCursor == null) return 0
+  return data.factsCursor
 }
 
 export function normalizeJobs(data: JobsQuery): PipelineJob[] {

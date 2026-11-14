@@ -1,16 +1,12 @@
-import { sourceMediaKind } from '@/shared/media'
-
-import { jobPhase, type JobPhase } from './jobStatus'
+import { jobPhase, projectedStatus, type JobFactStatus, type JobPhase } from './jobStatus'
+import type { PipelineProgress } from './types'
 
 /**
- * The five activities Temporal runs. A step is done when the server names a
- * later activity or the job holds that step's file id. A canceled step that
- * already has its file id is done too: the cancel landed after it, and the
- * next step did not start. A running job with no activity name stays on the
- * first step that has not been recorded.
+ * The five steps a worker reports. A missing row has not started. The page
+ * does not infer the live step from file ids.
  */
 
-export type JobStageId = 'source' | 'audio' | 'transcript' | 'keyframes' | 'document'
+export type JobStageId = 'source' | 'audio' | 'transcript' | 'keyFrames' | 'document'
 
 export type JobStageState = 'done' | 'current' | 'upcoming' | 'failed' | 'canceled'
 
@@ -19,6 +15,8 @@ export type JobStageView = {
   label: string
   state: JobStageState
   detail: string
+  /** Fraction of the current audio step, when the worker has measured one. */
+  progress?: number
 }
 
 export type JobProgress = {
@@ -27,11 +25,15 @@ export type JobProgress = {
   activeStep: number
   completedCount: number
   stages: JobStageView[]
-  /** True while the step in motion is not backed by an artifact ref. */
-  estimated: boolean
   headline: string
   /** Server failure text, when the job recorded one. */
   reason?: string
+}
+
+export type JobStepInput = {
+  fact: string
+  message?: string | null
+  outcome?: string | null
 }
 
 export type JobProgressInput = {
@@ -45,19 +47,32 @@ export type JobProgressInput = {
   documentName?: string | null
   /** Application Failure message. Empty when the run closed as canceled. */
   failureMessage?: string | null
-  /** Activity Type the open run has reached. Empty once the run is closed. */
-  progressActivity?: string | null
-  /** Activity Type of the step where the run closed. */
-  stoppedActivityType?: string | null
+  facts?: (JobFactStatus & { message?: string | null; stage?: string | null; outcome?: string | null })[] | null
+  /** Live reports. A newer update than the stage's event is the bar. */
+  progress?: PipelineProgress[] | null
 }
 
-const STAGE_IDS: JobStageId[] = ['source', 'audio', 'transcript', 'keyframes', 'document']
+const STAGE_IDS: JobStageId[] = ['source', 'audio', 'transcript', 'keyFrames', 'document']
+
+/** A progress stage is already a page stage. */
+export function stageIdOf(stage: string | undefined): JobStageId | undefined {
+  switch (stage) {
+    case 'source':
+    case 'audio':
+    case 'transcript':
+    case 'keyFrames':
+    case 'document':
+      return stage
+    default:
+      return undefined
+  }
+}
 
 const LABELS: Record<JobStageId, string> = {
   source: 'Resolve source',
   audio: 'Extract audio',
   transcript: 'Transcribe',
-  keyframes: 'Extract key frames',
+  keyFrames: 'Extract key frames',
   document: 'Compose export',
 }
 
@@ -65,80 +80,66 @@ function hasRef(ref: string | null | undefined): boolean {
   return Boolean(ref?.trim())
 }
 
-function provenFlags(job: JobProgressInput, named: number): boolean[] {
-  const passed = (index: number) => named > index
-  return [
-    passed(0) || hasRef(job.audioFileId) || hasRef(job.transcriptFileId) || hasRef(job.keyFramesFileId) || hasRef(job.documentFileId),
-    passed(1) || hasRef(job.audioFileId) || hasRef(job.transcriptFileId) || hasRef(job.keyFramesFileId) || hasRef(job.documentFileId),
-    passed(2) || hasRef(job.transcriptFileId) || hasRef(job.keyFramesFileId) || hasRef(job.documentFileId),
-    passed(3) || hasRef(job.keyFramesFileId) || hasRef(job.documentFileId),
-    passed(4) || hasRef(job.documentFileId),
-  ]
-}
-
-function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput): string {
-  const audioOnly = sourceMediaKind(job.fileName ?? '') === 'audio'
-  const documentName = job.documentName?.trim().toLowerCase() ?? ''
-  const pdf = documentName.endsWith('.pdf')
-
+function detailFor(
+  id: JobStageId,
+  state: JobStageState,
+  job: JobProgressInput,
+  message?: string | null,
+): string {
   switch (state) {
     case 'upcoming':
       return ''
     case 'done':
-      if (id === 'keyframes' && audioOnly) return 'No frames.'
-      if (id === 'document' && hasRef(job.documentFileId)) return pdf ? 'PDF' : 'Markdown'
+      if (id === 'keyFrames' && latestFacts(job).get(id)?.outcome === 'skipped') return 'No frames.'
+      if (id === 'document' && hasRef(job.documentFileId)) {
+        const pdf = job.documentName?.trim().toLowerCase().endsWith('.pdf')
+        return pdf ? 'PDF' : 'Markdown'
+      }
       return ''
     case 'canceled':
-      return 'Not written.'
-    case 'current':
+      return said(message, 'Canceled.')
     case 'failed':
-      break
+      return said(message, 'Failed.')
+    case 'current':
+      return message?.trim() ?? ''
   }
+}
 
-  switch (id) {
-    case 'source':
-      switch (state) {
-        case 'current':
-          return 'Loading the recording.'
-        case 'failed':
-          return 'Recording was not found.'
-      }
-      break
-    case 'audio':
-      switch (state) {
-        case 'current':
-          return 'Writing the audio.'
-        case 'failed':
-          return 'Audio was not written.'
-      }
-      break
-    case 'transcript':
-      switch (state) {
-        case 'current':
-          return 'Writing the transcript.'
-        case 'failed':
-          return 'Transcript was not written.'
-      }
-      break
-    case 'keyframes':
-      switch (state) {
-        case 'current':
-          return audioOnly ? 'No frames.' : 'Writing a key frame.'
-        case 'failed':
-          return 'Key frame was not written.'
-      }
-      break
-    case 'document':
-      switch (state) {
-        case 'current':
-          return 'Writing the document.'
-        case 'failed':
-          return 'Document was not written.'
-      }
-      break
+function said(message: string | null | undefined, fallback: string): string {
+  return message?.trim() || fallback
+}
+
+function latestFacts(job: JobProgressInput): Map<JobStageId, JobStepInput & { position: number }> {
+  const byStage = new Map<JobStageId, JobStepInput & { position: number }>()
+  for (const fact of job.facts ?? []) {
+    const id = stageIdOf(fact.stage ?? undefined)
+    if (!id) continue
+    const prev = byStage.get(id)
+    const position = fact.position ?? 0
+    if (!prev || position >= prev.position) {
+      byStage.set(id, {
+        fact: fact.fact ?? '',
+        message: fact.message,
+        outcome: fact.outcome,
+        position,
+      })
+    }
   }
+  return byStage
+}
 
-  return ''
+function latestUpdates(job: JobProgressInput): Map<JobStageId, PipelineProgress & { position: number }> {
+  const byStage = new Map<JobStageId, PipelineProgress & { position: number }>()
+  for (const update of job.progress ?? []) {
+    const id = stageIdOf(update.stage)
+    if (!id) continue
+    const position = update.position ?? 0
+    const prev = byStage.get(id)
+    if (!prev || position >= prev.position) {
+      byStage.set(id, { ...update, position })
+    }
+  }
+  return byStage
 }
 
 export type ConversionNotice = {
@@ -147,30 +148,8 @@ export type ConversionNotice = {
   description: string
 }
 
-const ACTIVITY_STEP: Record<string, JobStageId> = {
-  'pipeline.ResolveSource': 'source',
-  'pipeline.ExtractAudio': 'audio',
-  'pipeline.Transcribe': 'transcript',
-  'pipeline.ExtractKeyFrames': 'keyframes',
-  'pipeline.ComposeExport': 'document',
-}
-
-function stepNamedIn(message: string | null | undefined): number {
-  if (!message) return -1
-  const found = Object.entries(ACTIVITY_STEP).find(([activity]) => message.includes(activity))
-  if (!found) return -1
-  return STAGE_IDS.indexOf(found[1])
-}
-
-function failureReason(message: string | null | undefined): string {
-  switch (message?.trim()) {
-    case 'load source':
-      return 'Recording was not found.'
-    case 'file id':
-      return 'File id was not accepted.'
-    default:
-      return ''
-  }
+function headlineNote(message: string | null | undefined): string {
+  return message?.trim() ?? ''
 }
 
 /** The persistent message for a job that stopped. A running job has none. */
@@ -185,7 +164,7 @@ export function conversionNotice(
   const name = stopped?.label ?? 'This step'
   switch (phase) {
     case 'failed': {
-      const reason = failureReason(failureMessage)
+      const reason = headlineNote(failureMessage)
       return {
         status: 'error',
         title: 'Failed',
@@ -195,11 +174,11 @@ export function conversionNotice(
     case 'canceled':
       if (!stopped) {
         const finished = stages.filter((stage) => stage.state === 'done')
-        const after = finished[finished.length - 1]?.label ?? 'This step'
+        const after = finished[finished.length - 1]?.label
         return {
           status: 'warning',
           title: 'Canceled',
-          description: `Canceled after ${after}.`,
+          description: after ? `Canceled after ${after}.` : 'Canceled.',
         }
       }
       return {
@@ -222,91 +201,65 @@ function headlineFor(phase: JobPhase, stages: JobStageView[], failureMessage?: s
     case 'finished':
       return stages[stages.length - 1]?.detail ?? ''
     case 'running':
-      return live?.detail ?? ''
+      if (!live) return 'Starting.'
+      return live.detail
     case 'waiting':
-      return 'Queued.'
+      return 'Waiting.'
     case 'failed':
     case 'canceled':
       return ''
   }
 }
 
-function stepWrote(job: JobProgressInput, id: JobStageId): boolean {
-  switch (id) {
-    case 'source':
-      return false
-    case 'audio':
-      return hasRef(job.audioFileId)
-    case 'transcript':
-      return hasRef(job.transcriptFileId)
-    case 'keyframes':
-      return hasRef(job.keyFramesFileId)
-    case 'document':
-      return hasRef(job.documentFileId)
+function stageState(outcome: string): JobStageState {
+  switch (outcome) {
+    case 'working':
+      return 'current'
+    case 'done':
+    case 'skipped':
+      return 'done'
+    case 'failed':
+      return 'failed'
+    case 'canceled':
+      return 'canceled'
+    default:
+      return 'upcoming'
   }
-}
-
-function namedStep(job: JobProgressInput): number {
-  const fromActivity = stepNamedIn(job.progressActivity)
-  if (fromActivity >= 0) return fromActivity
-  return stepNamedIn(job.stoppedActivityType)
 }
 
 export function progressFromJob(job: JobProgressInput): JobProgress {
-  const named = namedStep(job)
-  const flags = provenFlags(job, named)
-  const phase: JobPhase = flags[flags.length - 1] ? 'finished' : jobPhase(job.status)
-  const namedId = named >= 0 ? STAGE_IDS[named] : undefined
-  const namedWrote = phase === 'canceled' && namedId !== undefined && stepWrote(job, namedId)
+  const phase = jobPhase(projectedStatus(job))
 
-  let doneThrough = -1
-  let currentIndex = -1
-  let held: JobStageState | null = null
+  const byStage = latestFacts(job)
+  const byUpdate = latestUpdates(job)
 
-  if (phase === 'finished') {
-    doneThrough = STAGE_IDS.length - 1
-  } else if (phase === 'waiting') {
-    currentIndex = 0
-  } else if (namedWrote) {
-    doneThrough = named
-    currentIndex = named + 1
-  } else if (named >= 0) {
-    doneThrough = named - 1
-    currentIndex = named
-    if (phase === 'failed' || phase === 'canceled') held = phase
-  } else if (phase === 'failed' || phase === 'canceled') {
-    const stopAt = flags.indexOf(false)
-    doneThrough = stopAt === -1 ? STAGE_IDS.length - 1 : stopAt - 1
-    if (stopAt !== -1) {
-      currentIndex = stopAt
-      held = phase
-    }
-  } else {
-    const firstMissing = flags.indexOf(false)
-    doneThrough = firstMissing <= 0 ? -1 : firstMissing - 1
-    if (firstMissing !== -1) currentIndex = firstMissing
-  }
-
-  const stages: JobStageView[] = STAGE_IDS.map((id, index) => {
-    let state: JobStageState = 'upcoming'
-    if (index <= doneThrough) state = 'done'
-    else if (index === currentIndex && held) state = held
-    else if (index === currentIndex && !namedWrote) state = 'current'
+  const stages: JobStageView[] = STAGE_IDS.map((id) => {
+    const row = byStage.get(id)
+    const update = byUpdate.get(id)
+    const live = update != null && update.position > (row?.position ?? -1)
+    const outcome = live ? 'working' : (row?.outcome ?? '')
+    const state = stageState(outcome)
+    const message = live ? update.headline : row?.message
+    const measured = live ? update.fraction : null
+    const known = state === 'current' && measured != null && measured >= 0 && measured <= 1
     return {
       id,
       label: LABELS[id],
       state,
-      detail: detailFor(id, state, job),
+      detail: detailFor(id, state, job, message),
+      progress: known ? measured : undefined,
     }
   })
 
+  const currentIndex = stages.findIndex((stage) => stage.state === 'current' || stage.state === 'failed' || stage.state === 'canceled')
+  const reason = job.failureMessage?.trim() || undefined
+
   return {
     phase,
-    activeStep: currentIndex >= 0 ? currentIndex : STAGE_IDS.length,
+    activeStep: currentIndex >= 0 ? currentIndex : phase === 'finished' ? STAGE_IDS.length : 0,
     completedCount: stages.filter((stage) => stage.state === 'done').length,
     stages,
-    estimated: phase === 'running' && named < 0,
-    headline: headlineFor(phase, stages, job.failureMessage),
-    reason: job.failureMessage?.trim() || undefined,
+    headline: headlineFor(phase, stages, reason),
+    reason,
   }
 }

@@ -85,6 +85,7 @@ func startWorkflowWorker(t *testing.T, c client.Client) {
 
 	w := worker.New(c, TaskQueueWorkflow, worker.Options{})
 	w.RegisterWorkflow(ProcessSourceWorkflow)
+	w.RegisterActivityWithOptions(func(context.Context, RecordRunInput) error { return nil }, activity.RegisterOptions{Name: ActivityRecordRun})
 	if err := w.Start(); err != nil {
 		t.Fatalf("start workflow worker: %v", err)
 	}

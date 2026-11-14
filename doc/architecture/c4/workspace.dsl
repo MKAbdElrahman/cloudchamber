@@ -36,7 +36,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             }
             group "Pipeline execution" {
                 workflowWorker = container "Workflow worker" "Runs ProcessSourceWorkflow on the workflow task queue. It does not open the database. One worker polls the queue, and a crash waits until that worker polls again." "Go / Temporal worker" "Service"
-                mediaWorker = container "Media worker" "ResolveSource, ExtractAudio, and MarkCanceled on the media task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
+                mediaWorker = container "Media worker" "ResolveSource, ExtractAudio, and MarkCanceled on the media task queue. ExtractAudio reads the source object and writes 16 kHz mono 16-bit PCM WAV with ffmpeg. ResolveSource and MarkCanceled stay simulated in dev." "Go / Temporal worker" "Service"
                 framesWorker = container "Frames worker" "Key-frame activities on the frames task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
                 asrWorker = container "ASR worker" "Transcription activities on the ASR task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
                 renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
@@ -78,7 +78,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC"
         cloudchamber.mediaWorker -> cloudchamber.postgres "Loads the source file and registers the audio file in its project" "SQL/TCP"
-        cloudchamber.mediaWorker -> cloudchamber.artifactStore "Checks the source object and writes the audio object" "S3 API"
+        cloudchamber.mediaWorker -> cloudchamber.artifactStore "Checks the source object, reads it, and writes the audio object" "S3 API"
         cloudchamber.framesWorker -> cloudchamber.temporalServer "Polls frames task queue and executes activities via" "gRPC"
         cloudchamber.framesWorker -> cloudchamber.postgres "Registers a key frame in the source file's project" "SQL/TCP"
         cloudchamber.framesWorker -> cloudchamber.artifactStore "Writes a key-frame object" "S3 API"
@@ -301,7 +301,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of ExtractAudio"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls the ExtractAudio task"
-            cloudchamber.mediaWorker -> cloudchamber.artifactStore "Writes the audio object"
+            cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads the source object and writes 16 kHz mono PCM audio"
             cloudchamber.mediaWorker -> cloudchamber.postgres "Registers the audio file in the source file's project"
             cloudchamber.mediaWorker -> cloudchamber.postgres "Records the audio file id on the job"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Reports the ExtractAudio result"
@@ -352,7 +352,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the workflow task and commands scheduling of ExtractAudio"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls the ExtractAudio task"
-            cloudchamber.mediaWorker -> cloudchamber.artifactStore "Writes the audio object"
+            cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads the source object and writes 16 kHz mono PCM audio"
             cloudchamber.mediaWorker -> cloudchamber.postgres "Registers the audio file in the source file's project"
             cloudchamber.mediaWorker -> cloudchamber.postgres "Records the audio file id on the job"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Reports the ExtractAudio result"

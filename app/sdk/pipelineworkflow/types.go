@@ -7,14 +7,6 @@ type ProcessSourceInput struct {
 	FileID  string `json:"file_id"`
 }
 
-// QueryProgress is the workflow query that returns the activity in flight.
-const QueryProgress = "pipeline.progress"
-
-// ProcessSourceProgress is the activity the open run is in. File ids live on the job.
-type ProcessSourceProgress struct {
-	Activity string `json:"activity"`
-}
-
 // ResolveSourceInput is the input for source resolution.
 type ResolveSourceInput struct {
 	JobID   string `json:"job_id"`
@@ -95,9 +87,9 @@ type ComposeExportOutput struct {
 	FileID string `json:"file_id"`
 }
 
-// MarkCanceledInput tells a worker the run stopped before the next activity started.
-// Step is the activity that already closed. It is empty when nothing has run.
-type MarkCanceledInput struct {
-	JobID string `json:"job_id"`
-	Step  string `json:"step,omitempty"`
+// RecordRunInput is the ending sentence for a run.
+type RecordRunInput struct {
+	JobID   string `json:"job_id"`
+	Fact    string `json:"fact"`
+	Message string `json:"message,omitempty"`
 }

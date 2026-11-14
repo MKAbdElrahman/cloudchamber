@@ -16,6 +16,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/sdk/messagedb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/jmoiron/sqlx"
@@ -58,10 +59,10 @@ func WithFileServer(react bool, static embed.FS, dir string, path string) func(o
 
 // CloudChamberConfig contains cloudchamber service specific config.
 type CloudChamberConfig struct {
-	AuthClient        authclient.Authenticator
-	TemporalClient    client.Client
-	TemporalNamespace string
-	ObjectStore       *objectstore.Client
+	AuthClient     authclient.Authenticator
+	TemporalClient client.Client
+	ObjectStore    *objectstore.Client
+	MessageHub     *messagedb.Hub
 }
 
 // AuthConfig contains auth service specific config.

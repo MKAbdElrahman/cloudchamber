@@ -81,6 +81,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 			SecretKey    string `conf:"default:seaweedfs-dev,mask"`
 			UsePathStyle bool   `conf:"default:true"`
 		}
+		FFmpeg struct {
+			Path string `conf:"default:ffmpeg"`
+		}
 		Tempo struct {
 			Host        string  `conf:"default:tempo:4317"`
 			ServiceName string  `conf:"default:pipeline-media"`
@@ -175,7 +178,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	pipelineJobStorage := pipelinejobpg.NewStore(log, db)
 	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelineJobStorage, pipelineJobOtelExt)
 
-	acts := sim.New(artifactBus, pipelineJobBus, objects, tracer)
+	acts := sim.New(artifactBus, pipelineJobBus, objects, tracer).WithFFmpeg(cfg.FFmpeg.Path)
 
 	tracingInterceptor, err := temporalotel.NewTracingInterceptor(temporalotel.TracerOptions{
 		Tracer: tracer,
@@ -197,7 +200,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// The client copies interceptors that implement WorkerInterceptor onto the
 	// worker. Passing the tracing interceptor here as well records every span twice.
 	w := worker.New(c, pipelinewf.TaskQueueMedia, worker.Options{})
-	w.RegisterActivityWithOptions(acts.MarkCanceled, activity.RegisterOptions{Name: pipelinewf.ActivityMarkCanceled})
 	w.RegisterActivityWithOptions(acts.ResolveSource, activity.RegisterOptions{Name: pipelinewf.ActivityResolveSource})
 	w.RegisterActivityWithOptions(acts.ExtractAudio, activity.RegisterOptions{Name: pipelinewf.ActivityExtractAudio})
 

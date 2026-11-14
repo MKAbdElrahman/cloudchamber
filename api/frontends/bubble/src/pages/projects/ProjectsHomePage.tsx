@@ -2,18 +2,15 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { Grid } from '@astryxdesign/core/Grid'
-import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout'
+import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { AlertDialog } from '@astryxdesign/core/AlertDialog'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Button } from '@astryxdesign/core/Button'
-import { ClickableCard } from '@astryxdesign/core/ClickableCard'
 import { ContextMenu, type ContextMenuOption } from '@astryxdesign/core/ContextMenu'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { MoreMenu } from '@astryxdesign/core/MoreMenu'
-import { Text } from '@astryxdesign/core/Text'
 import { TextInput } from '@astryxdesign/core/TextInput'
 import { useToast } from '@astryxdesign/core/Toast'
 import {
@@ -28,9 +25,7 @@ import {
 import { jobNeedsOpen, listJobs, normalizeJobs, openUnsettledJobs, type PipelineJob } from '@/features/pipeline'
 import { filesFromJob } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
-import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
-import { LibraryViewControl } from './LibraryViewControl'
-import { useLibraryView } from './useLibraryView'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 
 type ProjectsHomePageProps = {
   token: string
@@ -114,31 +109,7 @@ function ProjectMoreMenu({
   )
 }
 
-/** Gallery card. The card opens the project. The menu sits beside it, not inside the link. */
-function ProjectTile({ project, onRename, onDelete }: ProjectTileProps) {
-  return (
-    <HStack gap={WORKSPACE_GAP.local} vAlign="stretch" width="100%" height="100%">
-      <StackItem size="fill">
-        <ProjectMenu project={project} onRename={onRename} onDelete={onDelete}>
-          <ClickableCard
-            label={`Open ${project.name}`}
-            href={WORKSPACE_PATHS.project(project.id)}
-            {...WORKSPACE_CARD}
-            width="100%"
-            height="100%"
-          >
-            <Text type="label" weight="semibold" maxLines={2}>
-              {project.name}
-            </Text>
-          </ClickableCard>
-        </ProjectMenu>
-      </StackItem>
-      <ProjectMoreMenu project={project} onRename={onRename} onDelete={onDelete} />
-    </HStack>
-  )
-}
-
-/** Home — project tiles you open, rename, or delete. */
+/** Home — each project is a row you open, rename, or delete. */
 export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -149,7 +120,6 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   const [renaming, setRenaming] = useState<Project | null>(null)
   const [renameName, setRenameName] = useState('')
   const [deleting, setDeleting] = useState<Project | null>(null)
-  const [view, setView] = useLibraryView()
 
   const scope = useQuery({
     queryKey: ['pipeline-jobs', 'home'],
@@ -229,27 +199,9 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
         />
       ) : null}
       {projects.isPending || rows.length > 0 ? (
-        <VStack gap={WORKSPACE_GAP.group}>
-          <HStack justify="end" vAlign="center">
-            <LibraryViewControl value={view} onChange={setView} />
-          </HStack>
-          {projects.isPending && rows.length === 0 ? <PendingLines variant={view === 'grid' ? 'cards' : 'rows'} /> : null}
-          {rows.length > 0 && view === 'grid' ? (
-            <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Projects">
-              {rows.map((project) => (
-                <ProjectTile
-                  key={project.id}
-                  project={project}
-                  onRename={(item) => {
-                    setRenameName(item.name)
-                    setRenaming(item)
-                  }}
-                  onDelete={setDeleting}
-                />
-              ))}
-            </Grid>
-          ) : null}
-          {rows.length > 0 && view === 'list' ? (
+        <>
+          {projects.isPending && rows.length === 0 ? <PendingLines variant="rows" /> : null}
+          {rows.length > 0 ? (
             <List density="spacious" aria-label="Projects">
               {rows.map((project) => {
                 const files = projectFileCount(project.id, scope.data, scope.isPending)
@@ -277,7 +229,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
               })}
             </List>
           ) : null}
-        </VStack>
+        </>
       ) : null}
 
       <Dialog isOpen={isCreating} onOpenChange={setCreating} purpose="form">

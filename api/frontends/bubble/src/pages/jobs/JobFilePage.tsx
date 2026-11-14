@@ -7,10 +7,9 @@ import { HStack, LayoutPanel, VStack } from '@astryxdesign/core/Layout'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Button } from '@astryxdesign/core/Button'
 import { Markdown } from '@astryxdesign/core/Markdown'
-import { Text } from '@astryxdesign/core/Text'
 import { createMarkdownHeadingLinks } from '@astryxdesign/core/Markdown/plugins'
 import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
-import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKindOf, mediaLabel } from '@/features/outputs'
+import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKindOf } from '@/features/outputs'
 import { JobOpenIcons, JobPeek, JobStages, JobStatusLabel, cancelJob, createJob, isTerminalJobStatus, jobPhase, useJobProgress, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
 import { ForeignProjectNotice, ProjectTrail, type ProjectFile } from '@/features/projects'
 import { ApiError } from '@/shared/api'
@@ -147,17 +146,13 @@ export function JobFilePage({ token }: JobFilePageProps) {
     recordingName: source?.name,
     date: recordedAt,
   })
-  const description = foreign
-    ? 'This project cannot show this job.'
-    : file && bodyQuery.data?.mocked
-      ? bodyQuery.data.format === 'pdf'
-        ? 'The PDF is not loaded from storage yet, so this is the document as text.'
-        : 'The export is not loaded from storage yet.'
-      : file && media && media !== title
-        ? media
-        : !job && source
-          ? `${mediaLabel(kind)} in this project. Create the document when you are ready.`
-          : undefined
+  const description = file && bodyQuery.data?.mocked
+    ? bodyQuery.data.format === 'pdf'
+      ? 'Shown as text.'
+      : 'Not loaded from storage.'
+    : file && media && media !== title
+      ? media
+      : undefined
   const badgeStatus = job ? visibleJobStatus(job) : undefined
 
   const outlinePanel = Boolean(file && !isNarrow && ready && outline)
@@ -249,12 +244,9 @@ export function JobFilePage({ token }: JobFilePageProps) {
           <Banner status="error" title="Could not load the job" description={(jobQuery.error as Error).message} />
         ) : null}
         {!pending && !foreign && !source && !job ? (
-          <Banner status="error" title="Missing job" description="This project does not have that job." />
+          <Banner status="error" title="Missing job" />
         ) : null}
 
-        {!foreign && !file && !progress && source && !pending ? (
-          <Text type="supporting">The document is not written yet.</Text>
-        ) : null}
         {!foreign && !file && progress && !pending ? <JobStages progress={progress} /> : null}
 
         {!foreign && file ? (

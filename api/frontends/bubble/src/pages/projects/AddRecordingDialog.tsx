@@ -5,9 +5,9 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { VStack } from '@astryxdesign/core/Layout'
 import { createJob, JobStatusLabel } from '@/features/pipeline'
-import { useProject } from '@/features/projects'
 import { UploadPanel } from '@/features/upload'
 import { ApiError } from '@/shared/api'
+import { RECORDING_DIALOG_WIDTH } from '@/shared/layout'
 import { WORKSPACE_GAP } from '@/shared/spacing'
 
 type AddRecordingDialogProps = {
@@ -20,6 +20,8 @@ type AddRecordingDialogProps = {
   onFinished: (notice?: string) => void
   /** Set while bytes are transferring, cleared when the upload stops or the file is saved. */
   onUploadingFile: (fileName: string | null) => void
+  /** Set when the dialog opened from a drop on the project. */
+  initialFile?: File | null
 }
 
 function AddRecordingForm({
@@ -29,6 +31,7 @@ function AddRecordingForm({
   onSavingChange,
   onUploadingFile,
   onFinished,
+  initialFile,
 }: {
   token: string
   projectId: string
@@ -36,6 +39,7 @@ function AddRecordingForm({
   onSavingChange: (saving: boolean) => void
   onUploadingFile: (fileName: string | null) => void
   onFinished: (notice?: string) => void
+  initialFile?: File | null
 }) {
   const queryClient = useQueryClient()
   const [startConversion, setStartConversion] = useState(false)
@@ -72,11 +76,11 @@ function AddRecordingForm({
       <UploadPanel
         token={token}
         projectId={projectId}
-        embedded
         startConversion={startConversion}
         onStartConversionChange={setStartConversion}
         onBusyChange={onUploadingChange}
         onUploadingFile={onUploadingFile}
+        initialFile={initialFile}
         onUploaded={(upload) => {
           void handleUploaded(upload)
         }}
@@ -94,8 +98,8 @@ export function AddRecordingDialog({
   onOpenChange,
   onFinished,
   onUploadingFile,
+  initialFile,
 }: AddRecordingDialogProps) {
-  const project = useProject(projectId)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const busy = uploading || saving
@@ -110,15 +114,10 @@ export function AddRecordingDialog({
     onOpenChange(next)
   }
 
-  const subtitle = project
-    ? `The recording stays in ${project.name}. You start the document when you are ready.`
-    : 'The recording stays in this project. You start the document when you are ready.'
-
   return (
-    <Dialog isOpen={isOpen} onOpenChange={handleOpenChange} purpose={busy ? 'required' : 'form'} width={560}>
+    <Dialog isOpen={isOpen} onOpenChange={handleOpenChange} purpose={busy ? 'required' : 'form'} width={RECORDING_DIALOG_WIDTH}>
       <DialogHeader
         title="Add recording"
-        subtitle={subtitle}
         onOpenChange={handleOpenChange}
         endContent={uploading ? <JobStatusLabel status="uploading" /> : undefined}
       />
@@ -130,6 +129,7 @@ export function AddRecordingDialog({
         onSavingChange={setSaving}
         onUploadingFile={onUploadingFile}
         onFinished={onFinished}
+        initialFile={initialFile}
       />
     </Dialog>
   )

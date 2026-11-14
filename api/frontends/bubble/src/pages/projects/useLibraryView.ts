@@ -14,7 +14,7 @@ function readView(): LibraryView {
   return 'list'
 }
 
-/** Grid or list, kept as you move between projects and the files inside them. */
+/** Grid or list for the project gallery. Files inside a project stay rows. */
 export function useLibraryView(): [LibraryView, (next: LibraryView) => void] {
   const [view, setView] = useState<LibraryView>(readView)
 

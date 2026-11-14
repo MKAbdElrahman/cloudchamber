@@ -32,7 +32,7 @@ export function JobStages({ progress }: { progress: JobProgress }) {
             key={stage.id}
             step={index}
             label={stage.label}
-            description={stage.state === 'upcoming' ? undefined : stage.detail}
+            description={stage.detail || undefined}
             status={stepStatus(stage, progress.phase)}
           />
         ))}

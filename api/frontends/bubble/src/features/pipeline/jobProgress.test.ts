@@ -16,7 +16,7 @@ describe('progressFromJob', () => {
     ])
     expect(progress.activeStep).toBe(0)
     expect(progress.estimated).toBe(true)
-    expect(progress.headline).toContain('media worker')
+    expect(progress.headline).toBe('Loading the recording.')
   })
 
   it('follows the activity the server names', () => {
@@ -30,7 +30,7 @@ describe('progressFromJob', () => {
       'upcoming',
       'upcoming',
     ])
-    expect(progress.headline).toContain('ASR worker')
+    expect(progress.headline).toBe('Writing the transcript.')
     expect(progress.estimated).toBe(false)
 
     const exporting = progressFromJob(
@@ -49,7 +49,7 @@ describe('progressFromJob', () => {
       'done',
       'current',
     ])
-    expect(exporting.headline).toContain('render worker')
+    expect(exporting.headline).toBe('Writing the document.')
     expect(exporting.estimated).toBe(false)
   })
 
@@ -57,9 +57,9 @@ describe('progressFromJob', () => {
     const progress = progressFromJob({ status: 'queued', dateCreated: started })
     expect(progress.phase).toBe('waiting')
     expect(progress.stages[0]?.state).toBe('current')
-    expect(progress.stages[0]?.detail).toContain('media worker')
+    expect(progress.stages[0]?.detail).toBe('Loading the recording.')
     expect(progress.estimated).toBe(false)
-    expect(progress.headline).toBe('This job is in the queue.')
+    expect(progress.headline).toBe('Queued.')
   })
 
   it('marks every stage done once the document exists', () => {
@@ -74,14 +74,14 @@ describe('progressFromJob', () => {
     expect(progress.stages.every((stage) => stage.state === 'done')).toBe(true)
     expect(progress.activeStep).toBe(5)
     expect(progress.estimated).toBe(false)
-    expect(progress.headline).toBe('A Markdown document is in this project.')
+    expect(progress.headline).toBe('Markdown')
   })
 
   it('names a PDF export when the document ref is a PDF', () => {
     const progress = progressFromJob(
       { status: 'completed', documentFileId: 'doc-pdf', documentName: 'week-03.pdf' },
     )
-    expect(progress.headline).toBe('A PDF is in this project.')
+    expect(progress.headline).toBe('PDF')
   })
 
   it('stops on the first stage that never produced a ref', () => {
@@ -96,17 +96,15 @@ describe('progressFromJob', () => {
       'upcoming',
     ])
     expect(failed.stages[2]?.state).toBe('failed')
-    expect(failed.headline).toBe('Transcribe stopped and was not run again. Files already in the project stay there.')
-    expect(failed.stages[2]?.detail).toContain('audio stays')
+    expect(failed.headline).toBe('Transcribe failed.')
+    expect(failed.stages[2]?.detail).toBe('Transcript was not written.')
     expect(failed.estimated).toBe(false)
 
     const stopped = progressFromJob({ status: 'canceled', dateCreated: started })
     expect(stopped.phase).toBe('canceled')
     expect(stopped.stages[0]?.state).toBe('canceled')
-    expect(stopped.stages[0]?.detail).toBe('This step did not write.')
-    expect(stopped.headline).toBe(
-      'Canceled during Resolve source. That step did not write. Files already in the project stay there.',
-    )
+    expect(stopped.stages[0]?.detail).toBe('Not written.')
+    expect(stopped.headline).toBe('Canceled during Resolve source.')
     expect(stopped.completedCount).toBe(0)
 
     const named = progressFromJob(
@@ -119,10 +117,8 @@ describe('progressFromJob', () => {
       'upcoming',
       'upcoming',
     ])
-    expect(named.stages[2]?.detail).toBe('This step did not write.')
-    expect(named.headline).toBe(
-      'Canceled during Transcribe. That step did not write. Files already in the project stay there.',
-    )
+    expect(named.stages[2]?.detail).toBe('Not written.')
+    expect(named.headline).toBe('Canceled during Transcribe.')
 
     const after = progressFromJob(
       {
@@ -140,9 +136,7 @@ describe('progressFromJob', () => {
       'upcoming',
     ])
     expect(after.activeStep).toBe(3)
-    expect(after.headline).toBe(
-      'Canceled after Transcribe. Extract key frames did not start. Files already in the project stay there.',
-    )
+    expect(after.headline).toBe('Canceled after Transcribe.')
   })
 
   it('stops on the activity named in the failure', () => {
@@ -156,9 +150,7 @@ describe('progressFromJob', () => {
     )
     expect(failed.stages.map((stage) => stage.state)).toEqual(['failed', 'upcoming', 'upcoming', 'upcoming', 'upcoming'])
     expect(failed.stages[0]?.label).toBe('Resolve source')
-    expect(failed.headline).toBe(
-      'Resolve source stopped and was not run again. The recording was not found. Files already in the project stay there.',
-    )
+    expect(failed.headline).toBe('Resolve source failed. Recording was not found.')
   })
 
   it('does not claim frames for an audio recording', () => {
@@ -170,6 +162,6 @@ describe('progressFromJob', () => {
         documentName: 'lecture.md',
       },
     )
-    expect(progress.stages.find((stage) => stage.id === 'keyframes')?.detail).toContain('No frames')
+    expect(progress.stages.find((stage) => stage.id === 'keyframes')?.detail).toBe('No frames.')
   })
 })

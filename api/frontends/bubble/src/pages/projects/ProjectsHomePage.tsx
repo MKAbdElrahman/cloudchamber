@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { RectangleStackIcon } from '@heroicons/react/24/outline'
 
 import { Grid } from '@astryxdesign/core/Grid'
 import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout'
@@ -12,11 +11,11 @@ import { ClickableCard } from '@astryxdesign/core/ClickableCard'
 import { ContextMenu, type ContextMenuOption } from '@astryxdesign/core/ContextMenu'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
-import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { MoreMenu } from '@astryxdesign/core/MoreMenu'
 import { Text } from '@astryxdesign/core/Text'
 import { TextInput } from '@astryxdesign/core/TextInput'
+import { useToast } from '@astryxdesign/core/Toast'
 import {
   createProject,
   deleteProject,
@@ -30,8 +29,6 @@ import { jobNeedsOpen, listJobs, normalizeJobs, openUnsettledJobs, type Pipeline
 import { filesFromJob } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
-import { MUTED_ICON_COLOR } from '@/shared/theme'
-
 import { LibraryViewControl } from './LibraryViewControl'
 import { useLibraryView } from './useLibraryView'
 
@@ -117,27 +114,27 @@ function ProjectMoreMenu({
   )
 }
 
-/** Board card. The name is the project. The menu sits at the end of that name. */
+/** Gallery card. The card opens the project. The menu sits beside it, not inside the link. */
 function ProjectTile({ project, onRename, onDelete }: ProjectTileProps) {
   return (
-    <ProjectMenu project={project} onRename={onRename} onDelete={onDelete}>
-      <ClickableCard
-        label={`Open ${project.name}`}
-        href={WORKSPACE_PATHS.project(project.id)}
-        {...WORKSPACE_CARD}
-        width="100%"
-        height="100%"
-      >
-        <HStack justify="between" vAlign="start" width="100%" gap={WORKSPACE_GAP.local}>
-          <StackItem size="fill">
+    <HStack gap={WORKSPACE_GAP.local} vAlign="stretch" width="100%" height="100%">
+      <StackItem size="fill">
+        <ProjectMenu project={project} onRename={onRename} onDelete={onDelete}>
+          <ClickableCard
+            label={`Open ${project.name}`}
+            href={WORKSPACE_PATHS.project(project.id)}
+            {...WORKSPACE_CARD}
+            width="100%"
+            height="100%"
+          >
             <Text type="label" weight="semibold" maxLines={2}>
               {project.name}
             </Text>
-          </StackItem>
-          <ProjectMoreMenu project={project} onRename={onRename} onDelete={onDelete} />
-        </HStack>
-      </ClickableCard>
-    </ProjectMenu>
+          </ClickableCard>
+        </ProjectMenu>
+      </StackItem>
+      <ProjectMoreMenu project={project} onRename={onRename} onDelete={onDelete} />
+    </HStack>
   )
 }
 
@@ -145,6 +142,7 @@ function ProjectTile({ project, onRename, onDelete }: ProjectTileProps) {
 export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const projects = useProjects()
   const [isCreating, setCreating] = useState(false)
   const [createName, setCreateName] = useState('')
@@ -198,13 +196,15 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
 
   const remove = useMutation({
     mutationFn: (project: Project) => deleteProject(token, project.id),
-    onSuccess: async () => {
+    onSuccess: async (_removed, project) => {
       await refresh()
       setDeleting(null)
+      toast({ body: `Deleted ${project.name}` })
     },
   })
 
   const rows = projects.data ?? []
+  const projectsEmpty = rows.length === 0 && !projects.isPending && !projects.isError
 
   return (
     <WorkspacePage
@@ -212,8 +212,9 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       header={
         <PageHeader
           title="Projects"
-          description="Open a project to see its documents."
-          end={<Button label="New project" variant="primary" onClick={() => setCreating(true)} />}
+          end={
+            projectsEmpty ? undefined : <Button label="New project" variant="primary" onClick={() => setCreating(true)} />
+          }
         />
       }
     >
@@ -223,9 +224,8 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       {rows.length === 0 && !projects.isPending && !projects.isError ? (
         <EmptyState
           title="No projects yet"
-          description="Create a project, then add one recording at a time."
-          icon={<Icon icon={RectangleStackIcon} size="lg" color={MUTED_ICON_COLOR} />}
           isCompact
+          actions={<Button label="New project" variant="primary" onClick={() => setCreating(true)} />}
         />
       ) : null}
       {projects.isPending || rows.length > 0 ? (
@@ -281,7 +281,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
       ) : null}
 
       <Dialog isOpen={isCreating} onOpenChange={setCreating} purpose="form">
-        <DialogHeader title="New project" subtitle="Recordings stay inside it." onOpenChange={setCreating} />
+        <DialogHeader title="New project" onOpenChange={setCreating} />
         <VStack gap={WORKSPACE_GAP.group}>
           {create.isError ? (
             <Banner status="error" title="Could not create the project" description={projectErrorMessage(create.error)} />
@@ -328,7 +328,7 @@ export function ProjectsHomePage({ token }: ProjectsHomePageProps) {
           remove.isError
             ? projectErrorMessage(remove.error)
             : deleting
-              ? `${deleting.name} and its place in the library go away. Its jobs are not moved to another project.`
+              ? deleting.name
               : 'This project goes away.'
         }
         actionLabel="Delete"

@@ -1,16 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { Square2StackIcon } from '@heroicons/react/24/outline'
 
 import { Banner } from '@astryxdesign/core/Banner'
-import { Card } from '@astryxdesign/core/Card'
-import { Grid } from '@astryxdesign/core/Grid'
-import { HStack, StackItem, VStack } from '@astryxdesign/core/Layout'
+import { FileInput } from '@astryxdesign/core/FileInput'
+import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { Button } from '@astryxdesign/core/Button'
-import { ClickableCard } from '@astryxdesign/core/ClickableCard'
 import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Text } from '@astryxdesign/core/Text'
-import { Icon } from '@astryxdesign/core/Icon'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
 import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type PeekVideo, type PipelineJob } from '@/features/pipeline'
@@ -18,17 +14,61 @@ import { ProjectTrail, useProject, type ProjectFile } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
 import type { SourceMediaKind } from '@/shared/media'
-import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
-import { MUTED_ICON_COLOR } from '@/shared/theme'
-
+import { WORKSPACE_GAP } from '@/shared/spacing'
 import { AddRecordingDialog } from './AddRecordingDialog'
-import { LibraryViewControl } from './LibraryViewControl'
-import { useLibraryView } from './useLibraryView'
 import { useProjectFiles } from './useProjectFiles'
 import { useProjectJobs } from './useProjectJobs'
 
 type ProjectHomePageProps = {
   token: string
+}
+
+function droppedFile(files: File | File[] | null): File | null {
+  if (files == null) return null
+  return Array.isArray(files) ? files[0] ?? null : files
+}
+
+/** True while a file drag is over the window. Cleared on drop or when the pointer leaves. */
+function useFileDrag(): { dragging: boolean; clearDrag: () => void } {
+  const [dragging, setDragging] = useState(false)
+  const depth = useRef(0)
+  const clearDrag = useCallback(() => {
+    depth.current = 0
+    setDragging(false)
+  }, [])
+
+  useEffect(() => {
+    const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files')
+    const onEnter = (event: DragEvent) => {
+      if (!hasFiles(event)) return
+      depth.current += 1
+      setDragging(true)
+    }
+    const onLeave = (event: DragEvent) => {
+      if (!hasFiles(event)) return
+      depth.current -= 1
+      if (depth.current <= 0) clearDrag()
+    }
+    const onOver = (event: DragEvent) => {
+      if (hasFiles(event)) event.preventDefault()
+    }
+    const onDrop = (event: DragEvent) => {
+      if (hasFiles(event)) event.preventDefault()
+      clearDrag()
+    }
+    window.addEventListener('dragenter', onEnter)
+    window.addEventListener('dragleave', onLeave)
+    window.addEventListener('dragover', onOver)
+    window.addEventListener('drop', onDrop)
+    return () => {
+      window.removeEventListener('dragenter', onEnter)
+      window.removeEventListener('dragleave', onLeave)
+      window.removeEventListener('dragover', onOver)
+      window.removeEventListener('drop', onDrop)
+    }
+  }, [clearDrag])
+
+  return { dragging, clearDrag }
 }
 
 function EntryWhen({ entry }: { entry: LibraryEntry }) {
@@ -135,7 +175,6 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
   const project = useProject(projectId)
   const jobsQuery = useProjectJobs(token, projectId)
   const filesQuery = useProjectFiles(token, projectId)
-  const [view, setView] = useLibraryView()
   const [searchParams, setSearchParams] = useSearchParams()
   const askedToAdd = searchParams.get('add') === 'recording'
   const [addOpen, setAddOpen] = useState(askedToAdd)
@@ -146,6 +185,9 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
   const [pipeline, setPipeline] = useState<{ id: string; name: string } | null>(null)
   const [pipelineOpen, setPipelineOpen] = useState(false)
   const [uploadingFile, setUploadingFile] = useState<string | null>(null)
+  const [seedFile, setSeedFile] = useState<File | null>(null)
+  const [dropError, setDropError] = useState<string | null>(null)
+  const { dragging, clearDrag } = useFileDrag()
 
   function openPeek(entry: LibraryEntry, target: 'video' | 'pipeline') {
     if (target === 'video') {
@@ -183,11 +225,16 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
     setSearchParams(next, { replace: true })
   }, [askedToAdd, searchParams, setSearchParams])
 
-  function openAddRecording() {
+  function openAddRecording(file?: File) {
+    setSeedFile(file ?? null)
+    setDropError(null)
     setFormKey((current) => current + 1)
     setStartError(null)
     setAddOpen(true)
   }
+
+  const showDrop = dragging && !addOpen && uploadingFile == null
+  const recordingsEmpty = !showDrop && entries.length === 0 && !pending
 
   return (
     <WorkspacePage
@@ -197,42 +244,57 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
           <ProjectTrail projectId={projectId} />
           <PageHeader
             title={project?.name ?? 'Project'}
-            description="One file for each recording."
-            end={<Button label="Add recording" variant="primary" onClick={openAddRecording} />}
+            end={
+              recordingsEmpty || showDrop ? undefined : (
+                <Button label="Add recording" variant="primary" onClick={() => openAddRecording()} />
+              )
+            }
           />
         </VStack>
       }
     >
       <VStack gap={WORKSPACE_GAP.group}>
+        {dropError ? <Banner status="error" title={dropError} /> : null}
         {startError ? (
           <Banner
             status="warning"
             title="The document did not start"
-            description={`${startError} The recording is saved. You can start the conversion from the file.`}
+            description={startError}
           />
         ) : null}
-        {pending || entries.length > 0 ? (
-          <HStack justify="end" vAlign="center">
-            <LibraryViewControl value={view} onChange={setView} />
-          </HStack>
+        {showDrop ? (
+          <FileInput
+            label="Add recording"
+            placeholder="Drop the recording"
+            accept="video/*,audio/*"
+            mode="dropzone"
+            value={null}
+            onChange={(files) => {
+              clearDrag()
+              const next = droppedFile(files)
+              if (next) {
+                openAddRecording(next)
+                return
+              }
+              setDropError('Drop a video or audio recording.')
+            }}
+          />
         ) : null}
-        {pending && entries.length === 0 ? <PendingLines variant={view === 'grid' ? 'cards' : 'rows'} /> : null}
-        {entries.length === 0 && !pending ? (
+        {!showDrop && pending && entries.length === 0 ? <PendingLines variant="rows" /> : null}
+        {!showDrop && entries.length === 0 && !pending ? (
           <EmptyState
             title="No recordings yet"
-            description="Add a recording. It shows up here as one file, and you can turn it into a document when you want."
-            icon={<Icon icon={Square2StackIcon} size="lg" color={MUTED_ICON_COLOR} />}
             isCompact
+            actions={<Button label="Add recording" variant="primary" onClick={() => openAddRecording()} />}
           />
         ) : null}
-        {entries.length > 0 && view === 'list' ? (
+        {!showDrop && entries.length > 0 ? (
           <List density="spacious" aria-label="Jobs">
             {entries.map((entry) => (
               <ListItem
                 key={entry.id}
                 label={entry.name}
                 description={<EntryWhen entry={entry} />}
-                startContent={<Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />}
                 endContent={
                   <HStack gap={WORKSPACE_GAP.local} vAlign="center">
                     {entry.fileId || entry.jobId ? (
@@ -251,48 +313,6 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
             ))}
           </List>
         ) : null}
-        {entries.length > 0 && view === 'grid' ? (
-          <Grid columns={{ minWidth: 240, max: 4 }} gap={WORKSPACE_GAP.group} width="100%" aria-label="Jobs">
-            {entries.map((entry) => {
-              const body = (
-                <HStack gap={WORKSPACE_GAP.group} vAlign="center" width="100%">
-                  <Icon icon={Square2StackIcon} size="sm" color={MUTED_ICON_COLOR} />
-                  <StackItem size="fill">
-                    <VStack gap={0}>
-                      <Text type="label" weight="semibold" maxLines={2}>
-                        {entry.name}
-                      </Text>
-                      <EntryWhen entry={entry} />
-                    </VStack>
-                  </StackItem>
-                  <HStack gap={WORKSPACE_GAP.local} vAlign="center">
-                    {entry.fileId || entry.jobId ? (
-                      <JobOpenIcons
-                        kind={entry.kind}
-                        hasPipeline={Boolean(entry.jobId)}
-                        status={entry.status}
-                        onOpen={(target) => openPeek(entry, target)}
-                      />
-                    ) : null}
-                    {entry.showStatus && entry.status ? <JobStatusLabel status={entry.status} /> : null}
-                  </HStack>
-                </HStack>
-              )
-              if (!entry.href) {
-                return (
-                  <Card key={entry.id} {...WORKSPACE_CARD} height="100%">
-                    {body}
-                  </Card>
-                )
-              }
-              return (
-                <ClickableCard key={entry.id} label={`Open ${entry.name}`} href={entry.href} {...WORKSPACE_CARD} height="100%">
-                  {body}
-                </ClickableCard>
-              )
-            })}
-          </Grid>
-        ) : null}
       </VStack>
       <JobPeek
         token={token}
@@ -309,8 +329,12 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
         projectId={projectId}
         isOpen={addOpen}
         formKey={formKey}
-        onOpenChange={setAddOpen}
+        onOpenChange={(open) => {
+          if (!open) setSeedFile(null)
+          setAddOpen(open)
+        }}
         onUploadingFile={setUploadingFile}
+        initialFile={seedFile}
         onFinished={(notice) => {
           setUploadingFile(null)
           setAddOpen(false)

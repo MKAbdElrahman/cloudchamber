@@ -9,21 +9,9 @@ export type DocumentBody = {
   mocked: boolean
 }
 
-/** Heading shown while reading. A generic export name stays "Document". */
-export function readingTitle(name: string): string {
-  const stem = name.replace(/\.[^.]+$/, '')
-  if (stem.length > 0 && stem.toLowerCase() !== 'document') return stem
-  return 'Document'
-}
-
 /** Stand-in for the export body. The pipeline stores a ref and does not yet serve the file. */
-export function mockDocumentMarkdown(input: { title: string; sourceLabel: string }): string {
-  const named = input.title === 'Document' ? '' : ` for ${input.title}`
-  const fromFile = /\.[a-z0-9]+$/i.test(input.sourceLabel)
-  const source = fromFile ? `\`${input.sourceLabel}\`` : 'the recording'
-  return `Notes${named}, composed from ${source}. The recording was transcribed, and the document is one Markdown file in this project. A video may also have a key frame stored beside it.
-
-# Opening
+export function mockDocumentMarkdown(): string {
+  return `# Opening
 
 **0:00** — The recording starts with the topic and what these notes will cover.
 
@@ -55,10 +43,7 @@ export async function loadDocumentBody(
   }
   return {
     format: file.kind,
-    markdown: mockDocumentMarkdown({
-      title: readingTitle(file.name),
-      sourceLabel: file.sourceName ?? file.name,
-    }),
+    markdown: mockDocumentMarkdown(),
     mocked: true,
   }
 }

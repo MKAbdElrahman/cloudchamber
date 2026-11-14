@@ -5,7 +5,9 @@ export { PendingLines } from './PendingLines'
 export {
   PAGE_CONTENT_WIDTH,
   PIPELINE_DRAWER_WIDTH,
+  RECORDING_DIALOG_WIDTH,
   SIDE_PANEL_WIDTH,
+  SIGN_IN_CONTENT_WIDTH,
   TEXT_CONTENT_WIDTH,
   WORKSPACE_CONTENT_PADDING,
 } from './contentSurface'

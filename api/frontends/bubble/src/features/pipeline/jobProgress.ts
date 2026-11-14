@@ -77,78 +77,68 @@ function provenFlags(job: JobProgressInput, named: number): boolean[] {
 }
 
 function detailFor(id: JobStageId, state: JobStageState, job: JobProgressInput): string {
-  if (state === 'upcoming') return 'Waiting.'
   const audioOnly = sourceMediaKind(job.fileName ?? '') === 'audio'
   const documentName = job.documentName?.trim().toLowerCase() ?? ''
   const pdf = documentName.endsWith('.pdf')
+
+  switch (state) {
+    case 'upcoming':
+      return ''
+    case 'done':
+      if (id === 'keyframes' && audioOnly) return 'No frames.'
+      if (id === 'document' && hasRef(job.documentFileId)) return pdf ? 'PDF' : 'Markdown'
+      return ''
+    case 'canceled':
+      return 'Not written.'
+    case 'current':
+    case 'failed':
+      break
+  }
 
   switch (id) {
     case 'source':
       switch (state) {
         case 'current':
-          return 'The media worker is loading the recording and checking the file.'
-        case 'canceled':
-          return 'This step did not write.'
+          return 'Loading the recording.'
         case 'failed':
-          return 'The recording could not be checked.'
-        case 'done':
-          return 'The recording is the source for this job.'
+          return 'Recording was not found.'
       }
       break
     case 'audio':
       switch (state) {
         case 'current':
-          return 'The media worker is writing the audio track.'
-        case 'canceled':
-          return 'This step did not write.'
+          return 'Writing the audio.'
         case 'failed':
-          return 'The audio track was not written.'
-        case 'done':
-          return 'The audio track is in this project.'
+          return 'Audio was not written.'
       }
       break
     case 'transcript':
       switch (state) {
         case 'current':
-          return 'The ASR worker is writing the transcript.'
-        case 'canceled':
-          return 'This step did not write.'
+          return 'Writing the transcript.'
         case 'failed':
-          return 'The transcript was not written. The audio stays in the project.'
-        case 'done':
-          return 'The transcript is in this project.'
+          return 'Transcript was not written.'
       }
       break
     case 'keyframes':
       switch (state) {
         case 'current':
-          return audioOnly
-            ? 'This recording is audio, so the frames worker records that there are no frames.'
-            : 'The frames worker is writing a key frame.'
-        case 'canceled':
-          return 'This step did not write.'
+          return audioOnly ? 'No frames.' : 'Writing a key frame.'
         case 'failed':
-          return 'A key frame was not written.'
-        case 'done':
-          return audioOnly
-            ? 'No frames for this recording.'
-            : 'A key frame is in this project.'
+          return 'Key frame was not written.'
       }
       break
     case 'document':
       switch (state) {
         case 'current':
-          return 'The render worker is writing one document into this project.'
-        case 'canceled':
-          return 'This step did not write.'
+          return 'Writing the document.'
         case 'failed':
-          return 'The document was not written.'
-        case 'done':
-          if (!hasRef(job.documentFileId)) return 'This job finished.'
-          return pdf ? 'A PDF is in this project.' : 'A Markdown document is in this project.'
+          return 'Document was not written.'
       }
       break
   }
+
+  return ''
 }
 
 export type ConversionNotice = {
@@ -175,9 +165,9 @@ function stepNamedIn(message: string | null | undefined): number {
 function failureReason(message: string | null | undefined): string {
   switch (message?.trim()) {
     case 'load source':
-      return 'The recording was not found. '
+      return 'Recording was not found.'
     case 'file id':
-      return 'The file id was not accepted. '
+      return 'File id was not accepted.'
     default:
       return ''
   }
@@ -194,28 +184,28 @@ export function conversionNotice(
   )
   const name = stopped?.label ?? 'This step'
   switch (phase) {
-    case 'failed':
+    case 'failed': {
+      const reason = failureReason(failureMessage)
       return {
         status: 'error',
         title: 'Failed',
-        description: `${name} stopped and was not run again. ${failureReason(failureMessage)}Files already in the project stay there.`,
+        description: reason ? `${name} failed. ${reason}` : `${name} failed.`,
       }
+    }
     case 'canceled':
       if (!stopped) {
         const finished = stages.filter((stage) => stage.state === 'done')
-        const next = stages.find((stage) => stage.state === 'upcoming')
         const after = finished[finished.length - 1]?.label ?? 'This step'
-        const nextSentence = next ? ` ${next.label} did not start.` : ''
         return {
           status: 'warning',
           title: 'Canceled',
-          description: `Canceled after ${after}.${nextSentence} Files already in the project stay there.`,
+          description: `Canceled after ${after}.`,
         }
       }
       return {
         status: 'warning',
         title: 'Canceled',
-        description: `Canceled during ${name}. That step did not write. Files already in the project stay there.`,
+        description: `Canceled during ${name}.`,
       }
     case 'waiting':
     case 'running':
@@ -234,7 +224,7 @@ function headlineFor(phase: JobPhase, stages: JobStageView[], failureMessage?: s
     case 'running':
       return live?.detail ?? ''
     case 'waiting':
-      return 'This job is in the queue.'
+      return 'Queued.'
     case 'failed':
     case 'canceled':
       return ''

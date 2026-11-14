@@ -3,16 +3,14 @@ import * as tus from 'tus-js-client'
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 
 import { VStack } from '@astryxdesign/core/Layout'
-import { Heading, Text } from '@astryxdesign/core/Text'
 import { Button } from '@astryxdesign/core/Button'
 import { Icon } from '@astryxdesign/core/Icon'
-import { Card } from '@astryxdesign/core/Card'
 import { FileInput } from '@astryxdesign/core/FileInput'
 import { ProgressBar } from '@astryxdesign/core/ProgressBar'
 import { Banner } from '@astryxdesign/core/Banner'
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput'
 import { env } from '@/shared/config'
-import { WORKSPACE_CARD, WORKSPACE_GAP } from '@/shared/spacing'
+import { WORKSPACE_GAP } from '@/shared/spacing'
 import { fileIdFromUploadUrl } from './sourceRef'
 
 type Status = 'idle' | 'uploading' | 'success' | 'warning' | 'error'
@@ -25,7 +23,7 @@ export function UploadPanel({
   onStartConversionChange,
   onBusyChange,
   onUploadingFile,
-  embedded,
+  initialFile,
 }: {
   token: string
   projectId: string
@@ -35,9 +33,10 @@ export function UploadPanel({
   onBusyChange?: (busy: boolean) => void
   /** The file currently transferring, so the project can show Uploading first. */
   onUploadingFile?: (fileName: string | null) => void
-  embedded?: boolean
+  /** A file dropped on the project, already chosen when the dialog opens. */
+  initialFile?: File | null
 }) {
-  const [file, setFile] = useState<File | null>(null)
+  const [file, setFile] = useState<File | null>(initialFile ?? null)
   const [status, setStatus] = useState<Status>('idle')
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState<string | null>(null)
@@ -87,7 +86,7 @@ export function UploadPanel({
           onUploaded({ fileId, fileName: file.name })
         } else {
           setStatus('warning')
-          setMessage('The upload finished, but the recording could not be saved.')
+          setMessage('')
         }
       },
     })
@@ -99,17 +98,8 @@ export function UploadPanel({
     })
   }
 
-  const content = (
+  return (
     <VStack gap={WORKSPACE_GAP.section}>
-      {embedded ? null : (
-        <VStack gap={WORKSPACE_GAP.local}>
-          <Heading level={2}>Upload recording</Heading>
-          <Text type="supporting">
-            Drop video or audio — resumable tus transfer with server-side verification.
-          </Text>
-        </VStack>
-      )}
-
       <VStack gap={WORKSPACE_GAP.group}>
         <FileInput
           label="Recording"
@@ -130,19 +120,18 @@ export function UploadPanel({
         ) : null}
 
         <CheckboxInput
-          label="Create the document when the upload finishes"
-          description="Leave this off to watch the recording first, then start the conversion yourself."
+          label="Create the document after upload"
           value={startConversion}
           onChange={onStartConversionChange}
           isDisabled={status === 'uploading'}
         />
       </VStack>
 
-      {message ? (
+      {message || status === 'warning' ? (
         <Banner
           status={status === 'warning' ? 'warning' : 'error'}
           title={status === 'warning' ? 'Recording was not saved' : 'Upload failed'}
-          description={message}
+          description={message || undefined}
         />
       ) : null}
 
@@ -156,13 +145,5 @@ export function UploadPanel({
         isLoading={status === 'uploading'}
       />
     </VStack>
-  )
-
-  if (embedded) return content
-
-  return (
-    <Card {...WORKSPACE_CARD}>
-      {content}
-    </Card>
   )
 }

@@ -1,4 +1,4 @@
-export { loadDocumentBody, readingTitle } from './documentBody'
+export { loadDocumentBody } from './documentBody'
 export type { DocumentBody } from './documentBody'
 export { faceFileName, knownMediaName, mediaKindOf, mediaLabel } from './fileName'
 export type { FileFace } from './fileName'

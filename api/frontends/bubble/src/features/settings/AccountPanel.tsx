@@ -37,7 +37,7 @@ export function AccountPanel() {
         if (!cancelled) setAccount(next)
       })
       .catch(() => {
-        if (!cancelled) setError('The account record could not be loaded.')
+        if (!cancelled) setError('failed')
       })
     return () => {
       cancelled = true
@@ -46,7 +46,7 @@ export function AccountPanel() {
 
   const name = account?.name?.trim() || accountDisplayLabel(claims, displayName)
   const roles = account?.roles ?? claims?.roles ?? []
-  const email = account?.email ?? (error ? 'Not available.' : userId ? 'Loading the account…' : 'No account is attached to this session.')
+  const email = account?.email ?? (error ? 'Not available.' : userId ? 'Loading…' : 'No account.')
 
   return (
     <VStack gap={WORKSPACE_GAP.group} width="100%">
@@ -60,7 +60,7 @@ export function AccountPanel() {
         </VStack>
       </HStack>
 
-      {error ? <Banner status="error" title="Could not load the account" description={error} /> : null}
+      {error ? <Banner status="error" title="Could not load the account" /> : null}
       {account && !account.enabled ? (
         <Banner status="warning" title="This account is disabled" />
       ) : null}
@@ -77,7 +77,6 @@ export function AccountPanel() {
         <SettingsRow
           title="This browser"
           icon={ArrowRightOnRectangleIcon}
-          description="Signed in on this browser."
           control={<Button label="Sign out" variant="ghost" size="sm" onClick={signOut} />}
         />
       </List>

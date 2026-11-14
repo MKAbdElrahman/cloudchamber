@@ -19,3 +19,9 @@ export const SIDE_PANEL_WIDTH = '17.5rem'
 
 /** Pipeline drawer. Wider than the start panel so the stepper can be read. */
 export const PIPELINE_DRAWER_WIDTH = '28rem'
+
+/** Sign-in column. Narrower than a settings page. */
+export const SIGN_IN_CONTENT_WIDTH = 384
+
+/** Add-recording dialog. Wider than sign-in, narrower than a library page. */
+export const RECORDING_DIALOG_WIDTH = 560

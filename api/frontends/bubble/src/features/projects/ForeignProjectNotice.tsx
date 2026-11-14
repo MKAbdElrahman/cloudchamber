@@ -18,7 +18,6 @@ export function ForeignProjectNotice({ ownerId, jobId }: ForeignProjectNoticePro
     <Banner
       status="info"
       title="This job is in another project"
-      description={`Open it from ${name}. This project cannot show it.`}
       endContent={<Button label={`Open ${name}`} variant="secondary" href={WORKSPACE_PATHS.job(ownerId, jobId)} />}
     />
   )

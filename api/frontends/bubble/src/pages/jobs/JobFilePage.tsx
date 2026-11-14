@@ -115,6 +115,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
       await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs'] })
     },
   })
+  const isCanceling = cancel.isPending || cancel.isSuccess
 
   const asked = searchParams.get('open')
   const [videoOpen, setVideoOpen] = useState(asked === 'video')
@@ -181,6 +182,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
                       kind={kind}
                       hasPipeline={Boolean(pipelineJobId ?? resolvedJobId)}
                       status={badgeStatus}
+                      isCanceling={isCanceling}
                       size="md"
                       onOpen={(target) => {
                         if (target === 'video') {
@@ -196,11 +198,10 @@ export function JobFilePage({ token }: JobFilePageProps) {
                   ) : null}
                   {canCancel ? (
                     <Button
-                      label={cancel.isSuccess ? 'Canceling' : 'Cancel'}
+                      label={isCanceling ? 'Canceling' : 'Cancel'}
                       variant="secondary"
                       onClick={() => cancel.mutate()}
-                      isLoading={cancel.isPending || cancel.isSuccess}
-                      isDisabled={cancel.isPending || cancel.isSuccess}
+                      isDisabled={isCanceling}
                     />
                   ) : null}
                   {badgeStatus && jobPhase(badgeStatus) !== 'finished' ? <JobStatusLabel status={badgeStatus} /> : null}

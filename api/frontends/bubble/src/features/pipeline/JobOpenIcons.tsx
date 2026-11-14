@@ -17,6 +17,8 @@ type JobOpenIconsProps = {
   hasPipeline?: boolean
   onOpen: (target: JobPeekTarget) => void
   status?: string
+  /** Cancel is already underway, so the pipeline icon does not also spin. */
+  isCanceling?: boolean
   /** Match the other controls in the same row. Library rows stay small. */
   size?: 'sm' | 'md'
 }
@@ -33,7 +35,7 @@ function openLabel(kind: SourceMediaKind): string {
 }
 
 /** Icons that open the recording or the pipeline over the current page. */
-export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status, size = 'sm' }: JobOpenIconsProps) {
+export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status, isCanceling = false, size = 'sm' }: JobOpenIconsProps) {
   const mediaIcon = kind === 'audio' ? MusicalNoteIcon : FilmIcon
   const label = openLabel(kind)
 
@@ -61,7 +63,7 @@ export function JobOpenIcons({ kind, hasPipeline = false, onOpen, status, size =
           tooltip="Open pipeline"
           variant="ghost"
           size={size}
-          isLoading={jobPhase(status) === 'running'}
+          isLoading={jobPhase(status) === 'running' && !isCanceling}
           icon={<Icon icon={QueueListIcon} />}
           onClick={press('pipeline')}
         />

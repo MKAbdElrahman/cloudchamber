@@ -38,7 +38,7 @@ spec:
               SQL
       containers:
         - name: temporal-server
-          image: temporalio/auto-setup:latest
+          image: temporalio/auto-setup:1.29.1
           ports:
             - name: frontend
               containerPort: 7233

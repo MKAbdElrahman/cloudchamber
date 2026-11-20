@@ -19,7 +19,7 @@ spec:
       hostNetwork: true
       containers:
         - name: tusd
-          image: tusproject/tusd:latest
+          image: tusproject/tusd:v2.10.1
           args:
             - -host=0.0.0.0
             - -port=8180

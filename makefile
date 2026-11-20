@@ -118,10 +118,10 @@ PROMETHEUS      := prom/prometheus:v3.14.0
 TEMPO           := grafana/tempo:3.0.3
 LOKI            := grafana/loki:3.7.7
 ALLOY           := grafana/alloy:v1.19.2
-TEMPORAL_AUTO_SETUP := temporalio/auto-setup:latest
-TEMPORAL_UI         := temporalio/ui:latest
-SEAWEEDFS           := chrislusf/seaweedfs:latest
-TUSD                := tusproject/tusd:latest
+TEMPORAL_AUTO_SETUP := temporalio/auto-setup:1.29.1
+TEMPORAL_UI         := temporalio/ui:2.58.1
+SEAWEEDFS           := chrislusf/seaweedfs:4.53
+TUSD                := tusproject/tusd:v2.10.1
 
 KIND_CLUSTER    := cloudchamber-dev
 NAMESPACE       := cloudchamber-system

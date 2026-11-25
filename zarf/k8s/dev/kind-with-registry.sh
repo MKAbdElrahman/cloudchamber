@@ -15,6 +15,7 @@ if [ "$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true
 fi
 
 # 2. Create kind cluster with containerd registry config dir enabled
+#    Keep extraPortMappings in sync with zarf/k8s/dev/kind-config.yaml.
 # TODO: kind will eventually enable this by default and this patch will
 # be unnecessary.
 #
@@ -46,9 +47,10 @@ nodes:
       # Metrics Prometheus
       - containerPort: 4020
         hostPort: 4020
-      # Auth
+      # Auth. The process stays on 6000 inside the cluster. The laptop
+      # port is 6100 because Chrome refuses to open port 6000.
       - containerPort: 6000
-        hostPort: 6000
+        hostPort: 6100
       # Auth debug
       - containerPort: 6010
         hostPort: 6010
@@ -64,6 +66,21 @@ nodes:
       # Tempo (tracing)
       - containerPort: 9411
         hostPort: 9411
+      # Temporal frontend (gRPC)
+      - containerPort: 7233
+        hostPort: 7233
+      # Temporal UI
+      - containerPort: 8080
+        hostPort: 8080
+      # SeaweedFS S3
+      - containerPort: 8333
+        hostPort: 8333
+      # tusd (resumable uploads)
+      - containerPort: 8180
+        hostPort: 8180
+      # LiteLLM proxy + admin UI (host 4100; metrics uses 4000)
+      - containerPort: 4100
+        hostPort: 4100
 EOF
 
 # 3. Add the registry config to the nodes

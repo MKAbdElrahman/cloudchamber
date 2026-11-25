@@ -41,6 +41,10 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 asrWorker = container "ASR worker" "Transcription activities on the ASR task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
                 renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
             }
+            group "LLM gateway" {
+                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps." "LiteLLM Proxy" "Service"
+                litellmPostgres = container "LiteLLM PostgreSQL" "Persistence for the LLM gateway (physical isolation in dev)." "PostgreSQL" "Database"
+            }
             group "Artifact & data stores" {
                 postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database"
                 temporalPostgres = container "Temporal PostgreSQL" "Persistence and visibility storage for Temporal (physical isolation in dev)." "PostgreSQL" "Database"
@@ -88,6 +92,8 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls render task queue and executes activities via" "gRPC"
         cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document in the source file's project" "SQL/TCP"
         cloudchamber.renderWorker -> cloudchamber.artifactStore "Writes the document object" "S3 API"
+        operator -> cloudchamber.litellmGateway "Operates" "HTTPS"
+        cloudchamber.litellmGateway -> cloudchamber.litellmPostgres "Reads from and writes to" "SQL/TCP"
 
         // C3 — API service (subdomains aligned to current packages)
         endUser -> cloudchamber.apiService.userapp "Uses user APIs on" "HTTPS/JSON"
@@ -138,6 +144,14 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                             }
                             deploymentNode "Workload: temporal-ui" "Workflow view." "Deployment" "1" {
                                 containerInstance cloudchamber.temporalUI
+                            }
+                        }
+                        deploymentNode "LLM gateway" "LLM proxy." "Workload group" "1" {
+                            deploymentNode "Workload: litellm-database" "Gateway data." "StatefulSet" "1" {
+                                containerInstance cloudchamber.litellmPostgres
+                            }
+                            deploymentNode "Workload: litellm" "Gateway." "Deployment" "1" {
+                                containerInstance cloudchamber.litellmGateway
                             }
                         }
                         deploymentNode "Artifact & data stores" "Databases and files." "Workload group" "1" {
@@ -208,6 +222,15 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     }
                 }
 
+                deploymentNode "LLM gateway" "LLM proxy." "Workload group" "1" {
+                    deploymentNode "litellm-persistence" "Gateway data." "PostgreSQL" "1" {
+                        containerInstance cloudchamber.litellmPostgres
+                    }
+                    deploymentNode "litellm-gateway" "Gateway." "Deployment" "1" {
+                        containerInstance cloudchamber.litellmGateway
+                    }
+                }
+
                 deploymentNode "Pipeline workers" "One worker for each task queue. A crash waits until that worker polls again." "Workload group" "1" {
                     deploymentNode "workflow-worker" "Runs ProcessSourceWorkflow. No database." "Deployment" "1" {
                         containerInstance cloudchamber.workflowWorker
@@ -256,7 +279,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         container cloudchamber "Containers" {
             title "Container View: CloudChamber"
-            description "Control plane, application services, Temporal orchestration, split-ready pipeline workers, artifact/data stores, and observability."
+            description "Control plane, application services, Temporal orchestration, LLM gateway, split-ready pipeline workers, artifact/data stores, and observability."
             include *
             autoLayout tb
         }

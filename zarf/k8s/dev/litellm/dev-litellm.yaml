@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: cloudchamber-system
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: litellm
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: litellm
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      initContainers:
+        - name: wait-litellm-database
+          image: postgres:18.6
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: db_password
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until pg_isready -h litellm-database-service -U litellm -d litellm; do
+                echo "waiting for litellm-database-service"
+                sleep 2
+              done
+      containers:
+        - name: litellm
+          image: litellm-image:pin
+          args:
+            - --port
+            - "4100"
+            - --host
+            - "0.0.0.0"
+          ports:
+            - name: http
+              containerPort: 4100
+          env:
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: master_key
+            - name: LITELLM_SALT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: salt_key
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: database_url
+            - name: STORE_MODEL_IN_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: litellm-config
+                  key: store_model_in_db
+            - name: UI_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: litellm-config
+                  key: ui_username
+            - name: UI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: ui_password
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-service
+  namespace: cloudchamber-system
+spec:
+  type: ClusterIP
+  selector:
+    app: litellm
+  ports:
+    - name: http
+      port: 4100
+      targetPort: http

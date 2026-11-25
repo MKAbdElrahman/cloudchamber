@@ -122,6 +122,7 @@ TEMPORAL_AUTO_SETUP := temporalio/auto-setup:1.29.1
 TEMPORAL_UI         := temporalio/ui:2.58.1
 SEAWEEDFS           := chrislusf/seaweedfs:4.53
 TUSD                := tusproject/tusd:v2.10.1
+LITELLM             := docker.litellm.ai/berriai/litellm:v1.111.0
 
 KIND_CLUSTER    := cloudchamber-dev
 NAMESPACE       := cloudchamber-system
@@ -191,6 +192,7 @@ dev-docker:
 	docker pull docker.io/$(TEMPORAL_UI) & \
 	docker pull docker.io/$(SEAWEEDFS) & \
 	docker pull docker.io/$(TUSD) & \
+	docker pull $(LITELLM) & \
 	wait;
 
 # ==============================================================================
@@ -289,6 +291,7 @@ dev-up:
 	docker save $(TEMPORAL_UI) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(SEAWEEDFS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(TUSD) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(LITELLM) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	wait;
 
 dev-down:
@@ -341,6 +344,12 @@ dev-apply:
 	kustomize build zarf/k8s/dev/temporal | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=temporal-server --timeout=180s --for=condition=Ready
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=temporal-ui --timeout=120s --for=condition=Ready
+
+	kustomize build zarf/k8s/dev/litellm-db | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/litellm-database
+
+	kustomize build zarf/k8s/dev/litellm | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --selector app=litellm --timeout=180s --for=condition=Ready
 
 	kustomize build zarf/k8s/dev/pipeline-workers | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-workflow
@@ -430,6 +439,9 @@ dev-logs-loki:
 
 dev-logs-alloy:
 	kubectl logs --namespace=$(NAMESPACE) -l app=alloy --all-containers=true -f --tail=100
+
+dev-logs-litellm:
+	kubectl logs --namespace=$(NAMESPACE) -l app=litellm --all-containers=true -f --tail=100
 
 # ------------------------------------------------------------------------------
 
@@ -791,6 +803,7 @@ help:
 	@echo "  dev-logs-tempo          Show the logs for the tempo service"
 	@echo "  dev-logs-loki           Show the logs for the loki service"
 	@echo "  dev-logs-alloy          Show the logs for the alloy service"
+	@echo "  dev-logs-litellm        Show the logs for the litellm proxy"
 	@echo "  dev-services-delete     Delete all"
 	@echo "  dev-up-registry         Start KIND with local registry"
 	@echo "  dev-down-registry       Stop KIND and local registry"

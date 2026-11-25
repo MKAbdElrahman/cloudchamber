@@ -49,3 +49,6 @@ nodes:
       # tusd (resumable uploads)
       - containerPort: 8180
         hostPort: 8180
+      # LiteLLM proxy + admin UI (host 4100; metrics uses 4000)
+      - containerPort: 4100
+        hostPort: 4100

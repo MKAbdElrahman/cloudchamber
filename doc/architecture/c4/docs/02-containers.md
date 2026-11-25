@@ -40,6 +40,10 @@ A transient activity error is retried on the same activity, and the job stays ru
 
 ![](embed:PipelineCancelDynamic)
 
+### LiteLLM gateway
+
+Routes LLM provider calls for pipeline transcription and document steps. It uses a dedicated PostgreSQL instance, separate from application data and Temporal. Operators configure it through an admin UI; pipeline workers call it inside the cluster when real ASR and compose replace the dev stubs.
+
 ### Artifact storage
 
 Holds the bytes of recordings and pipeline outputs. Pipelines pass file ids, not the file bytes. Dev uses SeaweedFS. Which project a file belongs to is the artifact row in application PostgreSQL. The object key is the owner and the file id.

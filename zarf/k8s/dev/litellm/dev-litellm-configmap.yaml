@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: litellm-config
-  namespace: cloudchamber-system
+  namespace: litellm-system
 data:
   db_host: litellm-database-service
   db_port: "5432"

@@ -42,7 +42,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
             }
             group "LLM gateway" {
-                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps. Exports LLM observability to Langfuse via OTel v2 (langfuse_otel), not to Tempo." "LiteLLM Proxy" "Service"
+                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps. Dev runs in an isolated Kubernetes namespace. Exports LLM observability to Langfuse via OTel v2 (langfuse_otel), not to Tempo." "LiteLLM Proxy" "Service"
                 litellmPostgres = container "LiteLLM PostgreSQL" "Persistence for the LLM gateway (physical isolation in dev)." "PostgreSQL" "Database"
             }
             group "LLM observability" {
@@ -173,14 +173,6 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                                 containerInstance cloudchamber.uploadService
                             }
                         }
-                        deploymentNode "LLM gateway" "LLM proxy." "Workload group" "1" {
-                            deploymentNode "Workload: litellm-database" "Gateway data." "StatefulSet" "1" {
-                                containerInstance cloudchamber.litellmPostgres
-                            }
-                            deploymentNode "Workload: litellm" "Gateway." "Deployment" "1" {
-                                containerInstance cloudchamber.litellmGateway
-                            }
-                        }
                         deploymentNode "Artifact & data stores" "Databases and files." "Workload group" "1" {
                             deploymentNode "Workload: database" "Application data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.postgres
@@ -236,6 +228,16 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                             }
                             deploymentNode "Workload: temporal-ui" "Workflow view." "Deployment" "1" {
                                 containerInstance cloudchamber.temporalUI
+                            }
+                        }
+                    }
+                    deploymentNode "Namespace litellm-system" "LLM gateway namespace." "Kubernetes namespace" "1" {
+                        deploymentNode "LLM gateway" "LiteLLM proxy." "Workload group" "1" {
+                            deploymentNode "Workload: litellm-database" "Gateway data." "StatefulSet" "1" {
+                                containerInstance cloudchamber.litellmPostgres
+                            }
+                            deploymentNode "Workload: litellm" "Gateway." "Deployment" "1" {
+                                containerInstance cloudchamber.litellmGateway
                             }
                         }
                     }

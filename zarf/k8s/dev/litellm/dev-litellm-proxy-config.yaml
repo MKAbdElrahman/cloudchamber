@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: litellm-proxy-config
-  namespace: cloudchamber-system
+  namespace: litellm-system
 data:
   config.yaml: |
     # Langfuse OTEL only — https://langfuse.com/integrations/gateways/litellm

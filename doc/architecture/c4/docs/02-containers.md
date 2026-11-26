@@ -42,7 +42,7 @@ A transient activity error is retried on the same activity, and the job stays ru
 
 ### LiteLLM gateway
 
-Routes LLM provider calls for pipeline transcription and document steps. It uses a dedicated PostgreSQL instance, separate from application data and Temporal. Operators configure it through an admin UI; pipeline workers call it inside the cluster when real ASR and compose replace the dev stubs.
+Routes LLM provider calls for pipeline transcription and document steps. It uses a dedicated PostgreSQL instance, separate from application data and Temporal. In dev, LiteLLM and its database run in `litellm-system`. Operators configure it through an admin UI; pipeline workers in `cloudchamber-system` call it via cluster DNS when real ASR and compose replace the dev stubs.
 
 The proxy does not embed the Langfuse SDK. With the `langfuse_otel` callback and LiteLLM OTel v2, it exports LLM spans to Langfuse over OTLP. Prompt and completion bodies require an explicit capture mode (`span_only` in dev); the OTel v2 default omits them. LLM observability does not go to Tempo.
 
@@ -50,7 +50,7 @@ The proxy does not embed the Langfuse SDK. With the `langfuse_otel` callback and
 
 Stores generations, sessions, token usage, and cost for calls that pass through LiteLLM. Langfuse web serves the operator UI and accepts OTLP from LiteLLM in the same cluster. A worker processes events asynchronously. PostgreSQL, ClickHouse, Redis, and S3-compatible blob storage are dedicated to Langfuse and are not shared with application data or pipeline artifacts.
 
-In dev, Langfuse runs in `langfuse-system`, Temporal in `temporal-system`, platform telemetry in `observability-system`, while LiteLLM and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they export distributed traces to Tempo over cluster DNS only.
+In dev, LiteLLM runs in `litellm-system`, Langfuse in `langfuse-system`, Temporal in `temporal-system`, platform telemetry in `observability-system`, while the API and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they export distributed traces to Tempo over cluster DNS only.
 
 ### Platform observability (Tempo, Grafana, Loki, Prometheus, Alloy)
 

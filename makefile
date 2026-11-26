@@ -134,6 +134,7 @@ KIND_CLUSTER    := cloudchamber-dev
 NAMESPACE       := cloudchamber-system
 TEMPORAL_NAMESPACE := temporal-system
 OBSERVABILITY_NAMESPACE := observability-system
+LITELLM_NAMESPACE := litellm-system
 LANGFUSE_NAMESPACE := langfuse-system
 CLOUDCHAMBER_APP       := cloudchamber
 AUTH_APP        := auth
@@ -367,7 +368,7 @@ dev-apply:
 	kubectl wait pods --namespace=$(TEMPORAL_NAMESPACE) --selector app=temporal-ui --timeout=120s --for=condition=Ready
 
 	kustomize build zarf/k8s/dev/litellm-db | kubectl apply -f -
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/litellm-database
+	kubectl rollout status --namespace=$(LITELLM_NAMESPACE) --watch --timeout=120s sts/litellm-database
 
 	kustomize build zarf/k8s/dev/langfuse-db | kubectl apply -f -
 	kubectl rollout status --namespace=$(LANGFUSE_NAMESPACE) --watch --timeout=120s sts/langfuse-postgres
@@ -380,7 +381,7 @@ dev-apply:
 	kubectl wait pods --namespace=$(LANGFUSE_NAMESPACE) --selector app=langfuse-web --timeout=600s --for=condition=Ready
 
 	kustomize build zarf/k8s/dev/litellm | kubectl apply -f -
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=litellm --timeout=180s --for=condition=Ready
+	kubectl wait pods --namespace=$(LITELLM_NAMESPACE) --selector app=litellm --timeout=180s --for=condition=Ready
 
 	kustomize build zarf/k8s/dev/pipeline-workers | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=180s deployment/pipeline-workflow
@@ -472,7 +473,7 @@ dev-logs-alloy:
 	kubectl logs --namespace=$(OBSERVABILITY_NAMESPACE) -l app=alloy --all-containers=true -f --tail=100
 
 dev-logs-litellm:
-	kubectl logs --namespace=$(NAMESPACE) -l app=litellm --all-containers=true -f --tail=100
+	kubectl logs --namespace=$(LITELLM_NAMESPACE) -l app=litellm --all-containers=true -f --tail=100
 
 dev-logs-langfuse:
 	kubectl logs --namespace=$(LANGFUSE_NAMESPACE) -l 'app in (langfuse-web,langfuse-worker)' --all-containers=true -f --tail=100 --max-log-requests=6

@@ -272,92 +272,107 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             }
 
             deploymentNode "Kubernetes / cloud platform" "Where the services run." "Managed platform" "1" {
-                deploymentNode "Application tier" "API, auth, and upload." "Workload group" "1" {
-                    deploymentNode "admin-ui" "Admin site." "Deployment" "1" {
-                        containerInstance cloudchamber.adminUI
+                deploymentNode "Namespace cloudchamber-system" "Product workloads and application data plane." "Kubernetes namespace" "1" {
+                    deploymentNode "Application tier" "API, auth, upload, and admin." "Workload group" "1" {
+                        deploymentNode "admin-ui" "Admin site." "Deployment" "1" {
+                            containerInstance cloudchamber.adminUI
+                        }
+                        deploymentNode "api-service" "API and metrics." "Deployment" "1" {
+                            containerInstance cloudchamber.apiService
+                            containerInstance cloudchamber.metricsAPI
+                        }
+                        deploymentNode "auth-service" "Sign-in." "Deployment" "1" {
+                            containerInstance cloudchamber.authAPI
+                        }
+                        deploymentNode "upload-service" "Uploads." "Deployment" "1" {
+                            containerInstance cloudchamber.uploadService
+                        }
                     }
-                    deploymentNode "api-service" "API." "Deployment" 1 {
-                        containerInstance cloudchamber.apiService
+                    deploymentNode "Artifact & data stores" "Application database and artifact object store." "Workload group" "1" {
+                        deploymentNode "application-db" "Application data." "PostgreSQL" "1" {
+                            containerInstance cloudchamber.postgres
+                        }
+                        deploymentNode "artifact-storage" "Recording and pipeline output bytes." "S3-compatible" "1" {
+                            containerInstance cloudchamber.artifactStore
+                        }
                     }
-                    deploymentNode "auth-service" "Sign-in." "Deployment" 1 {
-                        containerInstance cloudchamber.authAPI
-                    }
-                    deploymentNode "upload-service" "Uploads." "Deployment" 1 {
-                        containerInstance cloudchamber.uploadService
-                    }
-                    deploymentNode "metrics" "Metrics." "Deployment" "1" {
-                        containerInstance cloudchamber.metricsAPI
-                    }
-                }
-
-                deploymentNode "Pipeline orchestration" "Workflow control." "Workload group" "1" {
-                    deploymentNode "temporal-service" "Workflow server." "Temporal" 1 {
-                        containerInstance cloudchamber.temporalServer
-                    }
-                    deploymentNode "temporal-ui" "Workflow view." "Deployment" "1" {
-                        containerInstance cloudchamber.temporalUI
-                    }
-                }
-
-                deploymentNode "LLM gateway" "LLM proxy." "Workload group" "1" {
-                    deploymentNode "litellm-persistence" "Gateway data." "PostgreSQL" "1" {
-                        containerInstance cloudchamber.litellmPostgres
-                    }
-                    deploymentNode "litellm-gateway" "Gateway." "Deployment" "1" {
-                        containerInstance cloudchamber.litellmGateway
-                    }
-                }
-
-                deploymentNode "Pipeline workers" "One worker for each task queue. A crash waits until that worker polls again." "Workload group" "1" {
-                    deploymentNode "workflow-worker" "Runs ProcessSourceWorkflow. No database." "Deployment" "1" {
-                        containerInstance cloudchamber.workflowWorker
-                    }
-                    deploymentNode "media-worker" "Source, audio, and a cancel between steps." "Deployment" "1" {
-                        containerInstance cloudchamber.mediaWorker
-                    }
-                    deploymentNode "frames-worker" "Key frames." "Deployment" "1" {
-                        containerInstance cloudchamber.framesWorker
-                    }
-                    deploymentNode "asr-worker" "Transcript." "Deployment" "1" {
-                        containerInstance cloudchamber.asrWorker
-                    }
-                    deploymentNode "render-worker" "Document." "Deployment" "1" {
-                        containerInstance cloudchamber.renderWorker
+                    deploymentNode "Pipeline workers" "One worker per task queue." "Workload group" "1" {
+                        deploymentNode "workflow-worker" "ProcessSourceWorkflow." "Deployment" "1" {
+                            containerInstance cloudchamber.workflowWorker
+                        }
+                        deploymentNode "media-worker" "Source, audio, cancel." "Deployment" "1" {
+                            containerInstance cloudchamber.mediaWorker
+                        }
+                        deploymentNode "frames-worker" "Key frames." "Deployment" "1" {
+                            containerInstance cloudchamber.framesWorker
+                        }
+                        deploymentNode "asr-worker" "Transcript." "Deployment" "1" {
+                            containerInstance cloudchamber.asrWorker
+                        }
+                        deploymentNode "render-worker" "Document." "Deployment" "1" {
+                            containerInstance cloudchamber.renderWorker
+                        }
                     }
                 }
-
-                deploymentNode "Artifact & data stores" "Databases and files." "Workload group" "1" {
-                    deploymentNode "application-db" "Application data." "PostgreSQL" "1" {
-                        containerInstance cloudchamber.postgres
-                    }
-                    deploymentNode "temporal-persistence" "Workflow data." "PostgreSQL" "1" {
-                        containerInstance cloudchamber.temporalPostgres
-                    }
-                    deploymentNode "artifact-storage" "Files." "S3-compatible" "1" {
-                        containerInstance cloudchamber.artifactStore
-                    }
-                }
-
-                deploymentNode "Platform observability" "Distributed traces and dashboards." "Platform services" "1" {
-                    deploymentNode "tempo" "Trace store." "Grafana Tempo" "1" {
-                        containerInstance cloudchamber.tempo
-                    }
-                    deploymentNode "grafana" "Telemetry UI." "Deployment" "1" {
-                        containerInstance cloudchamber.grafana
+                deploymentNode "Namespace observability-system" "Platform telemetry." "Kubernetes namespace" "1" {
+                    deploymentNode "Platform observability" "Traces, metrics, logs." "Workload group" "1" {
+                        deploymentNode "tempo" "Trace store." "Grafana Tempo" "1" {
+                            containerInstance cloudchamber.tempo
+                        }
+                        deploymentNode "prometheus" "Metrics." "Prometheus" "1" {
+                            containerInstance cloudchamber.prometheus
+                        }
+                        deploymentNode "loki" "Logs." "Grafana Loki" "1" {
+                            containerInstance cloudchamber.loki
+                        }
+                        deploymentNode "grafana" "Telemetry UI." "Deployment" "1" {
+                            containerInstance cloudchamber.grafana
+                        }
+                        deploymentNode "alloy" "Log collector." "Grafana Alloy" "1" {
+                            containerInstance cloudchamber.logCollector
+                        }
                     }
                 }
-
-                deploymentNode "LLM observability" "Langfuse (isolated namespace or equivalent)." "Platform services" "1" {
-                    deploymentNode "langfuse-web" "UI and OTLP." "Deployment" "1" {
-                        containerInstance cloudchamber.langfuseWeb
+                deploymentNode "Namespace temporal-system" "Workflow orchestration." "Kubernetes namespace" "1" {
+                    deploymentNode "Pipeline orchestration" "Temporal server and UI." "Workload group" "1" {
+                        deploymentNode "temporal-persistence" "Workflow data." "PostgreSQL" "1" {
+                            containerInstance cloudchamber.temporalPostgres
+                        }
+                        deploymentNode "temporal-service" "Workflow server." "Temporal" "1" {
+                            containerInstance cloudchamber.temporalServer
+                        }
+                        deploymentNode "temporal-ui" "Workflow view." "Deployment" "1" {
+                            containerInstance cloudchamber.temporalUI
+                        }
                     }
-                    deploymentNode "langfuse-worker" "Background ingest." "Deployment" "1" {
-                        containerInstance cloudchamber.langfuseWorker
+                }
+                deploymentNode "Namespace litellm-system" "LLM gateway." "Kubernetes namespace" "1" {
+                    deploymentNode "LLM gateway" "LiteLLM proxy." "Workload group" "1" {
+                        deploymentNode "litellm-persistence" "Gateway data." "PostgreSQL" "1" {
+                            containerInstance cloudchamber.litellmPostgres
+                        }
+                        deploymentNode "litellm-gateway" "Gateway." "Deployment" "1" {
+                            containerInstance cloudchamber.litellmGateway
+                        }
                     }
-                    deploymentNode "langfuse-data" "PostgreSQL, ClickHouse, and blob storage." "Managed data" "1" {
-                        containerInstance cloudchamber.langfusePostgres
-                        containerInstance cloudchamber.langfuseClickHouse
-                        containerInstance cloudchamber.langfuseBlobStore
+                }
+                deploymentNode "Namespace langfuse-system" "LLM observability." "Kubernetes namespace" "1" {
+                    deploymentNode "LLM observability" "Langfuse stack." "Workload group" "1" {
+                        deploymentNode "langfuse-db" "Transactional data." "PostgreSQL" "1" {
+                            containerInstance cloudchamber.langfusePostgres
+                        }
+                        deploymentNode "langfuse-clickhouse" "Analytics." "ClickHouse" "1" {
+                            containerInstance cloudchamber.langfuseClickHouse
+                        }
+                        deploymentNode "langfuse-blob" "Media and events." "S3-compatible" "1" {
+                            containerInstance cloudchamber.langfuseBlobStore
+                        }
+                        deploymentNode "langfuse-web" "UI and OTLP." "Deployment" "1" {
+                            containerInstance cloudchamber.langfuseWeb
+                        }
+                        deploymentNode "langfuse-worker" "Background ingest." "Deployment" "1" {
+                            containerInstance cloudchamber.langfuseWorker
+                        }
                     }
                 }
             }
@@ -553,7 +568,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         deployment * production "DeploymentProduction" {
             title "Deployment view: Production"
-            description "The same services, run for production."
+            description "Production Kubernetes: cloudchamber-system for product workloads, plus isolated namespaces for observability, Temporal, LiteLLM, and Langfuse."
             include *
             autoLayout tb
         }

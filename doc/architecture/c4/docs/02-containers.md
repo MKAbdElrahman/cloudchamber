@@ -75,3 +75,9 @@ A person opens a recording. The API checks they own it and returns a short-lived
 Local work runs the same services together in one cluster.
 
 ![](embed:DeploymentDevKind)
+
+### Production deployment
+
+Production uses the same namespace boundaries as KIND dev: product workloads in `cloudchamber-system`, with `observability-system`, `temporal-system`, `litellm-system`, and `langfuse-system` for platform stacks. Ingress terminates HTTPS in front of the application tier.
+
+![](embed:DeploymentProduction)

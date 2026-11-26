@@ -81,6 +81,12 @@ nodes:
       # LiteLLM proxy + admin UI (host 4100; metrics uses 4000)
       - containerPort: 4100
         hostPort: 4100
+      # Langfuse UI (host 3300; API uses 3000 inside the cluster)
+      - containerPort: 3300
+        hostPort: 3300
+      # Langfuse SeaweedFS S3 (app SeaweedFS uses 8333)
+      - containerPort: 8343
+        hostPort: 8343
 EOF
 
 # 3. Add the registry config to the nodes

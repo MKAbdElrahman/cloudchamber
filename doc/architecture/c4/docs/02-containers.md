@@ -44,6 +44,18 @@ A transient activity error is retried on the same activity, and the job stays ru
 
 Routes LLM provider calls for pipeline transcription and document steps. It uses a dedicated PostgreSQL instance, separate from application data and Temporal. Operators configure it through an admin UI; pipeline workers call it inside the cluster when real ASR and compose replace the dev stubs.
 
+The proxy does not embed the Langfuse SDK. With the `langfuse_otel` callback and LiteLLM OTel v2, it exports LLM spans to Langfuse over OTLP. Prompt and completion bodies require an explicit capture mode (`span_only` in dev); the OTel v2 default omits them. LLM observability does not go to Tempo.
+
+### LLM observability (Langfuse)
+
+Stores generations, sessions, token usage, and cost for calls that pass through LiteLLM. Langfuse web serves the operator UI and accepts OTLP from LiteLLM in the same cluster. A worker processes events asynchronously. PostgreSQL, ClickHouse, Redis, and S3-compatible blob storage are dedicated to Langfuse and are not shared with application data or pipeline artifacts.
+
+In dev, Langfuse runs in the `langfuse-system` namespace while LiteLLM and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they keep exporting distributed traces to Tempo only.
+
+### Platform observability (Tempo and Grafana)
+
+Tempo holds distributed traces from the API service and pipeline workers (OTLP). Grafana is the dev UI for traces together with metrics and logs. This path is separate from Langfuse, which is scoped to LLM traffic through LiteLLM.
+
 ### Artifact storage
 
 Holds the bytes of recordings and pipeline outputs. Pipelines pass file ids, not the file bytes. Dev uses SeaweedFS. Which project a file belongs to is the artifact row in application PostgreSQL. The object key is the owner and the file id.

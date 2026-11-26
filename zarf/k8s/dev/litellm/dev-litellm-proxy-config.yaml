@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-proxy-config
+  namespace: cloudchamber-system
+data:
+  config.yaml: |
+    # Langfuse OTEL only — https://langfuse.com/integrations/gateways/litellm
+    litellm_settings:
+      callbacks: ["langfuse_otel"]
+      callback_settings:
+        otel:
+          # OTel v2 defaults to no_content — Langfuse UI input/output stay empty without this.
+          capture_message_content: span_only

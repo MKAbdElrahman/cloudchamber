@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ./dev-litellm-configmap.yaml
+  - ./dev-litellm-proxy-config.yaml
   - ./dev-litellm-secret.yaml
   - ./dev-litellm.yaml
 # Keep newTag in sync with LITELLM in the makefile.

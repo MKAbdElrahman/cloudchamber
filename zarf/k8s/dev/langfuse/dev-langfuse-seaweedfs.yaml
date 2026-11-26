@@ -1,0 +1,94 @@
+# S3-compatible blob store for Langfuse only (isolated from cloudchamber-system SeaweedFS).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: langfuse-seaweedfs-data
+  namespace: langfuse-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-seaweedfs
+  namespace: langfuse-system
+spec:
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: langfuse-seaweedfs
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: langfuse-seaweedfs
+    spec:
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: langfuse-seaweedfs-data
+      containers:
+        - name: seaweedfs
+          image: langfuse-seaweedfs-image:pin
+          args:
+            - mini
+            - -dir=/data
+            - -ip.bind=0.0.0.0
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: langfuse-secret
+                  key: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: langfuse-secret
+                  key: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
+            - name: S3_BUCKET
+              value: langfuse
+          ports:
+            - name: s3
+              containerPort: 8333
+              hostPort: 8343
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            tcpSocket:
+              port: s3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: s3
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+            limits:
+              cpu: 3400m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-seaweedfs-service
+  namespace: langfuse-system
+spec:
+  type: ClusterIP
+  selector:
+    app: langfuse-seaweedfs
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3

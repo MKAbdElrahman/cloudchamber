@@ -10,3 +10,8 @@ data:
   db_name: litellm
   store_model_in_db: "True"
   ui_username: admin
+  # Langfuse v4 OTLP (langfuse-system); not Tempo.
+  langfuse_otel_host: http://langfuse-web.langfuse-system.svc.cluster.local:3000
+  litellm_otel_v2: "true"
+  litellm_otel_langfuse_span_scope: llm_only
+  otel_capture_message_content: span_only

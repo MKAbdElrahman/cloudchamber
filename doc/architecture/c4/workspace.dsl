@@ -42,8 +42,15 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
             }
             group "LLM gateway" {
-                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps." "LiteLLM Proxy" "Service"
+                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps. Exports LLM observability to Langfuse via OTel v2 (langfuse_otel), not to Tempo." "LiteLLM Proxy" "Service"
                 litellmPostgres = container "LiteLLM PostgreSQL" "Persistence for the LLM gateway (physical isolation in dev)." "PostgreSQL" "Database"
+            }
+            group "LLM observability" {
+                langfuseWeb = container "Langfuse web" "UI and OTLP ingest for LLM generations, sessions, and cost. Dev runs in an isolated Kubernetes namespace." "Langfuse" "Web Browser"
+                langfuseWorker = container "Langfuse worker" "Background ingestion for Langfuse." "Langfuse" "Service"
+                langfusePostgres = container "Langfuse PostgreSQL" "Langfuse transactional data (physical isolation in dev)." "PostgreSQL" "Database"
+                langfuseClickHouse = container "Langfuse ClickHouse" "Langfuse analytics and observation storage." "ClickHouse" "Database"
+                langfuseBlobStore = container "Langfuse blob storage" "S3-compatible media and event objects for Langfuse (dedicated SeaweedFS in dev)." "S3-compatible" "Database"
             }
             group "Artifact & data stores" {
                 postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database"
@@ -52,6 +59,8 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             }
             group "Observability" {
                 metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go"
+                tempo = container "Tempo" "Distributed trace storage for Go services and pipeline workers (OTLP)." "Grafana Tempo" "Database"
+                grafana = container "Grafana" "Explores traces, metrics, and logs in dev." "Grafana" "Web Browser"
             }
         }
 
@@ -71,6 +80,14 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService -> cloudchamber.authAPI "Checks the caller through" "HTTPS/JSON"
         cloudchamber.authAPI -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.metricsAPI -> cloudchamber.apiService "Reads expvar from" "HTTP"
+        operator -> cloudchamber.grafana "Explores platform telemetry in" "HTTPS"
+        cloudchamber.grafana -> cloudchamber.tempo "Queries traces in" "HTTP"
+        cloudchamber.apiService -> cloudchamber.tempo "Exports service traces via" "OTLP/gRPC"
+        cloudchamber.workflowWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
+        cloudchamber.mediaWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
+        cloudchamber.framesWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
+        cloudchamber.asrWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
+        cloudchamber.renderWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
         operator -> cloudchamber.temporalUI "Inspects workflows in" "HTTPS"
         cloudchamber.temporalUI -> cloudchamber.temporalServer "Connects to" "gRPC"
         cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Reads from and writes to" "SQL/TCP"
@@ -94,6 +111,16 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.renderWorker -> cloudchamber.artifactStore "Writes the document object" "S3 API"
         operator -> cloudchamber.litellmGateway "Operates" "HTTPS"
         cloudchamber.litellmGateway -> cloudchamber.litellmPostgres "Reads from and writes to" "SQL/TCP"
+        cloudchamber.litellmGateway -> cloudchamber.langfuseWeb "Exports LLM spans via" "OTLP/HTTP"
+        cloudchamber.asrWorker -> cloudchamber.litellmGateway "Calls transcription and document models through" "HTTP"
+        cloudchamber.renderWorker -> cloudchamber.litellmGateway "Calls document models through" "HTTP"
+        operator -> cloudchamber.langfuseWeb "Inspects LLM traces in" "HTTPS"
+        cloudchamber.langfuseWeb -> cloudchamber.langfusePostgres "Reads from and writes to" "SQL/TCP"
+        cloudchamber.langfuseWorker -> cloudchamber.langfusePostgres "Reads from and writes to" "SQL/TCP"
+        cloudchamber.langfuseWeb -> cloudchamber.langfuseClickHouse "Reads from and writes to" "TCP"
+        cloudchamber.langfuseWorker -> cloudchamber.langfuseClickHouse "Reads from and writes to" "TCP"
+        cloudchamber.langfuseWeb -> cloudchamber.langfuseBlobStore "Reads from and writes objects" "S3 API"
+        cloudchamber.langfuseWorker -> cloudchamber.langfuseBlobStore "Reads from and writes objects" "S3 API"
 
         // C3 — API service (subdomains aligned to current packages)
         endUser -> cloudchamber.apiService.userapp "Uses user APIs on" "HTTPS/JSON"
@@ -182,6 +209,33 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                                 containerInstance cloudchamber.renderWorker
                             }
                         }
+                        deploymentNode "Platform observability" "Distributed traces and dashboards." "Workload group" "1" {
+                            deploymentNode "Workload: tempo" "Trace store." "Deployment" "1" {
+                                containerInstance cloudchamber.tempo
+                            }
+                            deploymentNode "Workload: grafana" "Telemetry UI." "Deployment" "1" {
+                                containerInstance cloudchamber.grafana
+                            }
+                        }
+                    }
+                    deploymentNode "Namespace langfuse-system" "LLM observability namespace." "Kubernetes namespace" "1" {
+                        deploymentNode "LLM observability" "Langfuse stack." "Workload group" "1" {
+                            deploymentNode "Workload: langfuse-db" "Langfuse PostgreSQL." "StatefulSet" "1" {
+                                containerInstance cloudchamber.langfusePostgres
+                            }
+                            deploymentNode "Workload: langfuse-clickhouse" "Langfuse analytics." "StatefulSet" "1" {
+                                containerInstance cloudchamber.langfuseClickHouse
+                            }
+                            deploymentNode "Workload: langfuse-seaweedfs" "Langfuse objects." "Deployment" "1" {
+                                containerInstance cloudchamber.langfuseBlobStore
+                            }
+                            deploymentNode "Workload: langfuse-web" "UI and OTLP." "Deployment" "1" {
+                                containerInstance cloudchamber.langfuseWeb
+                            }
+                            deploymentNode "Workload: langfuse-worker" "Background ingest." "Deployment" "1" {
+                                containerInstance cloudchamber.langfuseWorker
+                            }
+                        }
                     }
                 }
             }
@@ -261,8 +315,27 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     }
                 }
 
-                deploymentNode "Observability" "Logs, metrics, and traces." "Platform services" "1" {
-                    infrastructureNode "Telemetry" "Logs, metrics, and traces." "Observability"
+                deploymentNode "Platform observability" "Distributed traces and dashboards." "Platform services" "1" {
+                    deploymentNode "tempo" "Trace store." "Grafana Tempo" "1" {
+                        containerInstance cloudchamber.tempo
+                    }
+                    deploymentNode "grafana" "Telemetry UI." "Deployment" "1" {
+                        containerInstance cloudchamber.grafana
+                    }
+                }
+
+                deploymentNode "LLM observability" "Langfuse (isolated namespace or equivalent)." "Platform services" "1" {
+                    deploymentNode "langfuse-web" "UI and OTLP." "Deployment" "1" {
+                        containerInstance cloudchamber.langfuseWeb
+                    }
+                    deploymentNode "langfuse-worker" "Background ingest." "Deployment" "1" {
+                        containerInstance cloudchamber.langfuseWorker
+                    }
+                    deploymentNode "langfuse-data" "PostgreSQL, ClickHouse, and blob storage." "Managed data" "1" {
+                        containerInstance cloudchamber.langfusePostgres
+                        containerInstance cloudchamber.langfuseClickHouse
+                        containerInstance cloudchamber.langfuseBlobStore
+                    }
                 }
             }
         }
@@ -279,7 +352,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         container cloudchamber "Containers" {
             title "Container View: CloudChamber"
-            description "Control plane, application services, Temporal orchestration, LLM gateway, split-ready pipeline workers, artifact/data stores, and observability."
+            description "Control plane, application services, Temporal orchestration, LLM gateway, Langfuse LLM observability, split-ready pipeline workers, artifact/data stores, and Tempo/Grafana platform telemetry."
             include *
             autoLayout tb
         }

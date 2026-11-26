@@ -1,0 +1,13 @@
+# Headless init — web only (https://langfuse.com/self-hosting/administration/headless-initialization).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: langfuse-web-bootstrap
+  namespace: langfuse-system
+data:
+  LANGFUSE_INIT_ORG_ID: cloudchamber-dev
+  LANGFUSE_INIT_ORG_NAME: CloudChamber Dev
+  LANGFUSE_INIT_PROJECT_ID: pipeline-llm
+  LANGFUSE_INIT_PROJECT_NAME: pipeline-llm
+  LANGFUSE_INIT_USER_EMAIL: admin@langfuse.local
+  LANGFUSE_INIT_USER_NAME: Admin

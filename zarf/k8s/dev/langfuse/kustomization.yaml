@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./dev-langfuse-secret.yaml
+  - ./dev-langfuse-configmap.yaml
+  - ./dev-langfuse-web-bootstrap.yaml
+  - ./dev-langfuse-seaweedfs.yaml
+  - ./dev-langfuse-deps.yaml
+  - ./dev-langfuse-apps.yaml
+# Keep tags in sync with makefile LANGFUSE_* / CLICKHOUSE / REDIS / SEAWEEDFS.
+images:
+  - name: langfuse-web-image
+    newName: docker.langfuse.com/langfuse/langfuse
+    newTag: "4.86.0"
+  - name: langfuse-worker-image
+    newName: docker.langfuse.com/langfuse/langfuse-worker
+    newTag: "4.86.0"
+  - name: clickhouse-image
+    newName: clickhouse/clickhouse-server
+    newTag: "26.3.62.3"
+  - name: redis-image
+    newName: redis
+    newTag: "7"
+  - name: langfuse-seaweedfs-image
+    newName: chrislusf/seaweedfs
+    newTag: "4.53"
+  - name: postgres-image
+    newName: postgres
+    newTag: "17"

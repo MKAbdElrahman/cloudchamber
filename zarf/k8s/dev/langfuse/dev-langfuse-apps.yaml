@@ -1,0 +1,222 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-worker
+  namespace: langfuse-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: langfuse-worker
+  template:
+    metadata:
+      labels:
+        app: langfuse-worker
+    spec:
+      terminationGracePeriodSeconds: 120
+      initContainers:
+        - name: wait-langfuse-postgres
+          image: postgres-image:pin
+          env:
+            - name: PGPASSWORD
+              value: langfuse
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until pg_isready -h langfuse-postgres-service -U langfuse -d langfuse; do
+                echo waiting for langfuse-postgres-service
+                sleep 2
+              done
+        - name: wait-clickhouse
+          image: busybox:1.37.0
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until wget -q -O /dev/null http://clickhouse-service:8123/ping; do
+                echo waiting for clickhouse
+                sleep 2
+              done
+        - name: wait-redis
+          image: redis-image:pin
+          env:
+            - name: REDIS_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: langfuse-secret
+                  key: REDIS_AUTH
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until redis-cli -h redis-service -a "$REDIS_AUTH" ping | grep -q PONG; do
+                echo waiting for redis
+                sleep 2
+              done
+        - name: wait-langfuse-seaweedfs
+          image: busybox:1.37.0
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until nc -z langfuse-seaweedfs-service 8333; do
+                echo waiting for langfuse-seaweedfs
+                sleep 2
+              done
+      containers:
+        - name: langfuse-worker
+          image: langfuse-worker-image:pin
+          ports:
+            - name: health
+              containerPort: 3030
+          envFrom:
+            - configMapRef:
+                name: langfuse-config
+            - secretRef:
+                name: langfuse-secret
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3030
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+            limits:
+              cpu: 3400m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-worker-service
+  namespace: langfuse-system
+spec:
+  type: ClusterIP
+  selector:
+    app: langfuse-worker
+  ports:
+    - name: health
+      port: 3030
+      targetPort: health
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-web
+  namespace: langfuse-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: langfuse-web
+  template:
+    metadata:
+      labels:
+        app: langfuse-web
+    spec:
+      terminationGracePeriodSeconds: 60
+      initContainers:
+        - name: wait-langfuse-postgres
+          image: postgres-image:pin
+          env:
+            - name: PGPASSWORD
+              value: langfuse
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until pg_isready -h langfuse-postgres-service -U langfuse -d langfuse; do
+                echo waiting for langfuse-postgres-service
+                sleep 2
+              done
+        - name: wait-clickhouse
+          image: busybox:1.37.0
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until wget -q -O /dev/null http://clickhouse-service:8123/ping; do
+                echo waiting for clickhouse
+                sleep 2
+              done
+        - name: wait-redis
+          image: redis-image:pin
+          env:
+            - name: REDIS_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: langfuse-secret
+                  key: REDIS_AUTH
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until redis-cli -h redis-service -a "$REDIS_AUTH" ping | grep -q PONG; do
+                echo waiting for redis
+                sleep 2
+              done
+        - name: wait-langfuse-seaweedfs
+          image: busybox:1.37.0
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              until nc -z langfuse-seaweedfs-service 8333; do
+                echo waiting for langfuse-seaweedfs
+                sleep 2
+              done
+      containers:
+        - name: langfuse-web
+          image: langfuse-web-image:pin
+          ports:
+            - name: http
+              containerPort: 3000
+              hostPort: 3300
+          envFrom:
+            - configMapRef:
+                name: langfuse-config
+            - configMapRef:
+                name: langfuse-web-bootstrap
+            - secretRef:
+                name: langfuse-secret
+          readinessProbe:
+            httpGet:
+              path: /api/public/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+            limits:
+              cpu: 3400m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-web
+  namespace: langfuse-system
+spec:
+  type: ClusterIP
+  selector:
+    app: langfuse-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

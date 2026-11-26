@@ -113,6 +113,7 @@ GOLANG          := golang:1.27
 ALPINE          := alpine:3.24
 KIND            := kindest/node:v1.37.0
 POSTGRES        := postgres:18.6
+LANGFUSE_POSTGRES   := postgres:17
 GRAFANA         := grafana/grafana:13.2.1
 PROMETHEUS      := prom/prometheus:v3.14.0
 TEMPO           := grafana/tempo:3.0.3
@@ -123,9 +124,15 @@ TEMPORAL_UI         := temporalio/ui:2.58.1
 SEAWEEDFS           := chrislusf/seaweedfs:4.53
 TUSD                := tusproject/tusd:v2.10.1
 LITELLM             := docker.litellm.ai/berriai/litellm:v1.111.0
+LANGFUSE_WEB        := docker.langfuse.com/langfuse/langfuse:4.86.0
+LANGFUSE_WORKER     := docker.langfuse.com/langfuse/langfuse-worker:4.86.0
+CLICKHOUSE          := clickhouse/clickhouse-server:26.3.62.3
+REDIS               := redis:7
+LANGFUSE_SEAWEEDFS  := chrislusf/seaweedfs:4.53
 
 KIND_CLUSTER    := cloudchamber-dev
 NAMESPACE       := cloudchamber-system
+LANGFUSE_NAMESPACE := langfuse-system
 CLOUDCHAMBER_APP       := cloudchamber
 AUTH_APP        := auth
 BASE_IMAGE_NAME := localhost/cloudchamber
@@ -183,6 +190,7 @@ dev-docker:
 	docker pull docker.io/$(ALPINE) & \
 	docker pull docker.io/$(KIND) & \
 	docker pull docker.io/$(POSTGRES) & \
+	docker pull docker.io/$(LANGFUSE_POSTGRES) & \
 	docker pull docker.io/$(GRAFANA) & \
 	docker pull docker.io/$(PROMETHEUS) & \
 	docker pull docker.io/$(TEMPO) & \
@@ -193,6 +201,11 @@ dev-docker:
 	docker pull docker.io/$(SEAWEEDFS) & \
 	docker pull docker.io/$(TUSD) & \
 	docker pull $(LITELLM) & \
+	docker pull $(LANGFUSE_WEB) & \
+	docker pull $(LANGFUSE_WORKER) & \
+	docker pull $(CLICKHOUSE) & \
+	docker pull $(REDIS) & \
+	docker pull $(LANGFUSE_SEAWEEDFS) & \
 	wait;
 
 # ==============================================================================
@@ -282,6 +295,7 @@ dev-up:
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
 
 	docker save $(POSTGRES) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(LANGFUSE_POSTGRES) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(GRAFANA) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(PROMETHEUS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(TEMPO) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
@@ -292,6 +306,11 @@ dev-up:
 	docker save $(SEAWEEDFS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(TUSD) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(LITELLM) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(LANGFUSE_WEB) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(LANGFUSE_WORKER) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(CLICKHOUSE) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(REDIS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(LANGFUSE_SEAWEEDFS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	wait;
 
 dev-down:
@@ -347,6 +366,16 @@ dev-apply:
 
 	kustomize build zarf/k8s/dev/litellm-db | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/litellm-database
+
+	kustomize build zarf/k8s/dev/langfuse-db | kubectl apply -f -
+	kubectl rollout status --namespace=$(LANGFUSE_NAMESPACE) --watch --timeout=120s sts/langfuse-postgres
+
+	kustomize build zarf/k8s/dev/langfuse | kubectl apply -f -
+	kubectl wait pods --namespace=$(LANGFUSE_NAMESPACE) --selector app=langfuse-seaweedfs --timeout=180s --for=condition=Ready
+	kubectl wait pods --namespace=$(LANGFUSE_NAMESPACE) --selector app=clickhouse --timeout=300s --for=condition=Ready
+	kubectl wait pods --namespace=$(LANGFUSE_NAMESPACE) --selector app=redis --timeout=120s --for=condition=Ready
+	kubectl wait pods --namespace=$(LANGFUSE_NAMESPACE) --selector app=langfuse-worker --timeout=600s --for=condition=Ready
+	kubectl wait pods --namespace=$(LANGFUSE_NAMESPACE) --selector app=langfuse-web --timeout=600s --for=condition=Ready
 
 	kustomize build zarf/k8s/dev/litellm | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --selector app=litellm --timeout=180s --for=condition=Ready
@@ -442,6 +471,9 @@ dev-logs-alloy:
 
 dev-logs-litellm:
 	kubectl logs --namespace=$(NAMESPACE) -l app=litellm --all-containers=true -f --tail=100
+
+dev-logs-langfuse:
+	kubectl logs --namespace=$(LANGFUSE_NAMESPACE) -l 'app in (langfuse-web,langfuse-worker)' --all-containers=true -f --tail=100 --max-log-requests=6
 
 # ------------------------------------------------------------------------------
 
@@ -804,6 +836,7 @@ help:
 	@echo "  dev-logs-loki           Show the logs for the loki service"
 	@echo "  dev-logs-alloy          Show the logs for the alloy service"
 	@echo "  dev-logs-litellm        Show the logs for the litellm proxy"
+	@echo "  dev-logs-langfuse       Show the logs for langfuse web and worker"
 	@echo "  dev-services-delete     Delete all"
 	@echo "  dev-up-registry         Start KIND with local registry"
 	@echo "  dev-down-registry       Stop KIND and local registry"

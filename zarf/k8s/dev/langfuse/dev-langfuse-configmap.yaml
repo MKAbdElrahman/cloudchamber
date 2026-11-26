@@ -1,0 +1,33 @@
+# Shared Langfuse web + worker env (https://langfuse.com/self-hosting/configuration).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: langfuse-config
+  namespace: langfuse-system
+data:
+  TELEMETRY_ENABLED: "false"
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+  LANGFUSE_LOG_LEVEL: info
+  CLICKHOUSE_URL: http://clickhouse-service:8123
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse-service:9000
+  CLICKHOUSE_USER: clickhouse
+  CLICKHOUSE_DB: default
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED: "false"
+  REDIS_HOST: redis-service
+  REDIS_PORT: "6379"
+  REDIS_CLUSTER_ENABLED: "false"
+  REDIS_TLS_ENABLED: "false"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-seaweedfs-service:8333
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:8343
+  LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://langfuse-seaweedfs-service:8333
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  LANGFUSE_S3_BATCH_EXPORT_ENABLED: "false"
+  NEXTAUTH_URL: http://localhost:3300

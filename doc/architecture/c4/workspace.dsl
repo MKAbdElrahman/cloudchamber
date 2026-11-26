@@ -13,10 +13,13 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             !adrs decisions
 
             group "Control plane & clients" {
-                adminUI = container "Admin UI" "Optional staff web app (Vue)." "Vue / Vite SPA" "Web Browser"
+                adminUI = container "Admin UI" "Optional staff web app (Vue)." "Vue / Vite SPA" "Web Browser" {
+                    tags "Product"
+                }
             }
             group "Application services" {
                 apiService = container "API service" "Primary HTTP API and domain routes. Starts pipeline workflows. While a job is open, reads the Activity Type the open run has reached and does not store it." "Go" {
+                    tags "Product"
                     auditapp = component "auditapp" "Records account changes for an administrator to review." "Go"
                     userapp = component "userapp" "Creates and manages accounts." "Go"
                     projectapp = component "projectapp" "A person owns many projects. Each file and job belongs to one project." "Go"
@@ -24,46 +27,93 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     uploadapp = component "uploadapp" "Checks the project on an upload, records the file when the upload finishes, and refuses to remove a finished file." "Go"
                 }
                 authAPI = container "Auth service" "JWT issue and validation." "Go" {
+                    tags "Product"
                     authapp = component "authapp" "Issues a sign-in token and checks it." "Go"
                     grpcauthapp = component "grpcauthapp" "Checks a token for another service." "Go"
                     userbus = component "userbus" "The account record used to sign in." "Go"
                 }
-                uploadService = container "Upload service" "Accepts a recording and stores it." "tusd" "Service"
+                uploadService = container "Upload service" "Accepts a recording and stores it." "tusd" "Service" {
+                    tags "Product"
+                }
             }
             group "Pipeline orchestration (Temporal)" {
-                temporalServer = container "Temporal Service" "Frontend, history, matching, and the internal worker service. Dev runs them in one auto-setup process in an isolated Kubernetes namespace. History and visibility are in Temporal PostgreSQL." "Temporal" "Service"
-                temporalUI = container "Temporal UI" "Web interface for workflow visibility and operations." "Temporal UI" "Web Browser"
+                temporalServer = container "Temporal Service" "Frontend, history, matching, and the internal worker service. Dev runs them in one auto-setup process in an isolated Kubernetes namespace. History and visibility are in Temporal PostgreSQL." "Temporal" "Service" {
+                    tags "Product"
+                }
+                temporalUI = container "Temporal UI" "Web interface for workflow visibility and operations." "Temporal UI" "Web Browser" {
+                    tags "Product"
+                }
             }
             group "Pipeline execution" {
-                workflowWorker = container "Workflow worker" "Runs ProcessSourceWorkflow on the workflow task queue. It does not open the database. One worker polls the queue, and a crash waits until that worker polls again." "Go / Temporal worker" "Service"
-                mediaWorker = container "Media worker" "ResolveSource, ExtractAudio, and MarkCanceled on the media task queue. ExtractAudio reads the source object and writes 16 kHz mono 16-bit PCM WAV with ffmpeg. ResolveSource and MarkCanceled stay simulated in dev." "Go / Temporal worker" "Service"
-                framesWorker = container "Frames worker" "Key-frame activities on the frames task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
-                asrWorker = container "ASR worker" "Transcription activities on the ASR task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
-                renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service"
+                workflowWorker = container "Workflow worker" "Runs ProcessSourceWorkflow on the workflow task queue. It does not open the database. One worker polls the queue, and a crash waits until that worker polls again." "Go / Temporal worker" "Service" {
+                    tags "Product"
+                }
+                mediaWorker = container "Media worker" "ResolveSource, ExtractAudio, and MarkCanceled on the media task queue. ExtractAudio reads the source object and writes 16 kHz mono 16-bit PCM WAV with ffmpeg. ResolveSource and MarkCanceled stay simulated in dev." "Go / Temporal worker" "Service" {
+                    tags "Product"
+                }
+                framesWorker = container "Frames worker" "Key-frame activities on the frames task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service" {
+                    tags "Product"
+                }
+                asrWorker = container "ASR worker" "Transcription activities on the ASR task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service" {
+                    tags "Product"
+                }
+                renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service" {
+                    tags "Product"
+                }
             }
             group "LLM gateway" {
-                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps. Dev runs in an isolated Kubernetes namespace. Exports LLM observability to Langfuse via OTel v2 (langfuse_otel), not to Tempo." "LiteLLM Proxy" "Service"
-                litellmPostgres = container "LiteLLM PostgreSQL" "Persistence for the LLM gateway (physical isolation in dev)." "PostgreSQL" "Database"
+                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps. Dev runs in an isolated Kubernetes namespace. Exports LLM observability to Langfuse via OTel v2 (langfuse_otel), not to Tempo." "LiteLLM Proxy" "Service" {
+                    tags "LLM"
+                }
+                litellmPostgres = container "LiteLLM PostgreSQL" "Persistence for the LLM gateway (physical isolation in dev)." "PostgreSQL" "Database" {
+                    tags "LLM"
+                }
             }
             group "LLM observability" {
-                langfuseWeb = container "Langfuse web" "UI and OTLP ingest for LLM generations, sessions, and cost. Dev runs in an isolated Kubernetes namespace." "Langfuse" "Web Browser"
-                langfuseWorker = container "Langfuse worker" "Background ingestion for Langfuse." "Langfuse" "Service"
-                langfusePostgres = container "Langfuse PostgreSQL" "Langfuse transactional data (physical isolation in dev)." "PostgreSQL" "Database"
-                langfuseClickHouse = container "Langfuse ClickHouse" "Langfuse analytics and observation storage." "ClickHouse" "Database"
-                langfuseBlobStore = container "Langfuse blob storage" "S3-compatible media and event objects for Langfuse (dedicated SeaweedFS in dev)." "S3-compatible" "Database"
+                langfuseWeb = container "Langfuse web" "UI and OTLP ingest for LLM generations, sessions, and cost. Dev runs in an isolated Kubernetes namespace." "Langfuse" "Web Browser" {
+                    tags "LLM"
+                }
+                langfuseWorker = container "Langfuse worker" "Background ingestion for Langfuse." "Langfuse" "Service" {
+                    tags "LLM"
+                }
+                langfusePostgres = container "Langfuse PostgreSQL" "Langfuse transactional data (physical isolation in dev)." "PostgreSQL" "Database" {
+                    tags "LLM"
+                }
+                langfuseClickHouse = container "Langfuse ClickHouse" "Langfuse analytics and observation storage." "ClickHouse" "Database" {
+                    tags "LLM"
+                }
+                langfuseBlobStore = container "Langfuse blob storage" "S3-compatible media and event objects for Langfuse (dedicated SeaweedFS in dev)." "S3-compatible" "Database" {
+                    tags "LLM"
+                }
             }
             group "Artifact & data stores" {
-                postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database"
+                postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database" {
+                    tags "Product"
+                }
                 temporalPostgres = container "Temporal PostgreSQL" "Persistence and visibility storage for Temporal (physical isolation in dev)." "PostgreSQL" "Database"
-                artifactStore = container "Artifact storage" "Object bytes for recordings and pipeline outputs. Project membership is the artifact row in PostgreSQL." "S3-compatible" "Database"
+                artifactStore = container "Artifact storage" "Object bytes for recordings and pipeline outputs. Project membership is the artifact row in PostgreSQL." "S3-compatible" "Database" {
+                    tags "Product"
+                }
             }
             group "Observability" {
-                metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go"
-                tempo = container "Tempo" "Distributed trace storage for Go services and pipeline workers (OTLP). Dev runs in an isolated Kubernetes namespace." "Grafana Tempo" "Database"
-                grafana = container "Grafana" "Explores traces, metrics, and logs in dev." "Grafana" "Web Browser"
-                loki = container "Loki" "Log aggregation for dev workloads (scraped via Alloy)." "Grafana Loki" "Database"
-                prometheus = container "Prometheus" "Metrics scrape store; scrapes the API metrics endpoint cross-namespace in dev." "Prometheus" "Database"
-                logCollector = container "Alloy" "Collects pod logs cluster-wide and pushes to Loki." "Grafana Alloy" "Service"
+                metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go" {
+                    tags "Observability"
+                }
+                tempo = container "Tempo" "Distributed trace storage for Go services and pipeline workers (OTLP). Dev runs in an isolated Kubernetes namespace." "Grafana Tempo" "Database" {
+                    tags "Observability"
+                }
+                grafana = container "Grafana" "Explores traces, metrics, and logs in dev." "Grafana" "Web Browser" {
+                    tags "Observability"
+                }
+                loki = container "Loki" "Log aggregation for dev workloads (scraped via Alloy)." "Grafana Loki" "Database" {
+                    tags "Observability"
+                }
+                prometheus = container "Prometheus" "Metrics scrape store; scrapes the API metrics endpoint cross-namespace in dev." "Prometheus" "Database" {
+                    tags "Observability"
+                }
+                logCollector = container "Alloy" "Collects pod logs cluster-wide and pushes to Loki." "Grafana Alloy" "Service" {
+                    tags "Observability"
+                }
             }
         }
 
@@ -82,53 +132,53 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.apiService -> cloudchamber.authAPI "Validates JWTs through" "gRPC"
         cloudchamber.apiService -> cloudchamber.authAPI "Checks the caller through" "HTTPS/JSON"
         cloudchamber.authAPI -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.metricsAPI -> cloudchamber.apiService "Reads expvar from" "HTTP"
-        operator -> cloudchamber.grafana "Explores platform telemetry in" "HTTPS"
-        cloudchamber.grafana -> cloudchamber.tempo "Queries traces in" "HTTP"
-        cloudchamber.grafana -> cloudchamber.prometheus "Queries metrics in" "HTTP"
-        cloudchamber.grafana -> cloudchamber.loki "Queries logs in" "HTTP"
-        cloudchamber.logCollector -> cloudchamber.loki "Pushes pod logs via" "HTTP"
-        cloudchamber.prometheus -> cloudchamber.apiService "Scrapes metrics from" "HTTP"
-        cloudchamber.prometheus -> cloudchamber.metricsAPI "Scrapes expvar path on" "HTTP"
-        cloudchamber.apiService -> cloudchamber.tempo "Exports service traces via" "OTLP/gRPC"
-        cloudchamber.workflowWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
-        cloudchamber.mediaWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
-        cloudchamber.framesWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
-        cloudchamber.asrWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
-        cloudchamber.renderWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
+        cloudchamber.metricsAPI -> cloudchamber.apiService "Reads expvar from" "HTTP" "TelemetryInternal"
+        operator -> cloudchamber.grafana "Explores platform telemetry in" "HTTPS" "OperatorPlatform"
+        cloudchamber.grafana -> cloudchamber.tempo "Queries traces in" "HTTP" "TelemetryInternal"
+        cloudchamber.grafana -> cloudchamber.prometheus "Queries metrics in" "HTTP" "TelemetryInternal"
+        cloudchamber.grafana -> cloudchamber.loki "Queries logs in" "HTTP" "TelemetryInternal"
+        cloudchamber.logCollector -> cloudchamber.loki "Pushes pod logs via" "HTTP" "TelemetryInternal"
+        cloudchamber.prometheus -> cloudchamber.apiService "Scrapes metrics from" "HTTP" "TelemetryInternal"
+        cloudchamber.prometheus -> cloudchamber.metricsAPI "Scrapes expvar path on" "HTTP" "TelemetryInternal"
+        cloudchamber.apiService -> cloudchamber.tempo "Exports service traces via" "OTLP/gRPC" "TelemetryHub"
+        cloudchamber.workflowWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC" "TelemetryExport"
+        cloudchamber.mediaWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC" "TelemetryExport"
+        cloudchamber.framesWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC" "TelemetryExport"
+        cloudchamber.asrWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC" "TelemetryExport"
+        cloudchamber.renderWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC" "TelemetryExport"
         operator -> cloudchamber.temporalUI "Inspects workflows in" "HTTPS"
         cloudchamber.temporalUI -> cloudchamber.temporalServer "Connects to" "gRPC"
-        cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.apiService -> cloudchamber.temporalServer "Starts and cancels workflows, and reads the Activity Type the open run has reached via" "gRPC"
+        cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Reads from and writes to" "SQL/TCP" "PlatformData"
+        cloudchamber.apiService -> cloudchamber.temporalServer "Starts and cancels workflows, and reads the Activity Type the open run has reached via" "gRPC" "WorkflowClient"
         cloudchamber.apiService -> cloudchamber.artifactStore "Signs a short-lived read URL, and deletes an object the caller owns"
         endUser -> cloudchamber.artifactStore "Reads an owned file through a short-lived URL" "S3 API"
         cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording" "S3 API"
         cloudchamber.uploadService -> cloudchamber.apiService "Asks the API to check and record the file" "HTTPS/JSON"
-        cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC"
-        cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC"
-        cloudchamber.mediaWorker -> cloudchamber.postgres "Loads the source file and registers the audio file in its project" "SQL/TCP"
-        cloudchamber.mediaWorker -> cloudchamber.artifactStore "Checks the source object, reads it, and writes the audio object" "S3 API"
-        cloudchamber.framesWorker -> cloudchamber.temporalServer "Polls frames task queue and executes activities via" "gRPC"
-        cloudchamber.framesWorker -> cloudchamber.postgres "Registers a key frame in the source file's project" "SQL/TCP"
-        cloudchamber.framesWorker -> cloudchamber.artifactStore "Writes a key-frame object" "S3 API"
-        cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls ASR task queue and executes activities via" "gRPC"
-        cloudchamber.asrWorker -> cloudchamber.postgres "Registers the transcript in the source file's project" "SQL/TCP"
-        cloudchamber.asrWorker -> cloudchamber.artifactStore "Writes the transcript object" "S3 API"
-        cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls render task queue and executes activities via" "gRPC"
-        cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document in the source file's project" "SQL/TCP"
-        cloudchamber.renderWorker -> cloudchamber.artifactStore "Writes the document object" "S3 API"
-        operator -> cloudchamber.litellmGateway "Operates" "HTTPS"
-        cloudchamber.litellmGateway -> cloudchamber.litellmPostgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.litellmGateway -> cloudchamber.langfuseWeb "Exports LLM spans via" "OTLP/HTTP"
-        cloudchamber.asrWorker -> cloudchamber.litellmGateway "Calls transcription and document models through" "HTTP"
-        cloudchamber.renderWorker -> cloudchamber.litellmGateway "Calls document models through" "HTTP"
-        operator -> cloudchamber.langfuseWeb "Inspects LLM traces in" "HTTPS"
-        cloudchamber.langfuseWeb -> cloudchamber.langfusePostgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.langfuseWorker -> cloudchamber.langfusePostgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.langfuseWeb -> cloudchamber.langfuseClickHouse "Reads from and writes to" "TCP"
-        cloudchamber.langfuseWorker -> cloudchamber.langfuseClickHouse "Reads from and writes to" "TCP"
-        cloudchamber.langfuseWeb -> cloudchamber.langfuseBlobStore "Reads from and writes objects" "S3 API"
-        cloudchamber.langfuseWorker -> cloudchamber.langfuseBlobStore "Reads from and writes objects" "S3 API"
+        cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC" "WorkflowPoll"
+        cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC" "WorkflowPoll"
+        cloudchamber.mediaWorker -> cloudchamber.postgres "Loads the source file and registers the audio file in its project" "SQL/TCP" "PipelineData"
+        cloudchamber.mediaWorker -> cloudchamber.artifactStore "Checks the source object, reads it, and writes the audio object" "S3 API" "PipelineData"
+        cloudchamber.framesWorker -> cloudchamber.temporalServer "Polls frames task queue and executes activities via" "gRPC" "WorkflowPoll"
+        cloudchamber.framesWorker -> cloudchamber.postgres "Registers a key frame in the source file's project" "SQL/TCP" "PipelineData"
+        cloudchamber.framesWorker -> cloudchamber.artifactStore "Writes a key-frame object" "S3 API" "PipelineData"
+        cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls ASR task queue and executes activities via" "gRPC" "WorkflowPoll"
+        cloudchamber.asrWorker -> cloudchamber.postgres "Registers the transcript in the source file's project" "SQL/TCP" "PipelineData"
+        cloudchamber.asrWorker -> cloudchamber.artifactStore "Writes the transcript object" "S3 API" "PipelineData"
+        cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls render task queue and executes activities via" "gRPC" "WorkflowPoll"
+        cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document in the source file's project" "SQL/TCP" "PipelineData"
+        cloudchamber.renderWorker -> cloudchamber.artifactStore "Writes the document object" "S3 API" "PipelineData"
+        operator -> cloudchamber.litellmGateway "Operates" "HTTPS" "OperatorPlatform"
+        cloudchamber.litellmGateway -> cloudchamber.litellmPostgres "Reads from and writes to" "SQL/TCP" "LLMDataPlane"
+        cloudchamber.litellmGateway -> cloudchamber.langfuseWeb "Exports LLM spans via" "OTLP/HTTP" "LLMExport"
+        cloudchamber.asrWorker -> cloudchamber.litellmGateway "Calls transcription and document models through" "HTTP" "LLMCall"
+        cloudchamber.renderWorker -> cloudchamber.litellmGateway "Calls document models through" "HTTP" "LLMCall"
+        operator -> cloudchamber.langfuseWeb "Inspects LLM traces in" "HTTPS" "OperatorPlatform"
+        cloudchamber.langfuseWeb -> cloudchamber.langfusePostgres "Reads from and writes to" "SQL/TCP" "LLMDataPlane"
+        cloudchamber.langfuseWorker -> cloudchamber.langfusePostgres "Reads from and writes to" "SQL/TCP" "LLMDataPlane"
+        cloudchamber.langfuseWeb -> cloudchamber.langfuseClickHouse "Reads from and writes to" "TCP" "LLMDataPlane"
+        cloudchamber.langfuseWorker -> cloudchamber.langfuseClickHouse "Reads from and writes to" "TCP" "LLMDataPlane"
+        cloudchamber.langfuseWeb -> cloudchamber.langfuseBlobStore "Reads from and writes objects" "S3 API" "LLMDataPlane"
+        cloudchamber.langfuseWorker -> cloudchamber.langfuseBlobStore "Reads from and writes objects" "S3 API" "LLMDataPlane"
 
         // C3 — API service (subdomains aligned to current packages)
         endUser -> cloudchamber.apiService.userapp "Uses user APIs on" "HTTPS/JSON"
@@ -161,6 +211,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 }
                 deploymentNode "Kind cluster (cloudchamber-dev)" "The local cluster." "kind.x-k8s.io" "1" {
                     deploymentNode "Namespace cloudchamber-system" "Dev namespace." "Kubernetes namespace" "1" {
+                        tags "DeploymentNsProduct"
                         deploymentNode "Application services" "API, auth, and upload." "Workload group" "1" {
                             deploymentNode "Workload: CloudChamber" "API and metrics." "Deployment" "1" {
                                 containerInstance cloudchamber.apiService
@@ -200,6 +251,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                         }
                     }
                     deploymentNode "Namespace observability-system" "Platform telemetry namespace." "Kubernetes namespace" "1" {
+                        tags "DeploymentNsObservability"
                         deploymentNode "Platform observability" "Traces, metrics, logs." "Workload group" "1" {
                             deploymentNode "Workload: tempo" "Trace store." "Deployment" "1" {
                                 containerInstance cloudchamber.tempo
@@ -219,6 +271,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                         }
                     }
                     deploymentNode "Namespace temporal-system" "Workflow orchestration namespace." "Kubernetes namespace" "1" {
+                        tags "DeploymentNsTemporal"
                         deploymentNode "Pipeline orchestration" "Workflow control." "Workload group" "1" {
                             deploymentNode "Workload: temporal-database" "Workflow data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.temporalPostgres
@@ -232,6 +285,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                         }
                     }
                     deploymentNode "Namespace litellm-system" "LLM gateway namespace." "Kubernetes namespace" "1" {
+                        tags "DeploymentNsLitellm"
                         deploymentNode "LLM gateway" "LiteLLM proxy." "Workload group" "1" {
                             deploymentNode "Workload: litellm-database" "Gateway data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.litellmPostgres
@@ -242,6 +296,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                         }
                     }
                     deploymentNode "Namespace langfuse-system" "LLM observability namespace." "Kubernetes namespace" "1" {
+                        tags "DeploymentNsLangfuse"
                         deploymentNode "LLM observability" "Langfuse stack." "Workload group" "1" {
                             deploymentNode "Workload: langfuse-db" "Langfuse PostgreSQL." "StatefulSet" "1" {
                                 containerInstance cloudchamber.langfusePostgres
@@ -273,6 +328,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
             deploymentNode "Kubernetes / cloud platform" "Where the services run." "Managed platform" "1" {
                 deploymentNode "Namespace cloudchamber-system" "Product workloads and application data plane." "Kubernetes namespace" "1" {
+                    tags "DeploymentNsProduct"
                     deploymentNode "Application tier" "API, auth, upload, and admin." "Workload group" "1" {
                         deploymentNode "admin-ui" "Admin site." "Deployment" "1" {
                             containerInstance cloudchamber.adminUI
@@ -315,6 +371,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     }
                 }
                 deploymentNode "Namespace observability-system" "Platform telemetry." "Kubernetes namespace" "1" {
+                    tags "DeploymentNsObservability"
                     deploymentNode "Platform observability" "Traces, metrics, logs." "Workload group" "1" {
                         deploymentNode "tempo" "Trace store." "Grafana Tempo" "1" {
                             containerInstance cloudchamber.tempo
@@ -334,6 +391,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     }
                 }
                 deploymentNode "Namespace temporal-system" "Workflow orchestration." "Kubernetes namespace" "1" {
+                    tags "DeploymentNsTemporal"
                     deploymentNode "Pipeline orchestration" "Temporal server and UI." "Workload group" "1" {
                         deploymentNode "temporal-persistence" "Workflow data." "PostgreSQL" "1" {
                             containerInstance cloudchamber.temporalPostgres
@@ -347,6 +405,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     }
                 }
                 deploymentNode "Namespace litellm-system" "LLM gateway." "Kubernetes namespace" "1" {
+                    tags "DeploymentNsLitellm"
                     deploymentNode "LLM gateway" "LiteLLM proxy." "Workload group" "1" {
                         deploymentNode "litellm-persistence" "Gateway data." "PostgreSQL" "1" {
                             containerInstance cloudchamber.litellmPostgres
@@ -357,6 +416,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     }
                 }
                 deploymentNode "Namespace langfuse-system" "LLM observability." "Kubernetes namespace" "1" {
+                    tags "DeploymentNsLangfuse"
                     deploymentNode "LLM observability" "Langfuse stack." "Workload group" "1" {
                         deploymentNode "langfuse-db" "Transactional data." "PostgreSQL" "1" {
                             containerInstance cloudchamber.langfusePostgres
@@ -384,13 +444,64 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             title "System Context View: CloudChamber"
             description "People and the CloudChamber software system."
             include operator endUser cloudchamber
+            autoLayout tb
+        }
+
+        container cloudchamber "ContainersProduct" {
+            title "Container View: Product (recordings, API, pipeline)"
+            description "End-user and operator paths through API, auth, upload, artifact storage, Temporal, and pipeline workers. One OTLP export edge stands in for every Go service and worker sending traces to Tempo (see Observability view). Platform database instances behind Temporal are omitted for brevity."
+            include operator endUser
+            include "element.tag==Product"
+            include cloudchamber.tempo
+            exclude cloudchamber.temporalPostgres
+            exclude "relationship.tag==TelemetryExport"
+            exclude "relationship.tag==TelemetryInternal"
+            exclude "relationship.tag==LLMExport"
+            exclude "relationship.tag==LLMDataPlane"
+            exclude "relationship.tag==LLMCall"
+            exclude "relationship.tag==OperatorPlatform"
+            exclude "relationship.tag==PlatformData"
             default
             autoLayout tb
         }
 
-        container cloudchamber "Containers" {
-            title "Container View: CloudChamber"
-            description "Control plane, application services, Temporal orchestration, LLM gateway, Langfuse LLM observability, split-ready pipeline workers, artifact/data stores, and Tempo/Grafana platform telemetry."
+        container cloudchamber "ContainersLLM" {
+            title "Container View: LLM gateway and Langfuse"
+            description "LiteLLM, Langfuse data plane, and pipeline workers that call models. Go worker traces stay on Tempo (Observability view)."
+            include operator
+            include "element.tag==LLM"
+            include cloudchamber.asrWorker cloudchamber.renderWorker
+            exclude "relationship.tag==TelemetryExport"
+            exclude "relationship.tag==TelemetryInternal"
+            exclude "relationship.tag==TelemetryHub"
+            exclude "relationship.tag==WorkflowPoll"
+            exclude "relationship.tag==WorkflowClient"
+            exclude "relationship.tag==PipelineData"
+            exclude "relationship.tag==PlatformData"
+            autoLayout tb
+        }
+
+        container cloudchamber "ContainersObservability" {
+            title "Container View: Platform telemetry"
+            description "Tempo, Grafana, Loki, Prometheus, Alloy, and OTLP/metrics paths from product containers. LLM observability is separate (LLM view)."
+            include operator
+            include "element.tag==Observability"
+            include cloudchamber.apiService
+            include cloudchamber.workflowWorker cloudchamber.mediaWorker cloudchamber.framesWorker cloudchamber.asrWorker cloudchamber.renderWorker
+            exclude "relationship.tag==WorkflowPoll"
+            exclude "relationship.tag==WorkflowClient"
+            exclude "relationship.tag==PipelineData"
+            exclude "relationship.tag==LLMExport"
+            exclude "relationship.tag==LLMDataPlane"
+            exclude "relationship.tag==LLMCall"
+            exclude "relationship.tag==OperatorPlatform"
+            exclude "relationship.tag==PlatformData"
+            autoLayout tb
+        }
+
+        container cloudchamber "ContainersFull" {
+            title "Container View: Full (review)"
+            description "All containers and relationships in the model. Prefer ContainersProduct, ContainersLLM, or ContainersObservability for reading."
             include *
             autoLayout tb
         }
@@ -561,15 +672,85 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         deployment * development "DeploymentDevKind" {
             title "Deployment view: Development"
-            description "The local cluster."
+            description "Local developer machine, browser tier, and Kind cluster with namespace isolation."
             include *
+            autoLayout tb
+        }
+
+        deployment * development "DeploymentDevProduct" {
+            title "Deployment view: Development — cloudchamber-system"
+            description "Product workloads, application data, artifacts, and pipeline workers."
+            include "element.tag==DeploymentNsProduct"
+            autoLayout tb
+        }
+
+        deployment * development "DeploymentDevObservability" {
+            title "Deployment view: Development — observability-system"
+            description "Tempo, Grafana, Loki, Prometheus, and Alloy."
+            include "element.tag==DeploymentNsObservability"
+            autoLayout tb
+        }
+
+        deployment * development "DeploymentDevTemporal" {
+            title "Deployment view: Development — temporal-system"
+            description "Temporal server, UI, and persistence."
+            include "element.tag==DeploymentNsTemporal"
+            autoLayout tb
+        }
+
+        deployment * development "DeploymentDevLitellm" {
+            title "Deployment view: Development — litellm-system"
+            description "LiteLLM gateway and its database."
+            include "element.tag==DeploymentNsLitellm"
+            autoLayout tb
+        }
+
+        deployment * development "DeploymentDevLangfuse" {
+            title "Deployment view: Development — langfuse-system"
+            description "Langfuse web, worker, and data stores."
+            include "element.tag==DeploymentNsLangfuse"
             autoLayout tb
         }
 
         deployment * production "DeploymentProduction" {
             title "Deployment view: Production"
-            description "Production Kubernetes: cloudchamber-system for product workloads, plus isolated namespaces for observability, Temporal, LiteLLM, and Langfuse."
+            description "Ingress, Kubernetes platform, and namespace boundaries matching dev."
             include *
+            autoLayout tb
+        }
+
+        deployment * production "DeploymentProdProduct" {
+            title "Deployment view: Production — cloudchamber-system"
+            description "Product tier, data stores, and pipeline workers."
+            include "element.tag==DeploymentNsProduct"
+            autoLayout tb
+        }
+
+        deployment * production "DeploymentProdObservability" {
+            title "Deployment view: Production — observability-system"
+            description "Platform telemetry stack."
+            include "element.tag==DeploymentNsObservability"
+            autoLayout tb
+        }
+
+        deployment * production "DeploymentProdTemporal" {
+            title "Deployment view: Production — temporal-system"
+            description "Temporal orchestration tier."
+            include "element.tag==DeploymentNsTemporal"
+            autoLayout tb
+        }
+
+        deployment * production "DeploymentProdLitellm" {
+            title "Deployment view: Production — litellm-system"
+            description "LLM gateway tier."
+            include "element.tag==DeploymentNsLitellm"
+            autoLayout tb
+        }
+
+        deployment * production "DeploymentProdLangfuse" {
+            title "Deployment view: Production — langfuse-system"
+            description "LLM observability tier."
+            include "element.tag==DeploymentNsLangfuse"
             autoLayout tb
         }
 

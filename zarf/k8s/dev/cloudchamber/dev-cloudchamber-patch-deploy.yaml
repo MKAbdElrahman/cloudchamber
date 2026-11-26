@@ -30,7 +30,7 @@ spec:
             - name: CLOUDCHAMBER_TEMPORAL_NAMESPACE
               value: default
             - name: CLOUDCHAMBER_TEMPO_HOST
-              value: tempo:4317
+              value: tempo.observability-system.svc.cluster.local:4317
             - name: CLOUDCHAMBER_TEMPO_SERVICE_NAME
               value: cloudchamber
             - name: CLOUDCHAMBER_TEMPO_PROBABILITY

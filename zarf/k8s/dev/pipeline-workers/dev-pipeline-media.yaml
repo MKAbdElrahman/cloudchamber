@@ -23,7 +23,7 @@ spec:
             - name: PIPELINE_TEMPORAL_NAMESPACE
               value: default
             - name: PIPELINE_TEMPO_HOST
-              value: tempo:4317
+              value: tempo.observability-system.svc.cluster.local:4317
             - name: PIPELINE_TEMPO_SERVICE_NAME
               value: pipeline-media
             - name: PIPELINE_TEMPO_PROBABILITY

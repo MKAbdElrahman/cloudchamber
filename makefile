@@ -133,6 +133,7 @@ LANGFUSE_SEAWEEDFS  := chrislusf/seaweedfs:4.53
 KIND_CLUSTER    := cloudchamber-dev
 NAMESPACE       := cloudchamber-system
 TEMPORAL_NAMESPACE := temporal-system
+OBSERVABILITY_NAMESPACE := observability-system
 LANGFUSE_NAMESPACE := langfuse-system
 CLOUDCHAMBER_APP       := cloudchamber
 AUTH_APP        := auth
@@ -347,10 +348,10 @@ dev-load:
 	wait;
 
 dev-apply:
-	kustomize build zarf/k8s/dev/grafana | kubectl apply -f -
-	kustomize build zarf/k8s/dev/prometheus | kubectl apply -f -
 	kustomize build zarf/k8s/dev/tempo | kubectl apply -f -
+	kustomize build zarf/k8s/dev/prometheus | kubectl apply -f -
 	kustomize build zarf/k8s/dev/loki | kubectl apply -f -
+	kustomize build zarf/k8s/dev/grafana | kubectl apply -f -
 	kustomize build zarf/k8s/dev/alloy | kubectl apply -f -
 	kustomize build zarf/k8s/dev/seaweedfs | kubectl apply -f -
 	kustomize build zarf/k8s/dev/tusd | kubectl apply -f -
@@ -451,7 +452,7 @@ dev-describe-database:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
 
 dev-describe-grafana:
-	kubectl describe pod --namespace=$(NAMESPACE) -l app=grafana
+	kubectl describe pod --namespace=$(OBSERVABILITY_NAMESPACE) -l app=grafana
 
 # ------------------------------------------------------------------------------
 
@@ -459,16 +460,16 @@ dev-logs-db:
 	kubectl logs --namespace=$(NAMESPACE) -l app=database --all-containers=true -f --tail=100
 
 dev-logs-grafana:
-	kubectl logs --namespace=$(NAMESPACE) -l app=grafana --all-containers=true -f --tail=100
+	kubectl logs --namespace=$(OBSERVABILITY_NAMESPACE) -l app=grafana --all-containers=true -f --tail=100
 
 dev-logs-tempo:
-	kubectl logs --namespace=$(NAMESPACE) -l app=tempo --all-containers=true -f --tail=100
+	kubectl logs --namespace=$(OBSERVABILITY_NAMESPACE) -l app=tempo --all-containers=true -f --tail=100
 
 dev-logs-loki:
-	kubectl logs --namespace=$(NAMESPACE) -l app=loki --all-containers=true -f --tail=100
+	kubectl logs --namespace=$(OBSERVABILITY_NAMESPACE) -l app=loki --all-containers=true -f --tail=100
 
 dev-logs-alloy:
-	kubectl logs --namespace=$(NAMESPACE) -l app=alloy --all-containers=true -f --tail=100
+	kubectl logs --namespace=$(OBSERVABILITY_NAMESPACE) -l app=alloy --all-containers=true -f --tail=100
 
 dev-logs-litellm:
 	kubectl logs --namespace=$(NAMESPACE) -l app=litellm --all-containers=true -f --tail=100

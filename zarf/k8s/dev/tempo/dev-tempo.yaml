@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: cloudchamber-system
+  name: observability-system
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: tempo-conf
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   tempo.yaml: |
     usage_report:
@@ -63,7 +63,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tempo
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   replicas: 1
   strategy:
@@ -74,7 +74,7 @@ spec:
       app: tempo
   template:
     metadata:
-      namespace: cloudchamber-system
+      namespace: observability-system
       labels:
         app: tempo
     spec:
@@ -112,7 +112,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tempo
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   type: ClusterIP
   selector:

@@ -1,13 +1,8 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: cloudchamber-system
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-conf-datasources
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   sources.yaml: |
     apiVersion: 1
@@ -19,7 +14,7 @@ data:
     datasources:
       - name: Tempo
         type: tempo
-        url: http://tempo.cloudchamber-system.svc:3200
+        url: http://tempo.observability-system.svc:3200
         access: proxy
         isDefault: true
         jsonData:
@@ -42,7 +37,7 @@ data:
         editable: true
       - name: Prometheus
         type: prometheus
-        url: http://prometheus.cloudchamber-system.svc:9090
+        url: http://prometheus.observability-system.svc:9090
         access: proxy
         jsonData:
           httpMethod: POST
@@ -60,7 +55,7 @@ data:
       - name: Loki
         type: loki
         access: proxy
-        url: http://loki.cloudchamber-system.svc:3101
+        url: http://loki.observability-system.svc:3101
         jsonData:
           maxLines: 1000
 ---
@@ -68,7 +63,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-conf-dashboards
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   dashboards.yaml: |
     apiVersion: 1
@@ -86,7 +81,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboards
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   cloudchamber.json: |
     {
@@ -372,7 +367,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: cloudchamber-system
+  namespace: observability-system
   labels:
     app: grafana
 spec:
@@ -385,7 +380,7 @@ spec:
   revisionHistoryLimit: 0
   template:
     metadata:
-      namespace: cloudchamber-system
+      namespace: observability-system
       labels:
         app: grafana
     spec:
@@ -461,7 +456,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana-service
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   type: ClusterIP
   selector:

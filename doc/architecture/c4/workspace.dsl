@@ -59,8 +59,11 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             }
             group "Observability" {
                 metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go"
-                tempo = container "Tempo" "Distributed trace storage for Go services and pipeline workers (OTLP)." "Grafana Tempo" "Database"
+                tempo = container "Tempo" "Distributed trace storage for Go services and pipeline workers (OTLP). Dev runs in an isolated Kubernetes namespace." "Grafana Tempo" "Database"
                 grafana = container "Grafana" "Explores traces, metrics, and logs in dev." "Grafana" "Web Browser"
+                loki = container "Loki" "Log aggregation for dev workloads (scraped via Alloy)." "Grafana Loki" "Database"
+                prometheus = container "Prometheus" "Metrics scrape store; scrapes the API metrics endpoint cross-namespace in dev." "Prometheus" "Database"
+                logCollector = container "Alloy" "Collects pod logs cluster-wide and pushes to Loki." "Grafana Alloy" "Service"
             }
         }
 
@@ -82,6 +85,11 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         cloudchamber.metricsAPI -> cloudchamber.apiService "Reads expvar from" "HTTP"
         operator -> cloudchamber.grafana "Explores platform telemetry in" "HTTPS"
         cloudchamber.grafana -> cloudchamber.tempo "Queries traces in" "HTTP"
+        cloudchamber.grafana -> cloudchamber.prometheus "Queries metrics in" "HTTP"
+        cloudchamber.grafana -> cloudchamber.loki "Queries logs in" "HTTP"
+        cloudchamber.logCollector -> cloudchamber.loki "Pushes pod logs via" "HTTP"
+        cloudchamber.prometheus -> cloudchamber.apiService "Scrapes metrics from" "HTTP"
+        cloudchamber.prometheus -> cloudchamber.metricsAPI "Scrapes expvar path on" "HTTP"
         cloudchamber.apiService -> cloudchamber.tempo "Exports service traces via" "OTLP/gRPC"
         cloudchamber.workflowWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
         cloudchamber.mediaWorker -> cloudchamber.tempo "Exports worker traces via" "OTLP/gRPC"
@@ -198,12 +206,23 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                                 containerInstance cloudchamber.renderWorker
                             }
                         }
-                        deploymentNode "Platform observability" "Distributed traces and dashboards." "Workload group" "1" {
+                    }
+                    deploymentNode "Namespace observability-system" "Platform telemetry namespace." "Kubernetes namespace" "1" {
+                        deploymentNode "Platform observability" "Traces, metrics, logs." "Workload group" "1" {
                             deploymentNode "Workload: tempo" "Trace store." "Deployment" "1" {
                                 containerInstance cloudchamber.tempo
                             }
+                            deploymentNode "Workload: prometheus" "Metrics." "Deployment" "1" {
+                                containerInstance cloudchamber.prometheus
+                            }
+                            deploymentNode "Workload: loki" "Logs." "Deployment" "1" {
+                                containerInstance cloudchamber.loki
+                            }
                             deploymentNode "Workload: grafana" "Telemetry UI." "Deployment" "1" {
                                 containerInstance cloudchamber.grafana
+                            }
+                            deploymentNode "Workload: alloy" "Log collector." "Deployment" "1" {
+                                containerInstance cloudchamber.logCollector
                             }
                         }
                     }

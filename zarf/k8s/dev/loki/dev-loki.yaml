@@ -2,15 +2,10 @@
 # reads the logs from Loki and displays them in the dashboard.
 
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: cloudchamber-system
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: loki-conf
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   loki.yaml: |
     analytics:
@@ -72,7 +67,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: loki
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   replicas: 1
   strategy:
@@ -114,7 +109,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: loki
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   ports:
     - name: "loki"

@@ -3,15 +3,10 @@
 # log access without requiring root privileges or host filesystem mounts.
 
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: cloudchamber-system
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alloy-conf
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   config.alloy: |
     logging {
@@ -112,7 +107,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: alloy
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   selector:
     matchLabels:
@@ -190,7 +185,7 @@ metadata:
   labels:
     app: alloy
   name: alloy
-  namespace: cloudchamber-system
+  namespace: observability-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -201,7 +196,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: alloy
-    namespace: cloudchamber-system
+    namespace: observability-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

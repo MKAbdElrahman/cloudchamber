@@ -1,13 +1,8 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: cloudchamber-system
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-conf
-  namespace: cloudchamber-system
+  namespace: observability-system
 data:
   prometheus.yaml: |
     global:
@@ -27,7 +22,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus-deployment
-  namespace: cloudchamber-system
+  namespace: observability-system
   labels:
     app: prometheus
 spec:
@@ -71,7 +66,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
-  namespace: cloudchamber-system
+  namespace: observability-system
 spec:
   type: ClusterIP
   selector:

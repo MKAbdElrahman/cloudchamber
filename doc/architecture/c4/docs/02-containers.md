@@ -50,11 +50,11 @@ The proxy does not embed the Langfuse SDK. With the `langfuse_otel` callback and
 
 Stores generations, sessions, token usage, and cost for calls that pass through LiteLLM. Langfuse web serves the operator UI and accepts OTLP from LiteLLM in the same cluster. A worker processes events asynchronously. PostgreSQL, ClickHouse, Redis, and S3-compatible blob storage are dedicated to Langfuse and are not shared with application data or pipeline artifacts.
 
-In dev, Langfuse runs in `langfuse-system`, Temporal in `temporal-system`, while LiteLLM and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they keep exporting distributed traces to Tempo only.
+In dev, Langfuse runs in `langfuse-system`, Temporal in `temporal-system`, platform telemetry in `observability-system`, while LiteLLM and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they export distributed traces to Tempo over cluster DNS only.
 
-### Platform observability (Tempo and Grafana)
+### Platform observability (Tempo, Grafana, Loki, Prometheus, Alloy)
 
-Tempo holds distributed traces from the API service and pipeline workers (OTLP). Grafana is the dev UI for traces together with metrics and logs. This path is separate from Langfuse, which is scoped to LLM traffic through LiteLLM.
+Tempo holds distributed traces from the API service and pipeline workers (OTLP). Prometheus scrapes application metrics from `cloudchamber-system`. Alloy collects pod logs cluster-wide into Loki. Grafana is the dev UI for traces, metrics, and logs. In dev the stack runs in `observability-system`, separate from `cloudchamber-system`, `temporal-system`, and `langfuse-system`. This path is separate from Langfuse, which is scoped to LLM traffic through LiteLLM.
 
 ### Artifact storage
 

@@ -26,7 +26,7 @@ Holds durable relational state shared by domains. Schema changes flow through th
 
 ### Temporal orchestration
 
-Temporal Service is the frontend, history, matching, and internal worker service. Dev runs those roles in one auto-setup process. Workflow history and visibility sit in a separate PostgreSQL instance, so a restart of that process keeps the run.
+Temporal Service is the frontend, history, matching, and internal worker service. Dev runs those roles in one auto-setup process. Workflow history and visibility sit in a separate PostgreSQL instance, so a restart of that process keeps the run. In dev, Temporal server, UI, and its PostgreSQL run in the `temporal-system` namespace; the API and pipeline workers in `cloudchamber-system` reach the frontend over cluster DNS.
 
 The API is the Temporal client. It checks the caller, records the job, and starts ProcessSourceWorkflow. That start returns after History records the execution and schedules the first workflow task. The API stores the run id, marks the job running, and returns the job. If the start is not accepted, the API stores failed with a fixed reason and logs the client error. The workflow worker polls that task after it is queued, and that poll may overlap the API response. The API asks the frontend to cancel an execution and does not change the job row. A list reads the job rows and does not ask the frontend. Opening a job whose row is still open reads the Activity Type the open run has reached and does not store it. A row that is already closed is not read from the frontend again. The workers write the file ids and the closed outcome. Those reads are later requests. They are not part of the workflow trace. The job row records the source file's owner and project.
 
@@ -50,7 +50,7 @@ The proxy does not embed the Langfuse SDK. With the `langfuse_otel` callback and
 
 Stores generations, sessions, token usage, and cost for calls that pass through LiteLLM. Langfuse web serves the operator UI and accepts OTLP from LiteLLM in the same cluster. A worker processes events asynchronously. PostgreSQL, ClickHouse, Redis, and S3-compatible blob storage are dedicated to Langfuse and are not shared with application data or pipeline artifacts.
 
-In dev, Langfuse runs in the `langfuse-system` namespace while LiteLLM and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they keep exporting distributed traces to Tempo only.
+In dev, Langfuse runs in `langfuse-system`, Temporal in `temporal-system`, while LiteLLM and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they keep exporting distributed traces to Tempo only.
 
 ### Platform observability (Tempo and Grafana)
 

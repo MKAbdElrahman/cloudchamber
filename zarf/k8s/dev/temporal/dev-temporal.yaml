@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: temporal-server
-  namespace: cloudchamber-system
+  namespace: temporal-system
 spec:
   strategy:
     type: Recreate
@@ -76,7 +76,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: temporal-server-service
-  namespace: cloudchamber-system
+  namespace: temporal-system
 spec:
   type: ClusterIP
   selector:

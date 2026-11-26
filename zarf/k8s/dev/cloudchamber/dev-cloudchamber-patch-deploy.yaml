@@ -26,7 +26,7 @@ spec:
               memory: "100Mi"
           env:
             - name: CLOUDCHAMBER_TEMPORAL_HOST_PORT
-              value: temporal-server-service:7233
+              value: temporal-server-service.temporal-system.svc.cluster.local:7233
             - name: CLOUDCHAMBER_TEMPORAL_NAMESPACE
               value: default
             - name: CLOUDCHAMBER_TEMPO_HOST

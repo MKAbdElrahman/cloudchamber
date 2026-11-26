@@ -31,7 +31,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 uploadService = container "Upload service" "Accepts a recording and stores it." "tusd" "Service"
             }
             group "Pipeline orchestration (Temporal)" {
-                temporalServer = container "Temporal Service" "Frontend, history, matching, and the internal worker service. Dev runs them in one auto-setup process. History and visibility are in Temporal PostgreSQL." "Temporal" "Service"
+                temporalServer = container "Temporal Service" "Frontend, history, matching, and the internal worker service. Dev runs them in one auto-setup process in an isolated Kubernetes namespace. History and visibility are in Temporal PostgreSQL." "Temporal" "Service"
                 temporalUI = container "Temporal UI" "Web interface for workflow visibility and operations." "Temporal UI" "Web Browser"
             }
             group "Pipeline execution" {
@@ -165,14 +165,6 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                                 containerInstance cloudchamber.uploadService
                             }
                         }
-                        deploymentNode "Pipeline orchestration" "Workflow control." "Workload group" "1" {
-                            deploymentNode "Workload: temporal-server" "Workflow server." "Deployment" "1" {
-                                containerInstance cloudchamber.temporalServer
-                            }
-                            deploymentNode "Workload: temporal-ui" "Workflow view." "Deployment" "1" {
-                                containerInstance cloudchamber.temporalUI
-                            }
-                        }
                         deploymentNode "LLM gateway" "LLM proxy." "Workload group" "1" {
                             deploymentNode "Workload: litellm-database" "Gateway data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.litellmPostgres
@@ -184,9 +176,6 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                         deploymentNode "Artifact & data stores" "Databases and files." "Workload group" "1" {
                             deploymentNode "Workload: database" "Application data." "StatefulSet" "1" {
                                 containerInstance cloudchamber.postgres
-                            }
-                            deploymentNode "Workload: temporal-database" "Workflow data." "StatefulSet" "1" {
-                                containerInstance cloudchamber.temporalPostgres
                             }
                             deploymentNode "Workload: seaweedfs" "Files." "Deployment" "1" {
                                 containerInstance cloudchamber.artifactStore
@@ -215,6 +204,19 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                             }
                             deploymentNode "Workload: grafana" "Telemetry UI." "Deployment" "1" {
                                 containerInstance cloudchamber.grafana
+                            }
+                        }
+                    }
+                    deploymentNode "Namespace temporal-system" "Workflow orchestration namespace." "Kubernetes namespace" "1" {
+                        deploymentNode "Pipeline orchestration" "Workflow control." "Workload group" "1" {
+                            deploymentNode "Workload: temporal-database" "Workflow data." "StatefulSet" "1" {
+                                containerInstance cloudchamber.temporalPostgres
+                            }
+                            deploymentNode "Workload: temporal-server" "Workflow server." "Deployment" "1" {
+                                containerInstance cloudchamber.temporalServer
+                            }
+                            deploymentNode "Workload: temporal-ui" "Workflow view." "Deployment" "1" {
+                                containerInstance cloudchamber.temporalUI
                             }
                         }
                     }

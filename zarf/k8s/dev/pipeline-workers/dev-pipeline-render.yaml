@@ -19,7 +19,7 @@ spec:
           image: localhost/cloudchamber/pipeline-render:0.0.1
           env:
             - name: PIPELINE_TEMPORAL_HOST_PORT
-              value: temporal-server-service:7233
+              value: temporal-server-service.temporal-system.svc.cluster.local:7233
             - name: PIPELINE_TEMPORAL_NAMESPACE
               value: default
             - name: PIPELINE_TEMPO_HOST

@@ -132,6 +132,7 @@ LANGFUSE_SEAWEEDFS  := chrislusf/seaweedfs:4.53
 
 KIND_CLUSTER    := cloudchamber-dev
 NAMESPACE       := cloudchamber-system
+TEMPORAL_NAMESPACE := temporal-system
 LANGFUSE_NAMESPACE := langfuse-system
 CLOUDCHAMBER_APP       := cloudchamber
 AUTH_APP        := auth
@@ -358,11 +359,11 @@ dev-apply:
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
 
 	kustomize build zarf/k8s/dev/temporal-db | kubectl apply -f -
-	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/temporal-database
+	kubectl rollout status --namespace=$(TEMPORAL_NAMESPACE) --watch --timeout=120s sts/temporal-database
 
 	kustomize build zarf/k8s/dev/temporal | kubectl apply -f -
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=temporal-server --timeout=180s --for=condition=Ready
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=temporal-ui --timeout=120s --for=condition=Ready
+	kubectl wait pods --namespace=$(TEMPORAL_NAMESPACE) --selector app=temporal-server --timeout=180s --for=condition=Ready
+	kubectl wait pods --namespace=$(TEMPORAL_NAMESPACE) --selector app=temporal-ui --timeout=120s --for=condition=Ready
 
 	kustomize build zarf/k8s/dev/litellm-db | kubectl apply -f -
 	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/litellm-database

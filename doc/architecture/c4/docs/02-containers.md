@@ -1,6 +1,6 @@
 ## Software architecture
 
-Major deployable parts inside the CloudChamber system and how they cooperate. The default container view is the **product** slice (recordings, API, pipeline). Platform stacks have dedicated views so arrows stay readable; the full graph remains available as **ContainersFull** in Structurizr.
+Major deployable parts inside the CloudChamber system and how they cooperate. This page embeds one **container** diagram (product slice) plus **component** and **dynamic** views where the story is behavioural. LLM and platform telemetry have separate Structurizr views (**ContainersLLM**, **ContainersObservability**) so the same worker boxes are not drawn three times in the documentation.
 
 ![](embed:ContainersProduct)
 
@@ -42,8 +42,6 @@ A transient activity error is retried on the same activity, and the job stays ru
 
 ### LiteLLM gateway
 
-![](embed:ContainersLLM)
-
 Routes LLM provider calls for pipeline transcription and document steps. It uses a dedicated PostgreSQL instance, separate from application data and Temporal. In dev, LiteLLM and its database run in `litellm-system`. Operators configure it through an admin UI; pipeline workers in `cloudchamber-system` call it via cluster DNS when real ASR and compose replace the dev stubs.
 
 The proxy does not embed the Langfuse SDK. With the `langfuse_otel` callback and LiteLLM OTel v2, it exports LLM spans to Langfuse over OTLP. Prompt and completion bodies require an explicit capture mode (`span_only` in dev); the OTel v2 default omits them. LLM observability does not go to Tempo.
@@ -55,8 +53,6 @@ Stores generations, sessions, token usage, and cost for calls that pass through 
 In dev, LiteLLM runs in `litellm-system`, Langfuse in `langfuse-system`, Temporal in `temporal-system`, platform telemetry in `observability-system`, while the API and pipeline workers stay in `cloudchamber-system`. Go workers do not send traces to Langfuse; they export distributed traces to Tempo over cluster DNS only.
 
 ### Platform observability (Tempo, Grafana, Loki, Prometheus, Alloy)
-
-![](embed:ContainersObservability)
 
 Tempo holds distributed traces from the API service and pipeline workers (OTLP). Prometheus scrapes application metrics from `cloudchamber-system`. Alloy collects pod logs cluster-wide into Loki. Grafana is the dev UI for traces, metrics, and logs. In dev the stack runs in `observability-system`, separate from `cloudchamber-system`, `temporal-system`, and `langfuse-system`. This path is separate from Langfuse, which is scoped to LLM traffic through LiteLLM.
 

@@ -20,11 +20,10 @@ Canonical examples live in `references/structurizr-java/structurizr-dsl/src/test
 |------|---------|---------|
 | System context | People + system | `include operator endUser cloudchamber` |
 | **ContainersProduct** `default` | Recordings, API, pipeline | `include "element.tag==Product"` + `cloudchamber.tempo`; exclude telemetry/LLM/operator-platform tags |
-| **ContainersLLM** | LiteLLM + Langfuse | `include "element.tag==LLM"` + ASR/render workers; exclude workflow/telemetry |
-| **ContainersObservability** | Tempo stack + exports | `include "element.tag==Observability"` + API + workers; exclude workflow/LLM |
-| **ContainersFull** | Full C2 graph | `include *` (review only) |
+| **ContainersLLM** | LiteLLM + Langfuse | `include "element.tag==LLM"` only (worker→LiteLLM edges live on ContainersProduct) |
+| **ContainersObservability** | Tempo stack + scrape/hub | `include "element.tag==Observability"` + `apiService`; exclude worker OTLP fan-in |
 | Component | C3 inside a container | `include *` + optional `include *?` and explicit neighbours |
-| Deployment (dev/prod) | Per namespace | `tags "DeploymentNsProduct"` (etc.) on namespace `deploymentNode` + `include "element.tag==DeploymentNsProduct"` in a scoped `deployment * development` view |
+| Deployment (dev/prod) | Full tree | `DeploymentDevKind` / `DeploymentProduction` with `include *`. Namespace nodes carry `DeploymentNs*` tags for future filtered views, not duplicate dev/prod diagram keys. |
 
 ### `include *` vs `include *?` (structurizr-core)
 

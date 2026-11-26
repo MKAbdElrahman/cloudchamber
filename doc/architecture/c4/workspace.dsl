@@ -23,7 +23,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                     auditapp = component "auditapp" "Records account changes for an administrator to review." "Go"
                     userapp = component "userapp" "Creates and manages accounts." "Go"
                     projectapp = component "projectapp" "A person owns many projects. Each file and job belongs to one project." "Go"
-                    pipelinejobapp = component "pipelinejobapp" "Starts a run from one file. Stores the run id when the start is accepted. While the job is open, reads the Activity Type the open run has reached and does not store it. The workers store the file ids and the closed outcome." "Go / Temporal client"
+                    pipelinejobapp = component "pipelinejobapp" "Starts and cancels pipeline jobs for a file; stores run id and job row; reads open-run activity type without persisting it." "Go / Temporal client"
                     uploadapp = component "uploadapp" "Checks the project on an upload, records the file when the upload finishes, and refuses to remove a finished file." "Go"
                 }
                 authAPI = container "Auth service" "JWT issue and validation." "Go" {
@@ -467,10 +467,9 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         container cloudchamber "ContainersLLM" {
             title "Container View: LLM gateway and Langfuse"
-            description "LiteLLM, Langfuse data plane, and pipeline workers that call models. Go worker traces stay on Tempo (Observability view)."
+            description "LiteLLM and Langfuse only. ASR and render workers call LiteLLM from the product namespace (ContainersProduct); that edge is omitted here to avoid repeating the worker boxes."
             include operator
             include "element.tag==LLM"
-            include cloudchamber.asrWorker cloudchamber.renderWorker
             exclude "relationship.tag==TelemetryExport"
             exclude "relationship.tag==TelemetryInternal"
             exclude "relationship.tag==TelemetryHub"
@@ -483,11 +482,11 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         container cloudchamber "ContainersObservability" {
             title "Container View: Platform telemetry"
-            description "Tempo, Grafana, Loki, Prometheus, Alloy, and OTLP/metrics paths from product containers. LLM observability is separate (LLM view)."
+            description "Grafana stack and cross-namespace scrape/export hooks from the API service. Worker OTLP fan-in is collapsed to the same single hub edge as ContainersProduct."
             include operator
             include "element.tag==Observability"
             include cloudchamber.apiService
-            include cloudchamber.workflowWorker cloudchamber.mediaWorker cloudchamber.framesWorker cloudchamber.asrWorker cloudchamber.renderWorker
+            exclude "relationship.tag==TelemetryExport"
             exclude "relationship.tag==WorkflowPoll"
             exclude "relationship.tag==WorkflowClient"
             exclude "relationship.tag==PipelineData"
@@ -496,13 +495,6 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             exclude "relationship.tag==LLMCall"
             exclude "relationship.tag==OperatorPlatform"
             exclude "relationship.tag==PlatformData"
-            autoLayout tb
-        }
-
-        container cloudchamber "ContainersFull" {
-            title "Container View: Full (review)"
-            description "All containers and relationships in the model. Prefer ContainersProduct, ContainersLLM, or ContainersObservability for reading."
-            include *
             autoLayout tb
         }
 
@@ -672,85 +664,15 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         deployment * development "DeploymentDevKind" {
             title "Deployment view: Development"
-            description "Local developer machine, browser tier, and Kind cluster with namespace isolation."
+            description "Local developer machine, browser tier, and Kind cluster. Each Kubernetes namespace is a child deployment node under the cluster."
             include *
-            autoLayout tb
-        }
-
-        deployment * development "DeploymentDevProduct" {
-            title "Deployment view: Development — cloudchamber-system"
-            description "Product workloads, application data, artifacts, and pipeline workers."
-            include "element.tag==DeploymentNsProduct"
-            autoLayout tb
-        }
-
-        deployment * development "DeploymentDevObservability" {
-            title "Deployment view: Development — observability-system"
-            description "Tempo, Grafana, Loki, Prometheus, and Alloy."
-            include "element.tag==DeploymentNsObservability"
-            autoLayout tb
-        }
-
-        deployment * development "DeploymentDevTemporal" {
-            title "Deployment view: Development — temporal-system"
-            description "Temporal server, UI, and persistence."
-            include "element.tag==DeploymentNsTemporal"
-            autoLayout tb
-        }
-
-        deployment * development "DeploymentDevLitellm" {
-            title "Deployment view: Development — litellm-system"
-            description "LiteLLM gateway and its database."
-            include "element.tag==DeploymentNsLitellm"
-            autoLayout tb
-        }
-
-        deployment * development "DeploymentDevLangfuse" {
-            title "Deployment view: Development — langfuse-system"
-            description "Langfuse web, worker, and data stores."
-            include "element.tag==DeploymentNsLangfuse"
             autoLayout tb
         }
 
         deployment * production "DeploymentProduction" {
             title "Deployment view: Production"
-            description "Ingress, Kubernetes platform, and namespace boundaries matching dev."
+            description "Ingress, Kubernetes platform, and the same namespace boundaries as dev."
             include *
-            autoLayout tb
-        }
-
-        deployment * production "DeploymentProdProduct" {
-            title "Deployment view: Production — cloudchamber-system"
-            description "Product tier, data stores, and pipeline workers."
-            include "element.tag==DeploymentNsProduct"
-            autoLayout tb
-        }
-
-        deployment * production "DeploymentProdObservability" {
-            title "Deployment view: Production — observability-system"
-            description "Platform telemetry stack."
-            include "element.tag==DeploymentNsObservability"
-            autoLayout tb
-        }
-
-        deployment * production "DeploymentProdTemporal" {
-            title "Deployment view: Production — temporal-system"
-            description "Temporal orchestration tier."
-            include "element.tag==DeploymentNsTemporal"
-            autoLayout tb
-        }
-
-        deployment * production "DeploymentProdLitellm" {
-            title "Deployment view: Production — litellm-system"
-            description "LLM gateway tier."
-            include "element.tag==DeploymentNsLitellm"
-            autoLayout tb
-        }
-
-        deployment * production "DeploymentProdLangfuse" {
-            title "Deployment view: Production — langfuse-system"
-            description "LLM observability tier."
-            include "element.tag==DeploymentNsLangfuse"
             autoLayout tb
         }
 

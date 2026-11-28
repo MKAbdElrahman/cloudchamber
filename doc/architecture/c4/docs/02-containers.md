@@ -26,13 +26,57 @@ Holds durable relational state shared by domains. Schema changes flow through th
 
 ### Temporal orchestration
 
-Temporal Service is the frontend, history, matching, and internal worker service. Dev runs those roles in one auto-setup process. Workflow history and visibility sit in a separate PostgreSQL instance, so a restart of that process keeps the run. In dev, Temporal server, UI, and its PostgreSQL run in the `temporal-system` namespace; the API and pipeline workers in `cloudchamber-system` reach the frontend over cluster DNS.
+Temporal Service is the frontend, history, matching, and internal worker service. Dev runs those roles in one server process, with workflow pause enabled. Workflow history and visibility sit in a separate PostgreSQL instance, so a restart of that process keeps the run. In dev, Temporal server, UI, and its PostgreSQL run in the `temporal-system` namespace; the API and pipeline workers in `cloudchamber-system` reach the frontend over cluster DNS.
 
-The API is the Temporal client. It checks the caller, records the job, and starts ProcessSourceWorkflow. That start returns after History records the execution and schedules the first workflow task. The API stores the run id, marks the job running, and returns the job. If the start is not accepted, the API stores failed with a fixed reason and logs the client error. The workflow worker polls that task after it is queued, and that poll may overlap the API response. The API asks the frontend to cancel an execution and does not change the job row. A list reads the job rows and does not ask the frontend. Opening a job whose row is still open reads the Activity Type the open run has reached and does not store it. A row that is already closed is not read from the frontend again. The workers write the file ids and the closed outcome. Those reads are later requests. They are not part of the workflow trace. The job row records the source file's owner and project.
+### Runs
 
-The workflow worker only polls Temporal. The first workflow task schedules ResolveSource. It then waits. The next activity is queued only after that result is reported, which takes another workflow task. The order is ExtractAudio, Transcribe, ExtractKeyFrames, then ComposeExport. Each writing step stores its object, registers it in the source file's project, and records that file id on the job. ComposeExport then stores completed and clears the failure message and the stopped activity type. One worker polls each task queue. A crash waits until that worker polls again. After a rollout, the new build replays an open run from its history. Media, frames, ASR, and render poll their own task queues. ExtractAudio downloads the source recording and writes 16 kHz mono 16-bit PCM WAV. In dev, ResolveSource, MarkCanceled, and the frames, ASR, and render activities are simulated stand-ins: they check or write objects, and they do not download the source, the audio, or earlier outputs.
+A workflow is a definition of long-running work, and a run is one execution of it that a person asked for. The platform does not know what a workflow does: a run names its workflow, and a workflow is a workflow function, its activities, and the task queues its workers poll. Converting a recording is the `video-to-document` workflow. Adding a workflow adds a package and registers it. It changes no table and no platform code.
 
-A transient activity error is retried on the same activity, and the job stays running. A permanent activity error, or the last of five attempts, is stored by that activity as failed, with its failure message and the stopped activity type, before the activity returns. The workflow returns that error and closes the execution as failed. Outputs already registered stay in the project. A cancel waits for the in-flight activity to close. That activity stores canceled and its own name as the stopped activity type, with no failure message, before it returns. If it had already registered its file, that file id stays. The workflow does not schedule the next activity. A cancel that arrives after a step returns and before the next is scheduled is stored by MarkCanceled on the media queue, using the step already finished. The workflow waits for that write, then returns the cancel. The execution closes as canceled. A task waits until the one worker on that queue polls it.
+There is one set of endpoints for every workflow: create, list, read, the five commands, and the events of a run. A workflow differs in data, not in endpoints. Each workflow describes itself once: its name, its workflow type and task queue, its steps and their labels, a schema for its input, and a check of that input. The service registers its workflows in one place, and three readers use that description. The controller starts the workflow. The API runs the workflow's check before it stores a run, so a request the workflow would fail on is refused and no run is created. A client reads `GET /v1/workflows` to learn what it can start and what to call each step.
+
+A run is declarative, in the way a Kubernetes resource is. Its spec is what the person wants: the input, whether it is suspended, whether it is canceled, and which attempt it should be on. Its status is what the platform last observed: the phase, the attempt, the steps, and the result or the failure. Each part has one writer.
+
+| Part of the run | Writer | How |
+| --- | --- | --- |
+| Spec | API | Creating a run and each command: suspend, resume, cancel, retry, restart |
+| Status | Run controller | After comparing the spec with what Temporal reports |
+| Steps | Workers | An interceptor around every activity |
+| Execution | Temporal | History, retries, timers, pause, cancellation |
+
+The API never calls Temporal for a run. Creating a run stores it in the pending phase. A command edits the spec, guarded by the run's generation, so two commands that conflict cannot both win. A command that does not apply to the run's state is refused.
+
+The run controller runs inside the API service and is the only caller of Temporal for runs. For each run that is not settled, it reads the spec, asks Temporal what is true, takes one action, and records the status. It repeats until the two agree. The decision is one pure function, tested as a table.
+
+The controller is built the way a Kubernetes controller is.
+
+- **It hears of changes, and does not poll for them.** The `runs` table announces every change of a spec and every change of a step's state on a PostgreSQL channel, whichever process made the change. The controller listens. A change a person asked for is looked at at once. A change a worker reported is batched for one second, so reports that arrive together cost one look. How far a step has got is not announced.
+- **A change is a hint, not a fact.** It says which run to look at. The controller then reads the run and asks Temporal, so a change that is lost, repeated, or late does no harm. A resync every thirty seconds queues every unsettled run, and so does a reconnect of the listening connection.
+- **A keyed work queue.** A run queued many times is looked at once, and no run is ever held by two workers. A reconcile that fails is tried again after a wait that doubles with each failure in a row.
+- **One replica leads.** Each API replica runs a controller, and the one holding a PostgreSQL advisory lock does the work. The others take over when it stops. Leading avoids duplicated work. It is not what makes the work safe: every write to a run is guarded by the run's generation, and every action on Temporal can be repeated.
+
+| The spec asks | Temporal reports | The controller |
+| --- | --- | --- |
+| A run exists | No execution | Starts the workflow |
+| Suspend | Running | Pauses the execution, then the running activity |
+| Not suspended | Paused | Unpauses the execution, then the activity |
+| Cancel | Open | Requests cancellation, unpauses a paused execution, and terminates after a grace period |
+| A later attempt, from the failure | Closed | Resets the execution to the step that did not finish |
+| A later attempt, from the start | Closed | Starts the workflow again |
+| Anything | Closed | Records the final phase and the result or the failure |
+
+Suspend stops the running step now. A paused execution schedules no new step, and a paused activity is interrupted on its next heartbeat. The worker's interceptor heartbeats once a second for every step, so a step's context is canceled soon after a suspend or a cancel even when its author wrote no heartbeat. Temporal sends heartbeats at most every 0.8 of the step's heartbeat timeout, so that timeout still bounds how quickly a step stops. A step that records its place in its heartbeat continues from that place when the run resumes. A step whose code ignores its context runs until it returns. Because the interceptor's heartbeat comes from a timer, it keeps arriving when the work has hung, and a worker can turn it off to have a hung step declared dead.
+
+Workers record steps without the workflow author writing anything. An interceptor around every activity records the step as working when an attempt starts and records how it ended: done, failed, canceled, or paused. An activity may say how far it has got, and that overwrites the step in place at most once a second, so a long step adds no rows. A failure that Temporal will retry leaves the step working.
+
+Every command and every change of phase is appended to an event record, with who asked. Nothing reads that record to compute state.
+
+### Converting a recording
+
+The `video-to-document` workflow runs ResolveSource, ExtractAudio, Transcribe, ExtractKeyFrames, then ComposeDocument. Media, ASR, frames, and render each poll their own task queue, and the workflow worker polls the workflow's queue. ResolveSource checks that the recording is a ready file in the run's project, because the run API does not know what a file is. ExtractAudio downloads the source recording and writes 16 kHz mono 16-bit PCM WAV. A recording with no picture has no key-frame step. Each writing step stores its object and registers it as a file in the run's project. The file id is derived from the run and the kind of file, so a step that runs again replaces its own file. The workflow returns the file ids, and they become the run's result. In dev, Transcribe, ExtractKeyFrames, and ComposeDocument are stand-ins that write a small file of the right type.
+
+The `sample` workflow is the second one. It has three steps and no product meaning, and it exists to exercise the run platform end to end. It runs on the workflow worker.
+
+A transient activity error is retried on the same activity, and the step stays working. A permanent activity error, or the last of five attempts, fails the step, and the run fails with that step's message. Outputs already registered stay in the project. A retry continues from the step that failed. A restart runs every step again.
 
 ![](embed:PipelineProcessDynamic)
 
@@ -64,9 +108,9 @@ A project has one owner. Every file belongs to one project, and that project's o
 
 ![](embed:UploadTusHooksDynamic)
 
-A job does not take a project from the client. It copies the owner and the project from the source file. Each output the workers register copies the same pair.
+A run names its project, and the API refuses a project the caller does not own. The workflow checks that the recording is in that project. Each output the workers register goes into the same project.
 
-A person opens a recording. The API checks they own it and returns a short-lived link. The browser plays the recording from storage. Deleting a file removes the stored recording, then the record of it. A project cannot be deleted while it still has files or jobs.
+A person opens a recording. The API checks they own it and returns a short-lived link. The browser plays the recording from storage. Deleting a file removes the stored recording, then the record of it. A project cannot be deleted while it still has files or runs.
 
 ![](embed:WatchArtifactDynamic)
 

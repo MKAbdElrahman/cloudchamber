@@ -8,7 +8,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         operator = person "Operator" "Runs and develops the platform; uses admin tools and APIs."
         endUser = person "End user" "Uses product APIs through clients."
 
-        cloudchamber = softwareSystem "CloudChamber" "Go microservices: main API (CloudChamber), auth, metrics, and PostgreSQL." {
+        cloudchamber = softwareSystem "CloudChamber" "Turns a recording into a document." {
             !docs docs
             !adrs decisions
 
@@ -18,13 +18,14 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 }
             }
             group "Application services" {
-                apiService = container "API service" "Primary HTTP API and domain routes. Starts pipeline workflows. While a job is open, reads the Activity Type the open run has reached and does not store it." "Go" {
+                apiService = container "API service" "HTTP API. Stores runs and drives them." "Go" {
                     tags "Product"
                     auditapp = component "auditapp" "Records account changes for an administrator to review." "Go"
                     userapp = component "userapp" "Creates and manages accounts." "Go"
-                    projectapp = component "projectapp" "A person owns many projects. Each file and job belongs to one project." "Go"
-                    pipelinejobapp = component "pipelinejobapp" "Starts and cancels pipeline jobs for a file; stores run id and job row; reads open-run activity type without persisting it." "Go / Temporal client"
-                    uploadapp = component "uploadapp" "Checks the project on an upload, records the file when the upload finishes, and refuses to remove a finished file." "Go"
+                    projectapp = component "projectapp" "Projects that own files and runs." "Go"
+                    runapp = component "runapp" "Creates runs and takes commands on them." "Go"
+                    runcontrol = component "runcontrol" "Moves each run toward what it is asked to do." "Go / Temporal client"
+                    uploadapp = component "uploadapp" "Checks and records uploaded files." "Go"
                 }
                 authAPI = container "Auth service" "JWT issue and validation." "Go" {
                     tags "Product"
@@ -37,7 +38,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 }
             }
             group "Pipeline orchestration (Temporal)" {
-                temporalServer = container "Temporal Service" "Frontend, history, matching, and the internal worker service. Dev runs them in one auto-setup process in an isolated Kubernetes namespace. History and visibility are in Temporal PostgreSQL." "Temporal" "Service" {
+                temporalServer = container "Temporal Service" "Durable workflow execution." "Temporal" "Service" {
                     tags "Product"
                 }
                 temporalUI = container "Temporal UI" "Web interface for workflow visibility and operations." "Temporal UI" "Web Browser" {
@@ -45,24 +46,24 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 }
             }
             group "Pipeline execution" {
-                workflowWorker = container "Workflow worker" "Runs ProcessSourceWorkflow on the workflow task queue. It does not open the database. One worker polls the queue, and a crash waits until that worker polls again." "Go / Temporal worker" "Service" {
+                workflowWorker = container "Workflow worker" "Runs the workflow code of every workflow." "Go / Temporal worker" "Service" {
                     tags "Product"
                 }
-                mediaWorker = container "Media worker" "ResolveSource, ExtractAudio, and MarkCanceled on the media task queue. ExtractAudio reads the source object and writes 16 kHz mono 16-bit PCM WAV with ffmpeg. ResolveSource and MarkCanceled stay simulated in dev." "Go / Temporal worker" "Service" {
+                mediaWorker = container "Media worker" "Resolves the source and extracts audio." "Go / Temporal worker" "Service" {
                     tags "Product"
                 }
-                framesWorker = container "Frames worker" "Key-frame activities on the frames task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service" {
+                framesWorker = container "Frames worker" "Extracts key frames." "Go / Temporal worker" "Service" {
                     tags "Product"
                 }
-                asrWorker = container "ASR worker" "Transcription activities on the ASR task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service" {
+                asrWorker = container "ASR worker" "Transcribes audio." "Go / Temporal worker" "Service" {
                     tags "Product"
                 }
-                renderWorker = container "Render worker" "Compose and export activities on the render task queue. Dev runs a simulated stand-in." "Go / Temporal worker" "Service" {
+                renderWorker = container "Render worker" "Composes the document." "Go / Temporal worker" "Service" {
                     tags "Product"
                 }
             }
             group "LLM gateway" {
-                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline transcription and document steps. Dev runs in an isolated Kubernetes namespace. Exports LLM observability to Langfuse via OTel v2 (langfuse_otel), not to Tempo." "LiteLLM Proxy" "Service" {
+                litellmGateway = container "LiteLLM gateway" "LLM proxy for pipeline steps." "LiteLLM Proxy" "Service" {
                     tags "LLM"
                 }
                 litellmPostgres = container "LiteLLM PostgreSQL" "Persistence for the LLM gateway (physical isolation in dev)." "PostgreSQL" "Database" {
@@ -70,7 +71,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 }
             }
             group "LLM observability" {
-                langfuseWeb = container "Langfuse web" "UI and OTLP ingest for LLM generations, sessions, and cost. Dev runs in an isolated Kubernetes namespace." "Langfuse" "Web Browser" {
+                langfuseWeb = container "Langfuse web" "LLM traces, sessions, and cost." "Langfuse" "Web Browser" {
                     tags "LLM"
                 }
                 langfuseWorker = container "Langfuse worker" "Background ingestion for Langfuse." "Langfuse" "Service" {
@@ -82,7 +83,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 langfuseClickHouse = container "Langfuse ClickHouse" "Langfuse analytics and observation storage." "ClickHouse" "Database" {
                     tags "LLM"
                 }
-                langfuseBlobStore = container "Langfuse blob storage" "S3-compatible media and event objects for Langfuse (dedicated SeaweedFS in dev)." "S3-compatible" "Database" {
+                langfuseBlobStore = container "Langfuse blob storage" "Objects for Langfuse." "S3-compatible" "Database" {
                     tags "LLM"
                 }
             }
@@ -90,8 +91,8 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 postgres = container "PostgreSQL" "Relational data for domains and migrations." "PostgreSQL" "Database" {
                     tags "Product"
                 }
-                temporalPostgres = container "Temporal PostgreSQL" "Persistence and visibility storage for Temporal (physical isolation in dev)." "PostgreSQL" "Database"
-                artifactStore = container "Artifact storage" "Object bytes for recordings and pipeline outputs. Project membership is the artifact row in PostgreSQL." "S3-compatible" "Database" {
+                temporalPostgres = container "Temporal PostgreSQL" "Temporal history and visibility." "PostgreSQL" "Database"
+                artifactStore = container "Artifact storage" "Recordings and pipeline outputs." "S3-compatible" "Database" {
                     tags "Product"
                 }
             }
@@ -99,7 +100,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 metricsAPI = container "Metrics service" "Metrics scrape and publish sidecar patterns." "Go" {
                     tags "Observability"
                 }
-                tempo = container "Tempo" "Distributed trace storage for Go services and pipeline workers (OTLP). Dev runs in an isolated Kubernetes namespace." "Grafana Tempo" "Database" {
+                tempo = container "Tempo" "Distributed trace storage." "Grafana Tempo" "Database" {
                     tags "Observability"
                 }
                 grafana = container "Grafana" "Explores traces, metrics, and logs in dev." "Grafana" "Web Browser" {
@@ -108,7 +109,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                 loki = container "Loki" "Log aggregation for dev workloads (scraped via Alloy)." "Grafana Loki" "Database" {
                     tags "Observability"
                 }
-                prometheus = container "Prometheus" "Metrics scrape store; scrapes the API metrics endpoint cross-namespace in dev." "Prometheus" "Database" {
+                prometheus = container "Prometheus" "Metrics store." "Prometheus" "Database" {
                     tags "Observability"
                 }
                 logCollector = container "Alloy" "Collects pod logs cluster-wide and pushes to Loki." "Grafana Alloy" "Service" {
@@ -149,23 +150,24 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         operator -> cloudchamber.temporalUI "Inspects workflows in" "HTTPS"
         cloudchamber.temporalUI -> cloudchamber.temporalServer "Connects to" "gRPC"
         cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Reads from and writes to" "SQL/TCP" "PlatformData"
-        cloudchamber.apiService -> cloudchamber.temporalServer "Starts and cancels workflows, and reads the Activity Type the open run has reached via" "gRPC" "WorkflowClient"
+        cloudchamber.apiService -> cloudchamber.temporalServer "Observes and controls run executions via" "gRPC" "WorkflowClient"
         cloudchamber.apiService -> cloudchamber.artifactStore "Signs a short-lived read URL, and deletes an object the caller owns"
         endUser -> cloudchamber.artifactStore "Reads an owned file through a short-lived URL" "S3 API"
         cloudchamber.uploadService -> cloudchamber.artifactStore "Stores the recording" "S3 API"
         cloudchamber.uploadService -> cloudchamber.apiService "Asks the API to check and record the file" "HTTPS/JSON"
         cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls workflow task queue and executes workflows via" "gRPC" "WorkflowPoll"
+        cloudchamber.workflowWorker -> cloudchamber.postgres "Records steps of the sample workflow" "SQL/TCP" "PipelineData"
         cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls media task queue and executes activities via" "gRPC" "WorkflowPoll"
-        cloudchamber.mediaWorker -> cloudchamber.postgres "Loads the source file and registers the audio file in its project" "SQL/TCP" "PipelineData"
+        cloudchamber.mediaWorker -> cloudchamber.postgres "Reads the source file, registers the audio, records steps" "SQL/TCP" "PipelineData"
         cloudchamber.mediaWorker -> cloudchamber.artifactStore "Checks the source object, reads it, and writes the audio object" "S3 API" "PipelineData"
         cloudchamber.framesWorker -> cloudchamber.temporalServer "Polls frames task queue and executes activities via" "gRPC" "WorkflowPoll"
-        cloudchamber.framesWorker -> cloudchamber.postgres "Registers a key frame in the source file's project" "SQL/TCP" "PipelineData"
+        cloudchamber.framesWorker -> cloudchamber.postgres "Registers the key frame, records its step" "SQL/TCP" "PipelineData"
         cloudchamber.framesWorker -> cloudchamber.artifactStore "Writes a key-frame object" "S3 API" "PipelineData"
         cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls ASR task queue and executes activities via" "gRPC" "WorkflowPoll"
-        cloudchamber.asrWorker -> cloudchamber.postgres "Registers the transcript in the source file's project" "SQL/TCP" "PipelineData"
+        cloudchamber.asrWorker -> cloudchamber.postgres "Registers the transcript, records its step" "SQL/TCP" "PipelineData"
         cloudchamber.asrWorker -> cloudchamber.artifactStore "Writes the transcript object" "S3 API" "PipelineData"
         cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls render task queue and executes activities via" "gRPC" "WorkflowPoll"
-        cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document in the source file's project" "SQL/TCP" "PipelineData"
+        cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document, records its step" "SQL/TCP" "PipelineData"
         cloudchamber.renderWorker -> cloudchamber.artifactStore "Writes the document object" "S3 API" "PipelineData"
         operator -> cloudchamber.litellmGateway "Operates" "HTTPS" "OperatorPlatform"
         cloudchamber.litellmGateway -> cloudchamber.litellmPostgres "Reads from and writes to" "SQL/TCP" "LLMDataPlane"
@@ -183,14 +185,15 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
         // C3 — API service (subdomains aligned to current packages)
         endUser -> cloudchamber.apiService.userapp "Uses user APIs on" "HTTPS/JSON"
         endUser -> cloudchamber.apiService.projectapp "Creates and opens projects on" "HTTPS/JSON"
-        endUser -> cloudchamber.apiService.pipelinejobapp "Starts a conversion from a file id on" "HTTPS/JSON"
+        endUser -> cloudchamber.apiService.runapp "Starts and controls runs on" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService.auditapp "Uses audit APIs on" "HTTPS/JSON"
         cloudchamber.adminUI -> cloudchamber.apiService.userapp "Manages users via" "HTTPS/JSON"
         cloudchamber.apiService.auditapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.userapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
         cloudchamber.apiService.projectapp -> cloudchamber.postgres "Reads from and writes to" "SQL/TCP"
-        cloudchamber.apiService.pipelinejobapp -> cloudchamber.postgres "Stores the job in the source file's project, the run id, and a start failure" "SQL/TCP"
-        cloudchamber.apiService.pipelinejobapp -> cloudchamber.temporalServer "Starts and cancels workflows, and reads the Activity Type the open run has reached via" "gRPC"
+        cloudchamber.apiService.runapp -> cloudchamber.postgres "Stores runs and commands" "SQL/TCP"
+        cloudchamber.apiService.runcontrol -> cloudchamber.postgres "Listens for run changes, reads specs, records status" "SQL/TCP"
+        cloudchamber.apiService.runcontrol -> cloudchamber.temporalServer "Observes and controls run executions via" "gRPC"
         cloudchamber.uploadService -> cloudchamber.apiService.uploadapp "Asks the API to check and record the file" "HTTPS/JSON"
         cloudchamber.apiService.uploadapp -> cloudchamber.authAPI.grpcauthapp "Checks the caller" "gRPC"
         cloudchamber.apiService.uploadapp -> cloudchamber.artifactStore "Confirms the uploaded object is stored"
@@ -232,7 +235,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                                 containerInstance cloudchamber.artifactStore
                             }
                         }
-                        deploymentNode "Pipeline workers" "One worker for each step. A crash waits until that worker polls again." "Workload group" "1" {
+                        deploymentNode "Pipeline workers" "One worker per task queue." "Workload group" "1" {
                             deploymentNode "Workload: workflow-worker" "Workflow." "Deployment" "1" {
                                 containerInstance cloudchamber.workflowWorker
                             }
@@ -353,10 +356,10 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
                         }
                     }
                     deploymentNode "Pipeline workers" "One worker per task queue." "Workload group" "1" {
-                        deploymentNode "workflow-worker" "ProcessSourceWorkflow." "Deployment" "1" {
+                        deploymentNode "workflow-worker" "Workflow code of every workflow." "Deployment" "1" {
                             containerInstance cloudchamber.workflowWorker
                         }
-                        deploymentNode "media-worker" "Source, audio, cancel." "Deployment" "1" {
+                        deploymentNode "media-worker" "Source and audio." "Deployment" "1" {
                             containerInstance cloudchamber.mediaWorker
                         }
                         deploymentNode "frames-worker" "Key frames." "Deployment" "1" {
@@ -449,7 +452,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         container cloudchamber "ContainersProduct" {
             title "Container View: Product (recordings, API, pipeline)"
-            description "End-user and operator paths through API, auth, upload, artifact storage, Temporal, and pipeline workers. One OTLP export edge stands in for every Go service and worker sending traces to Tempo (see Observability view). Platform database instances behind Temporal are omitted for brevity."
+            description "The product path: API, auth, upload, storage, Temporal, and pipeline workers. Telemetry and platform databases are in the other views."
             include operator endUser
             include "element.tag==Product"
             include cloudchamber.tempo
@@ -517,114 +520,112 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         dynamic cloudchamber "PipelineProcessDynamic" {
             title "Dynamic View: Convert a recording"
-            description "Successful run of one file, in this order. The API checks the caller, loads the source file, records the job, and starts ProcessSourceWorkflow. History records the execution and schedules the first workflow task, and that start call then returns. The API stores the run id, marks the job running, and returns the job. The workflow worker polls the first workflow task after it is queued. That poll may overlap the API response. That task schedules ResolveSource. Each later activity waits for the previous result and is scheduled by its own workflow task: ExtractAudio on media, Transcribe on ASR, ExtractKeyFrames on frames, ComposeExport on render. ResolveSource loads the source row and checks the object. Each writing step stores its object, registers it in the source file's project, and records that file id on the job. A video records a key frame after the transcript. Audio reports that step with no frame. ComposeExport records the document, then stores completed and clears the failure message and the stopped activity type. The next workflow task commands completion. Listing and opening the job are later requests, not spans in the workflow trace. A list reads the job rows and does not ask the frontend. Opening a job whose row is still open reads the Activity Type the open run has reached and does not store it. A row that is already closed is not read from the frontend again."
+            description "A successful run of one recording. The API stores the run, the controller starts it, the workers run the steps and record them, and the controller records the result."
 
-            endUser -> cloudchamber.apiService "Starts a conversion from one file"
+            endUser -> cloudchamber.apiService "Starts a run of the video-to-document workflow for one file"
             cloudchamber.apiService -> cloudchamber.authAPI "Authenticates the caller" "HTTPS/JSON"
             cloudchamber.apiService -> cloudchamber.authAPI "Authorizes the caller" "HTTPS/JSON"
-            cloudchamber.apiService -> cloudchamber.postgres "Loads the source file"
-            cloudchamber.apiService -> cloudchamber.postgres "Records the job with that file's owner and project"
-            cloudchamber.apiService -> cloudchamber.temporalServer "Starts ProcessSourceWorkflow with the job and file ids"
-            cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the execution and the first workflow task"
-            cloudchamber.apiService -> cloudchamber.postgres "Stores the run id and marks the job running"
-            cloudchamber.apiService -> endUser "Returns the job for the execution just started"
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the first workflow task after it is queued. This poll may overlap the API response"
+            cloudchamber.apiService -> cloudchamber.postgres "Stores the run in the pending phase, with the file id as its input"
+            cloudchamber.apiService -> endUser "Returns the pending run"
 
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Commands scheduling of ResolveSource from that same workflow task"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller finds no execution for the run and starts the workflow"
+            cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the execution and the first workflow task"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the run as running"
+
+            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the first workflow task and commands scheduling of ResolveSource"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls the ResolveSource task"
-            cloudchamber.mediaWorker -> cloudchamber.postgres "Loads the source file"
+            cloudchamber.mediaWorker -> cloudchamber.postgres "Checks the source file is ready and in the run's project"
             cloudchamber.mediaWorker -> cloudchamber.artifactStore "Checks the source object"
+            cloudchamber.mediaWorker -> cloudchamber.postgres "Records the step as done"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Reports the ResolveSource result"
 
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of ExtractAudio"
-            cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls the ExtractAudio task"
+            cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls the ExtractAudio task and heartbeats while it works"
             cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads the source object and writes 16 kHz mono PCM audio"
-            cloudchamber.mediaWorker -> cloudchamber.postgres "Registers the audio file in the source file's project"
-            cloudchamber.mediaWorker -> cloudchamber.postgres "Records the audio file id on the job"
+            cloudchamber.mediaWorker -> cloudchamber.postgres "Overwrites the step with how far it has got, at most once a second"
+            cloudchamber.mediaWorker -> cloudchamber.postgres "Registers the audio file in the run's project and records the step as done"
             cloudchamber.mediaWorker -> cloudchamber.temporalServer "Reports the ExtractAudio result"
 
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of Transcribe"
-            cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls the Transcribe task"
+            cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls the Transcribe task and heartbeats while it works"
             cloudchamber.asrWorker -> cloudchamber.artifactStore "Writes the transcript object"
-            cloudchamber.asrWorker -> cloudchamber.postgres "Registers the transcript in the source file's project"
-            cloudchamber.asrWorker -> cloudchamber.postgres "Records the transcript file id on the job"
+            cloudchamber.asrWorker -> cloudchamber.postgres "Registers the transcript in the run's project and records the step as done"
             cloudchamber.asrWorker -> cloudchamber.temporalServer "Reports the Transcribe result"
 
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of ExtractKeyFrames"
-            cloudchamber.framesWorker -> cloudchamber.temporalServer "Polls the ExtractKeyFrames task"
-            cloudchamber.framesWorker -> cloudchamber.artifactStore "For a video, writes a key frame"
-            cloudchamber.framesWorker -> cloudchamber.postgres "For a video, registers that frame in the source file's project"
-            cloudchamber.framesWorker -> cloudchamber.postgres "For a video, records that frame id on the job"
+            cloudchamber.workflowWorker -> cloudchamber.temporalServer "For a video, polls the next workflow task and commands scheduling of ExtractKeyFrames"
+            cloudchamber.framesWorker -> cloudchamber.temporalServer "Polls the ExtractKeyFrames task and heartbeats while it works"
+            cloudchamber.framesWorker -> cloudchamber.artifactStore "Writes a key frame"
+            cloudchamber.framesWorker -> cloudchamber.postgres "Registers that frame in the run's project and records the step as done"
             cloudchamber.framesWorker -> cloudchamber.temporalServer "Reports the ExtractKeyFrames result"
 
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of ComposeExport"
-            cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls the ComposeExport task"
+            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of ComposeDocument"
+            cloudchamber.renderWorker -> cloudchamber.temporalServer "Polls the ComposeDocument task and heartbeats while it works"
             cloudchamber.renderWorker -> cloudchamber.artifactStore "Writes the document object"
-            cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document in the source file's project"
-            cloudchamber.renderWorker -> cloudchamber.postgres "Records the document file id on the job"
-            cloudchamber.renderWorker -> cloudchamber.postgres "Stores completed and clears the failure message and the stopped activity type"
-            cloudchamber.renderWorker -> cloudchamber.temporalServer "Reports the ComposeExport result"
+            cloudchamber.renderWorker -> cloudchamber.postgres "Registers the document in the run's project and records the step as done"
+            cloudchamber.renderWorker -> cloudchamber.temporalServer "Reports the ComposeDocument result"
 
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands completion of the workflow"
+            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and completes the workflow with the file ids"
             cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the completed workflow"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller sees the execution has completed and reads its result"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the run as succeeded with the file ids"
 
-            endUser -> cloudchamber.apiService "Lists jobs in the project"
-            cloudchamber.apiService -> cloudchamber.postgres "Reads the job rows"
-
-            endUser -> cloudchamber.apiService "Opens the job while it is still running"
-            cloudchamber.apiService -> cloudchamber.temporalServer "Reads the Activity Type the open run has reached and does not store it"
+            endUser -> cloudchamber.apiService "Reads the run while it is moving, once a second"
+            cloudchamber.apiService -> cloudchamber.postgres "Reads the run. It does not ask Temporal"
 
             autoLayout tb
         }
 
         dynamic cloudchamber "PipelineFailureDynamic" {
-            title "Dynamic View: A conversion fails"
-            description "A transient activity error is retried on the same activity, and the job stays running. A permanent activity error, or the last of five attempts, is stored by that activity before it returns. This run hits a permanent Transcribe failure after audio was stored. Transcribe stores failed, its failure message, and the stopped activity type. The workflow returns that error and closes as failed. The audio stays registered. Opening the job reads that row and does not ask the frontend."
+            title "Dynamic View: A conversion fails, and is retried"
+            description "A step fails for good, so the run fails. A retry continues from that step, and the steps before it do not run again."
 
-            endUser -> cloudchamber.apiService "Starts a conversion from one file"
-            cloudchamber.apiService -> cloudchamber.postgres "Loads the source file"
-            cloudchamber.apiService -> cloudchamber.postgres "Records the job with that file's owner and project"
-            cloudchamber.apiService -> cloudchamber.temporalServer "Starts ProcessSourceWorkflow with the job and file ids"
-            cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the execution and the first workflow task"
-
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the workflow task and commands scheduling of ExtractAudio"
-            cloudchamber.mediaWorker -> cloudchamber.temporalServer "Polls the ExtractAudio task"
-            cloudchamber.mediaWorker -> cloudchamber.artifactStore "Reads the source object and writes 16 kHz mono PCM audio"
-            cloudchamber.mediaWorker -> cloudchamber.postgres "Registers the audio file in the source file's project"
-            cloudchamber.mediaWorker -> cloudchamber.postgres "Records the audio file id on the job"
-            cloudchamber.mediaWorker -> cloudchamber.temporalServer "Reports the ExtractAudio result"
-
-            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and commands scheduling of Transcribe"
+            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the workflow task and commands scheduling of Transcribe"
             cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls the Transcribe task"
-            cloudchamber.asrWorker -> cloudchamber.postgres "Stores failed, the failure message, and the stopped activity type"
+            cloudchamber.asrWorker -> cloudchamber.postgres "Records the step as failed, with the message"
             cloudchamber.asrWorker -> cloudchamber.temporalServer "Reports the permanent Transcribe failure. That activity is not retried"
-
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls the next workflow task and returns that error"
             cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the failed workflow. The registered audio stays"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller sees the execution has failed and reads the failure"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the run as failed with the step's message"
 
-            endUser -> cloudchamber.apiService "Opens the job"
-            cloudchamber.apiService -> cloudchamber.postgres "Reads the failed job. The row already holds the outcome"
+            endUser -> cloudchamber.apiService "Retries the run"
+            cloudchamber.apiService -> cloudchamber.postgres "Raises the attempt the run is asked for by one, to continue from the failure"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller resets the execution to the workflow task that scheduled Transcribe"
+            cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Starts a new execution that keeps the history before that task"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the new attempt as running"
+            cloudchamber.workflowWorker -> cloudchamber.temporalServer "Replays the kept history and commands scheduling of Transcribe again"
+            cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls the Transcribe task. ResolveSource and ExtractAudio do not run again"
 
             autoLayout tb
         }
 
         dynamic cloudchamber "PipelineCancelDynamic" {
-            title "Dynamic View: Cancel a conversion"
-            description "Cancel arrives while Transcribe is in flight, after audio was stored. The API requests cancellation and does not change the job row. The workflow waits for Transcribe to close. Transcribe stops. If it had already registered the transcript, that file id stays on the job. It stores canceled and its own name as the stopped activity type, with no failure message, then returns the cancel. The workflow does not schedule ExtractKeyFrames. The execution closes as canceled. A cancel that arrives after a step returns and before the next is scheduled is stored by MarkCanceled on the media queue, using the step already finished, and the workflow waits for that write before it returns the same cancel. Opening the job reads the row and does not ask the frontend."
+            title "Dynamic View: Suspend, resume, and cancel a conversion"
+            description "Suspend stops the running step now, and resume continues it from where it stopped. Cancel stops the run for good."
 
-            endUser -> cloudchamber.apiService "Cancels the job"
-            cloudchamber.apiService -> cloudchamber.temporalServer "Requests cancellation of the execution"
+            endUser -> cloudchamber.apiService "Suspends the run"
+            cloudchamber.apiService -> cloudchamber.postgres "Records that the run is asked to suspend"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller pauses the execution, then the running Transcribe activity"
+            cloudchamber.asrWorker -> cloudchamber.temporalServer "Heartbeats and learns of the pause"
+            cloudchamber.asrWorker -> cloudchamber.postgres "Records the step as paused, with how far it had got"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the run as paused"
+
+            endUser -> cloudchamber.apiService "Resumes the run"
+            cloudchamber.apiService -> cloudchamber.postgres "Records that the run is no longer asked to suspend"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller unpauses the execution, then the activity"
+            cloudchamber.asrWorker -> cloudchamber.temporalServer "Polls Transcribe again and continues from its last heartbeat"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the run as running"
+
+            endUser -> cloudchamber.apiService "Cancels the run"
+            cloudchamber.apiService -> cloudchamber.postgres "Records that the run is asked to cancel"
+            cloudchamber.apiService -> cloudchamber.temporalServer "The run controller requests cancellation of the execution"
             cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the cancellation request and a workflow task"
-
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Polls that task and requests cancellation of Transcribe, then waits for it to close"
             cloudchamber.asrWorker -> cloudchamber.temporalServer "Heartbeats and learns the cancel"
-            cloudchamber.asrWorker -> cloudchamber.postgres "Stores canceled and the stopped activity type. The transcript is recorded only if it was already registered"
-            cloudchamber.asrWorker -> cloudchamber.temporalServer "Returns the cancel after that write"
+            cloudchamber.asrWorker -> cloudchamber.postgres "Records the step as canceled"
             cloudchamber.workflowWorker -> cloudchamber.temporalServer "Returns a canceled error after Transcribe closes. ExtractKeyFrames is not scheduled"
             cloudchamber.temporalServer -> cloudchamber.temporalPostgres "Records the canceled workflow"
-
-            endUser -> cloudchamber.apiService "Opens the job"
-            cloudchamber.apiService -> cloudchamber.postgres "Reads the canceled job. The row already holds the outcome"
+            cloudchamber.apiService -> cloudchamber.postgres "The run controller records the run as canceled"
 
             autoLayout tb
         }
@@ -644,7 +645,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
 
         component cloudchamber.apiService "APIServiceC3" {
             title "Component View: API service"
-            description "Projects, accounts, jobs, and the upload check inside the API."
+            description "Projects, accounts, runs and the controller that drives them, and the upload check inside the API."
             include *
             include *?
             include cloudchamber.temporalServer

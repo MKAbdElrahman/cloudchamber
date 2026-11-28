@@ -6,6 +6,9 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/extensions/auditotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/stores/auditdb"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/extensions/runotel"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/stores/rundb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/extensions/useraudit"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/extensions/userotel"
@@ -21,6 +24,7 @@ type BusDomain struct {
 	Delegate *delegate.Delegate
 	Audit    auditbus.ExtBusiness
 	User     userbus.ExtBusiness
+	Run      runbus.ExtBusiness
 }
 
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
@@ -35,9 +39,14 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	userStorage := usercache.NewStore(log, userdb.NewStore(log, db), time.Hour)
 	userBus := userbus.NewBusiness(log, delegate, userStorage, userOtelExt, userAuditExt)
 
+	runOtelExt := runotel.NewExtension()
+	runStorage := rundb.NewStore(log, db)
+	runBus := runbus.NewBusiness(log, runStorage, runOtelExt)
+
 	return BusDomain{
 		Delegate: delegate,
 		Audit:    auditBus,
 		User:     userBus,
+		Run:      runBus,
 	}
 }

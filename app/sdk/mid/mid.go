@@ -6,8 +6,8 @@ import (
 	"errors"
 
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/auth"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
@@ -30,8 +30,8 @@ const (
 	claimKey ctxKey = iota + 1
 	userIDKey
 	userKey
-	pipelineJobKey
 	projectKey
+	runKey
 )
 
 func setClaims(ctx context.Context, claims auth.Claims) context.Context {
@@ -87,20 +87,6 @@ func GetUser(ctx context.Context) (userbus.User, error) {
 	return v, nil
 }
 
-func setPipelineJob(ctx context.Context, job pipelinejobbus.Job) context.Context {
-	return context.WithValue(ctx, pipelineJobKey, job)
-}
-
-// GetPipelineJob returns the pipeline job from the context.
-func GetPipelineJob(ctx context.Context) (pipelinejobbus.Job, error) {
-	v, ok := ctx.Value(pipelineJobKey).(pipelinejobbus.Job)
-	if !ok {
-		return pipelinejobbus.Job{}, errors.New("pipeline job not found in context")
-	}
-
-	return v, nil
-}
-
 func setProject(ctx context.Context, prj projectbus.Project) context.Context {
 	return context.WithValue(ctx, projectKey, prj)
 }
@@ -110,6 +96,20 @@ func GetProject(ctx context.Context) (projectbus.Project, error) {
 	v, ok := ctx.Value(projectKey).(projectbus.Project)
 	if !ok {
 		return projectbus.Project{}, errors.New("project not found in context")
+	}
+
+	return v, nil
+}
+
+func setRun(ctx context.Context, run runbus.Run) context.Context {
+	return context.WithValue(ctx, runKey, run)
+}
+
+// GetRun returns the run from the context.
+func GetRun(ctx context.Context) (runbus.Run, error) {
+	v, ok := ctx.Value(runKey).(runbus.Run)
+	if !ok {
+		return runbus.Run{}, errors.New("run not found in context")
 	}
 
 	return v, nil

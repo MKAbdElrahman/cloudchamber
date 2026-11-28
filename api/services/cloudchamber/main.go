@@ -14,25 +14,29 @@ import (
 	"time"
 
 	"github.com/MKAbdElrahman/cloudchamber/api/services/cloudchamber/build"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/sampleworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient/grpc"
 	http2 "github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient/http"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/debug"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
+	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runcontrol"
 	apptemporal "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
+	"github.com/MKAbdElrahman/cloudchamber/app/sdk/workflows"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/extensions/artifactotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/stores/artifactdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/extensions/auditotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus/stores/auditdb"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/extensions/pipelinejobotel"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/stores/pipelinejobpg"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/extensions/projectotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus/stores/projectdb"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/extensions/runotel"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/stores/rundb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus/stores/uploaddb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
@@ -41,7 +45,6 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/usercache"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/userdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/delegate"
-	"github.com/MKAbdElrahman/cloudchamber/business/sdk/messagedb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
@@ -189,11 +192,6 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	defer db.Close()
 
-	hubCtx, stopHub := context.WithCancel(ctx)
-	defer stopHub()
-	messageHub := messagedb.NewHub(log, db)
-	messageHub.Start(hubCtx)
-
 	// -------------------------------------------------------------------------
 	// Create Business Packages
 
@@ -212,9 +210,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	projectStorage := projectdb.NewStore(log, db)
 	projectBus := projectbus.NewBusiness(projectStorage, projectOtelExt)
 
-	pipelineJobOtelExt := pipelinejobotel.NewExtension()
-	pipelineJobStorage := pipelinejobpg.NewStore(log, db)
-	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelineJobStorage, pipelineJobOtelExt)
+	runOtelExt := runotel.NewExtension()
+	runStorage := rundb.NewStore(log, db)
+	runBus := runbus.NewBusiness(log, runStorage, runOtelExt)
 
 	uploadStorage := uploaddb.NewStore(log, db)
 	uploadBus := uploadbus.NewBusiness(log, uploadStorage)
@@ -320,24 +318,60 @@ func run(ctx context.Context, log *logger.Logger) error {
 	artifactStorage := artifactdb.NewStore(log, db)
 	artifactBus := artifactbus.NewBusiness(log, artifactStorage, objectStore, artifactOtelExt)
 
+	// -------------------------------------------------------------------------
+	// Start the run controller
+
+	// The controller is the only writer of a run's status. It reads each
+	// run's spec, asks Temporal what is true, and acts on the difference.
+	// Every workflow this service can start is listed here, once. The
+	// controller, the run API and the client all read it from this registry.
+	registry := workflows.NewRegistry(
+		sampleworkflow.Definition(),
+		videoworkflow.Definition(artifactBus),
+	)
+	runController := runcontrol.New(runcontrol.Config{
+		Log:    log,
+		Runs:   runBus,
+		Engine: runcontrol.NewTemporal(temporalClient, cfg.Temporal.Namespace, registry.Definitions()),
+	})
+
+	controllerCtx, stopController := context.WithCancel(ctx)
+	defer stopController()
+	// One API replica leads and reconciles. The others wait to take over.
+	go rundb.Lead(controllerCtx, log, db, runController.Run)
+
+	// The database announces every change of a run's spec and of a step's
+	// state, whichever process made it. A change a person asked for is looked
+	// at now, and a change a worker reported is batched.
+	go rundb.Watch(controllerCtx, log, db,
+		func(change rundb.Change) {
+			if change.Spec {
+				runController.Nudge(change.RunID)
+				return
+			}
+			runController.NudgeBatched(change.RunID)
+		},
+		func() { runController.Resync(controllerCtx) },
+	)
+
 	cfgMux := mux.Config{
 		Build:  tag,
 		Log:    log,
 		DB:     db,
 		Tracer: tracer,
 		BusConfig: mux.BusConfig{
-			AuditBus:       auditBus,
-			UserBus:        userBus,
-			ProjectBus:     projectBus,
-			PipelineJobBus: pipelineJobBus,
-			UploadBus:      uploadBus,
-			ArtifactBus:    artifactBus,
+			AuditBus:    auditBus,
+			UserBus:     userBus,
+			ProjectBus:  projectBus,
+			RunBus:      runBus,
+			UploadBus:   uploadBus,
+			ArtifactBus: artifactBus,
 		},
 		CloudChamberConfig: mux.CloudChamberConfig{
-			AuthClient:     authClient,
-			TemporalClient: temporalClient,
-			ObjectStore:    objectStore,
-			MessageHub:     messageHub,
+			AuthClient:  authClient,
+			ObjectStore: objectStore,
+			Workflows:   registry,
+			NudgeRun:    runController.Nudge,
 		},
 	}
 

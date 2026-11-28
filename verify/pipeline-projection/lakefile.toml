@@ -1,6 +1,0 @@
-name = "pipeline-projection"
-version = "0.1.0"
-defaultTargets = ["Pipeline"]
-
-[[lean_lib]]
-name = "Pipeline"

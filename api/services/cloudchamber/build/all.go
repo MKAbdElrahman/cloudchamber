@@ -5,8 +5,8 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/artifactapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/auditapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/checkapp"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelinejobapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/projectapp"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/runapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/uploadapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/domain/userapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mux"
@@ -48,13 +48,12 @@ func (all) Add(app *web.App, cfg mux.Config) {
 		AuthClient: cfg.CloudChamberConfig.AuthClient,
 	})
 
-	pipelinejobapp.Routes(app, pipelinejobapp.Config{
-		Log:            cfg.Log,
-		PipelineJobBus: cfg.BusConfig.PipelineJobBus,
-		ArtifactBus:    cfg.BusConfig.ArtifactBus,
-		AuthClient:     cfg.CloudChamberConfig.AuthClient,
-		TemporalClient: cfg.CloudChamberConfig.TemporalClient,
-		Hub:            cfg.CloudChamberConfig.MessageHub,
+	runapp.Routes(app, runapp.Config{
+		Log:        cfg.Log,
+		Runs:       cfg.BusConfig.RunBus,
+		AuthClient: cfg.CloudChamberConfig.AuthClient,
+		Workflows:  cfg.CloudChamberConfig.Workflows,
+		Nudge:      cfg.CloudChamberConfig.NudgeRun,
 	})
 
 	artifactapp.Routes(app, artifactapp.Config{

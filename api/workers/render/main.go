@@ -8,21 +8,19 @@ import (
 	"runtime"
 
 	"github.com/ardanlabs/conf/v3"
-	"go.temporal.io/sdk/activity"
 	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/activities/sim"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
-	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/sdk/pipelineworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runworker"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/extensions/artifactotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/stores/artifactdb"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/extensions/pipelinejobotel"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/stores/pipelinejobpg"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/stores/rundb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
@@ -171,11 +169,10 @@ func run(ctx context.Context, log *logger.Logger) error {
 	artifactStorage := artifactdb.NewStore(log, db)
 	artifactBus := artifactbus.NewBusiness(log, artifactStorage, objects, artifactOtelExt)
 
-	pipelineJobOtelExt := pipelinejobotel.NewExtension()
-	pipelineJobStorage := pipelinejobpg.NewStore(log, db)
-	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelineJobStorage, pipelineJobOtelExt)
+	// The worker is handed only the step reporter, so it cannot write a run's spec or status.
+	var steps runbus.StepReporter = runbus.NewBusiness(log, rundb.NewStore(log, db))
 
-	acts := sim.New(artifactBus, pipelineJobBus, objects, tracer)
+	acts := videoworkflow.NewActivities(artifactBus, objects, tracer, "")
 
 	tracingInterceptor, err := temporalotel.NewTracingInterceptor(temporalotel.TracerOptions{
 		Tracer: tracer,
@@ -196,10 +193,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	// The client copies interceptors that implement WorkerInterceptor onto the
 	// worker. Passing the tracing interceptor here as well records every span twice.
-	w := worker.New(c, pipelinewf.TaskQueueRender, worker.Options{})
-	w.RegisterActivityWithOptions(acts.ComposeExport, activity.RegisterOptions{Name: pipelinewf.ActivityComposeExport})
+	w := worker.New(c, videoworkflow.QueueRender, worker.Options{
+		Interceptors: []interceptor.WorkerInterceptor{runworker.NewStepInterceptor(log, steps)},
+	})
+	videoworkflow.RegisterRender(w, acts)
 
-	log.Info(ctx, "startup", "status", "worker started", "taskQueue", pipelinewf.TaskQueueRender, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
+	log.Info(ctx, "startup", "status", "worker started", "taskQueue", videoworkflow.QueueRender, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
 
 	if err := w.Run(worker.InterruptCh()); err != nil {
 		return fmt.Errorf("worker run: %w", err)

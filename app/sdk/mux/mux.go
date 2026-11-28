@@ -10,18 +10,18 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/mid"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
+	"github.com/MKAbdElrahman/cloudchamber/app/sdk/workflows"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/auditbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/uploadbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/sdk/messagedb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"go.opentelemetry.io/otel/trace"
-	"go.temporal.io/sdk/client"
 )
 
 // StaticSite represents a static site to run.
@@ -59,10 +59,12 @@ func WithFileServer(react bool, static embed.FS, dir string, path string) func(o
 
 // CloudChamberConfig contains cloudchamber service specific config.
 type CloudChamberConfig struct {
-	AuthClient     authclient.Authenticator
-	TemporalClient client.Client
-	ObjectStore    *objectstore.Client
-	MessageHub     *messagedb.Hub
+	AuthClient  authclient.Authenticator
+	ObjectStore *objectstore.Client
+	// Workflows are the workflows a caller may start a run of.
+	Workflows *workflows.Registry
+	// NudgeRun tells the run controller a run changed.
+	NudgeRun func(runID uuid.UUID)
 }
 
 // AuthConfig contains auth service specific config.
@@ -77,12 +79,12 @@ type AuthConfig struct {
 }
 
 type BusConfig struct {
-	AuditBus       auditbus.ExtBusiness
-	UserBus        userbus.ExtBusiness
-	ProjectBus     projectbus.ExtBusiness
-	PipelineJobBus pipelinejobbus.ExtBusiness
-	UploadBus      uploadbus.ExtBusiness
-	ArtifactBus    artifactbus.ExtBusiness
+	AuditBus    auditbus.ExtBusiness
+	UserBus     userbus.ExtBusiness
+	ProjectBus  projectbus.ExtBusiness
+	RunBus      runbus.ExtBusiness
+	UploadBus   uploadbus.ExtBusiness
+	ArtifactBus artifactbus.ExtBusiness
 }
 
 // Config contains all the mandatory systems required by handlers.

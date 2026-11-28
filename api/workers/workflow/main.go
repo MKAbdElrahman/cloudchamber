@@ -8,18 +8,16 @@ import (
 	"runtime"
 
 	"github.com/ardanlabs/conf/v3"
-	"go.temporal.io/sdk/activity"
 	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/activities/sim"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/pipelineapp/runclose"
-	pipelinewf "github.com/MKAbdElrahman/cloudchamber/app/sdk/pipelineworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/sampleworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runworker"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/extensions/pipelinejobotel"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus/stores/pipelinejobpg"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/stores/rundb"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
@@ -157,20 +155,24 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	defer c.Close()
 
-	pipelineJobBus := pipelinejobbus.NewBusiness(log, pipelinejobpg.NewStore(log, db), pipelinejobotel.NewExtension())
-	acts := sim.New(nil, pipelineJobBus, nil, tracer)
+	// The workflow worker runs the workflow code of the video workflow. Workflow
+	// code has no steps of its own to report, so that worker has no step interceptor.
+	w := worker.New(c, videoworkflow.QueueWorkflow, worker.Options{})
+	videoworkflow.RegisterWorkflow(w)
 
-	// The client copies interceptors that implement WorkerInterceptor onto the
-	// worker. Passing the tracing interceptor here as well records every span twice.
-	w := worker.New(c, pipelinewf.TaskQueueWorkflow, worker.Options{})
-	w.RegisterWorkflow(pipelinewf.ProcessSourceWorkflow)
-	w.RegisterActivityWithOptions(acts.RecordRun, activity.RegisterOptions{Name: pipelinewf.ActivityRecordRun})
+	// The sample workflow keeps its workflow code and its activities on one queue.
+	// The worker is handed only the step reporter, so it cannot write a run's spec or status.
+	var steps runbus.StepReporter = runbus.NewBusiness(log, rundb.NewStore(log, db))
+	sample := worker.New(c, sampleworkflow.TaskQueue, worker.Options{
+		Interceptors: []interceptor.WorkerInterceptor{runworker.NewStepInterceptor(log, steps)},
+	})
+	sampleworkflow.Register(sample)
+	if err := sample.Start(); err != nil {
+		return fmt.Errorf("sample worker start: %w", err)
+	}
+	defer sample.Stop()
 
-	sweepCtx, stopSweep := context.WithCancel(context.Background())
-	defer stopSweep()
-	go runclose.Run(sweepCtx, log, c, pipelineJobBus)
-
-	log.Info(ctx, "startup", "status", "worker started", "taskQueue", pipelinewf.TaskQueueWorkflow, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
+	log.Info(ctx, "startup", "status", "worker started", "taskQueue", videoworkflow.QueueWorkflow, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
 
 	if err := w.Run(worker.InterruptCh()); err != nil {
 		return fmt.Errorf("worker run: %w", err)

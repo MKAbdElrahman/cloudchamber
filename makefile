@@ -119,7 +119,8 @@ PROMETHEUS      := prom/prometheus:v3.14.0
 TEMPO           := grafana/tempo:3.0.3
 LOKI            := grafana/loki:3.7.7
 ALLOY           := grafana/alloy:v1.19.2
-TEMPORAL_AUTO_SETUP := temporalio/auto-setup:1.29.1
+TEMPORAL_SERVER      := temporalio/server:1.32.2
+TEMPORAL_ADMIN_TOOLS := temporalio/admin-tools:1.32.2
 TEMPORAL_UI         := temporalio/ui:2.58.1
 SEAWEEDFS           := chrislusf/seaweedfs:4.53
 TUSD                := tusproject/tusd:v2.10.1
@@ -199,7 +200,8 @@ dev-docker:
 	docker pull docker.io/$(TEMPO) & \
 	docker pull docker.io/$(LOKI) & \
 	docker pull docker.io/$(ALLOY) & \
-	docker pull docker.io/$(TEMPORAL_AUTO_SETUP) & \
+	docker pull docker.io/$(TEMPORAL_SERVER) & \
+	docker pull docker.io/$(TEMPORAL_ADMIN_TOOLS) & \
 	docker pull docker.io/$(TEMPORAL_UI) & \
 	docker pull docker.io/$(SEAWEEDFS) & \
 	docker pull docker.io/$(TUSD) & \
@@ -304,7 +306,8 @@ dev-up:
 	docker save $(TEMPO) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(LOKI) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(ALLOY) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
-	docker save $(TEMPORAL_AUTO_SETUP) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(TEMPORAL_SERVER) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
+	docker save $(TEMPORAL_ADMIN_TOOLS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(TEMPORAL_UI) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(SEAWEEDFS) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \
 	docker save $(TUSD) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import - & \

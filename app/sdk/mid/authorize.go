@@ -9,8 +9,8 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/auth"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/errs"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/pipelinejobbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/projectbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/web"
 	"github.com/google/uuid"
@@ -103,79 +103,6 @@ func AuthorizeUser(client authclient.Authenticator, userBus userbus.ExtBusiness,
 	return m
 }
 
-// AuthorizePipeline executes the specified role and extracts the specified
-// pipeline job from the DB if a job id is specified in the call. The caller
-// must be the owner of the job or an admin.
-func AuthorizePipeline(client authclient.Authenticator, pipelineJobBus pipelinejobbus.ExtBusiness) web.MidFunc {
-	return authorizePipeline(client, pipelineJobBus, false)
-}
-
-// AuthorizePipelineKeep is AuthorizePipeline for a handler that waits.
-// The timeout covers only the authorization call, so the handler keeps the request context.
-func AuthorizePipelineKeep(client authclient.Authenticator, pipelineJobBus pipelinejobbus.ExtBusiness) web.MidFunc {
-	return authorizePipeline(client, pipelineJobBus, true)
-}
-
-func authorizePipeline(client authclient.Authenticator, pipelineJobBus pipelinejobbus.ExtBusiness, keep bool) web.MidFunc {
-	m := func(next web.HandlerFunc) web.HandlerFunc {
-		h := func(ctx context.Context, r *http.Request) web.Encoder {
-			id := web.Param(r, "job_id")
-
-			var userID uuid.UUID
-
-			if id != "" {
-				var err error
-				jobID, err := uuid.Parse(id)
-				if err != nil {
-					return errs.New(errs.Unauthenticated, ErrInvalidID)
-				}
-
-				job, err := pipelineJobBus.QueryByID(ctx, jobID)
-				if err != nil {
-					switch {
-					case errors.Is(err, pipelinejobbus.ErrNotFound):
-						return errs.New(errs.Unauthenticated, err)
-					default:
-						return errs.Errorf(errs.Unauthenticated, "querybyid: jobID[%s]: %s", jobID, err)
-					}
-				}
-
-				userID = job.OwnerID
-				ctx = setPipelineJob(ctx, job)
-			}
-
-			auth := authclient.Authorize{
-				Claims: GetClaims(ctx),
-				UserID: userID,
-				Rule:   auth.RuleAdminOrSubject,
-			}
-
-			if keep {
-				authCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-				err := client.Authorize(authCtx, auth)
-				cancel()
-				if err != nil {
-					return errs.New(errs.Unauthenticated, err)
-				}
-				return next(ctx, r)
-			}
-
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-
-			if err := client.Authorize(ctx, auth); err != nil {
-				return errs.New(errs.Unauthenticated, err)
-			}
-
-			return next(ctx, r)
-		}
-
-		return h
-	}
-
-	return m
-}
-
 // AuthorizeProject loads the project and allows its owner or an admin.
 func AuthorizeProject(client authclient.Authenticator, projectBus projectbus.ExtBusiness) web.MidFunc {
 	m := func(next web.HandlerFunc) web.HandlerFunc {
@@ -215,6 +142,48 @@ func AuthorizeProject(client authclient.Authenticator, projectBus projectbus.Ext
 			}
 
 			if err := client.Authorize(ctx, auth); err != nil {
+				return errs.New(errs.Unauthenticated, err)
+			}
+
+			return next(ctx, r)
+		}
+
+		return h
+	}
+
+	return m
+}
+
+// AuthorizeRun loads the run and allows its owner or an admin.
+func AuthorizeRun(client authclient.Authenticator, runs runbus.Reader) web.MidFunc {
+	m := func(next web.HandlerFunc) web.HandlerFunc {
+		h := func(ctx context.Context, r *http.Request) web.Encoder {
+			runID, err := uuid.Parse(web.Param(r, "run_id"))
+			if err != nil {
+				return errs.New(errs.Unauthenticated, ErrInvalidID)
+			}
+
+			run, err := runs.QueryByID(ctx, runID)
+			if err != nil {
+				switch {
+				case errors.Is(err, runbus.ErrNotFound):
+					return errs.New(errs.Unauthenticated, err)
+				default:
+					return errs.Errorf(errs.Unauthenticated, "querybyid: runID[%s]: %s", runID, err)
+				}
+			}
+			ctx = setRun(ctx, run)
+
+			authCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			auth := authclient.Authorize{
+				Claims: GetClaims(ctx),
+				UserID: run.OwnerID,
+				Rule:   auth.RuleAdminOrSubject,
+			}
+
+			if err := client.Authorize(authCtx, auth); err != nil {
 				return errs.New(errs.Unauthenticated, err)
 			}
 

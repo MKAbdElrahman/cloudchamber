@@ -383,3 +383,94 @@ BEGIN
 END $$;
 
 DROP TABLE pipeline_job_steps;
+
+-- Version: 1.20
+-- Description: Create table runs. A run is a workflow of any kind. The spec columns are what the user wants and the status columns are what the controller observed.
+CREATE TABLE runs (
+	run_id               UUID      NOT NULL,
+	kind                 TEXT      NOT NULL,
+	owner_id             UUID      NOT NULL,
+	project_id           UUID      NOT NULL,
+	idempotency_key_hash TEXT      NULL,
+	generation           BIGINT    NOT NULL,
+
+	input                JSONB     NOT NULL DEFAULT '{}'::jsonb,
+	suspend              BOOLEAN   NOT NULL DEFAULT FALSE,
+	cancel               BOOLEAN   NOT NULL DEFAULT FALSE,
+	attempt              INT       NOT NULL DEFAULT 1,
+	resume_from          TEXT      NOT NULL DEFAULT 'start',
+
+	phase                TEXT      NOT NULL DEFAULT 'pending',
+	observed_generation  BIGINT    NOT NULL DEFAULT 0,
+	observed_attempt     INT       NOT NULL DEFAULT 0,
+	execution_id         TEXT      NOT NULL DEFAULT '',
+	reason               TEXT      NOT NULL DEFAULT '',
+	message              TEXT      NOT NULL DEFAULT '',
+	steps                JSONB     NOT NULL DEFAULT '{}'::jsonb,
+	result               JSONB     NOT NULL DEFAULT 'null'::jsonb,
+	cancel_requested_at  TIMESTAMP NULL,
+	date_closed          TIMESTAMP NULL,
+
+	date_created         TIMESTAMP NOT NULL,
+	date_updated         TIMESTAMP NOT NULL,
+
+	PRIMARY KEY (run_id),
+	FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE,
+	FOREIGN KEY (project_id, owner_id) REFERENCES projects (project_id, owner_id),
+	UNIQUE (owner_id, idempotency_key_hash),
+	CHECK (generation >= 1),
+	CHECK (attempt >= 1),
+	CHECK (observed_attempt BETWEEN 0 AND attempt),
+	CHECK (observed_generation BETWEEN 0 AND generation),
+	CHECK (resume_from IN ('start', 'failure')),
+	CHECK (phase IN ('pending', 'running', 'paused', 'succeeded', 'failed', 'canceled', 'terminated'))
+);
+
+CREATE INDEX runs_project_date_idx ON runs (project_id, date_created DESC);
+CREATE INDEX runs_owner_date_idx ON runs (owner_id, date_created DESC);
+CREATE INDEX runs_unsettled_idx ON runs (date_updated)
+	WHERE phase IN ('pending', 'running', 'paused') OR observed_attempt < attempt;
+
+-- Version: 1.21
+-- Description: Create table run_events. An append-only record of commands and observed changes. Nothing computes state from it.
+CREATE TABLE run_events (
+	event_id     BIGINT    GENERATED ALWAYS AS IDENTITY,
+	run_id       UUID      NOT NULL,
+	actor_id     UUID      NULL,
+	type         TEXT      NOT NULL,
+	message      TEXT      NOT NULL DEFAULT '',
+	date_created TIMESTAMP NOT NULL,
+
+	PRIMARY KEY (event_id),
+	FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
+);
+
+CREATE INDEX run_events_run_idx ON run_events (run_id, event_id);
+
+-- Version: 1.22
+-- Description: Drop the pipeline job table and the message store. A conversion is now a run of the video-to-document kind.
+DROP TABLE pipeline_jobs;
+DROP SCHEMA IF EXISTS message_store CASCADE;
+
+-- Version: 1.23
+-- Description: Announce run changes on the run_changed channel so the controller hears of them without polling. A change of spec and a change of any step state are announced. A change of status alone, or of how far a step has got, is not.
+CREATE FUNCTION runs_announce() RETURNS trigger AS $$
+BEGIN
+	IF TG_OP = 'INSERT' OR NEW.generation <> OLD.generation THEN
+		PERFORM pg_notify('run_changed', NEW.run_id::text || ' spec');
+	ELSIF (SELECT jsonb_object_agg(key, value -> 'state') FROM jsonb_each(NEW.steps))
+		IS DISTINCT FROM
+		(SELECT jsonb_object_agg(key, value -> 'state') FROM jsonb_each(OLD.steps)) THEN
+		PERFORM pg_notify('run_changed', NEW.run_id::text || ' step');
+	END IF;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER runs_announce
+	AFTER INSERT OR UPDATE ON runs
+	FOR EACH ROW EXECUTE FUNCTION runs_announce();
+
+-- Version: 1.24
+-- Description: Name the column for what it holds. A run is one execution of a workflow.
+ALTER TABLE runs RENAME COLUMN kind TO workflow;

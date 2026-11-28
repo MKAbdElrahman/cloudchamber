@@ -346,6 +346,7 @@ func (hw *sharedNamespaceWorker) pollWorkerCommandTask(
 	rpcMetricsHandler := hw.metricsHandler.WithTags(metrics.TaskQueueTags(hw.workerControlTaskQueue))
 	grpcCtx, cancel := newGRPCContext(
 		hw.workerCtx,
+		hw.client.rpcTimeout,
 		grpcMetricsHandler(rpcMetricsHandler),
 		grpcLongPoll(true),
 		grpcTimeout(pollTaskServiceTimeOut),
@@ -406,6 +407,7 @@ func (hw *sharedNamespaceWorker) handleWorkerCommandTask(task *workflowservice.P
 
 	grpcCtx, cancel := newGRPCContext(
 		context.Background(),
+		hw.client.rpcTimeout,
 		grpcMetricsHandler(hw.metricsHandler),
 		defaultGrpcRetryParameters(context.Background()),
 	)
@@ -443,6 +445,19 @@ func (hw *sharedNamespaceWorker) stop() {
 
 	close(hw.stopC)
 	<-hw.stoppedC
+}
+
+// pollerTargetTracker holds each poller type's target supplier, read live by the heartbeat.
+// A type that never registers is reported as 0, which the proto defines as unknown.
+type pollerTargetTracker struct {
+	targets sync.Map // pollerType (string) -> func() int32
+}
+
+func (p *pollerTargetTracker) record(pollerType string, target func() int32) {
+	if p == nil || pollerType == "" || target == nil {
+		return
+	}
+	p.targets.Store(pollerType, target)
 }
 
 // pollTimeTracker tracks the last successful poll time for each poller type.

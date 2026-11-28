@@ -1,4 +1,4 @@
-package sampleworkflow
+package sampleapp
 
 import (
 	"encoding/json"

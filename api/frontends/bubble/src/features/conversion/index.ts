@@ -1,4 +1,4 @@
-export { commandJob, createJob, getJob, jobFromRun, listJobs, VIDEO_WORKFLOW } from './api'
+export { commandJob, createJob, getJob, jobFromRun, listJobs, MEDIA2DOC_WORKFLOW } from './api'
 export { JobOpenIcons } from './JobOpenIcons'
 export type { JobPeekTarget } from './JobOpenIcons'
 export { JobPeek } from './JobPeek'
@@ -8,6 +8,6 @@ export { isTerminalJobStatus, jobOutcomeBanner, jobPhase, jobPhaseLabel, jobStat
 export { jobNeedsOpen, loadJob } from './loadJob'
 export type { JobPhase } from './jobStatus'
 export { JobStages } from './JobStages'
-export type { Conversion, VideoInput, VideoResult, VideoRun } from './types'
+export type { Conversion, ConversionInput, ConversionResult, ConversionRun } from './types'
 export { useJobProgress } from './useJobProgress'
 export { useConversion } from './useConversion'

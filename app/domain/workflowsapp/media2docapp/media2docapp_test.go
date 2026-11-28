@@ -1,11 +1,10 @@
-package videoworkflow
+package media2docapp
 
 import (
 	"encoding/json"
 	"errors"
 	"testing"
 
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow/audioextract"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runcontrol"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
@@ -63,7 +62,7 @@ func TestAVideoRunsEveryStepInOrder(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	seen := register(env, "video/mp4", "")
 
-	env.ExecuteWorkflow(ToDocument, input(" file-1 "))
+	env.ExecuteWorkflow(Convert, input(" file-1 "))
 
 	var result Result
 	if err := env.GetWorkflowResult(&result); err != nil {
@@ -97,7 +96,7 @@ func TestAnAudioRecordingHasNoKeyFrameStep(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	seen := register(env, "audio/mpeg", "")
 
-	env.ExecuteWorkflow(ToDocument, input("file-1"))
+	env.ExecuteWorkflow(Convert, input("file-1"))
 
 	var result Result
 	if err := env.GetWorkflowResult(&result); err != nil {
@@ -118,7 +117,7 @@ func TestAFailedStepStopsTheRun(t *testing.T) {
 	env := suite.NewTestWorkflowEnvironment()
 	seen := register(env, "video/mp4", ActivityTranscribe)
 
-	env.ExecuteWorkflow(ToDocument, input("file-1"))
+	env.ExecuteWorkflow(Convert, input("file-1"))
 
 	err := env.GetWorkflowError()
 	if err == nil {
@@ -139,7 +138,7 @@ func TestInputWithoutAFileIsRefused(t *testing.T) {
 		env := suite.NewTestWorkflowEnvironment()
 		seen := register(env, "video/mp4", "")
 
-		env.ExecuteWorkflow(ToDocument, runcontrol.Input{RunID: "run-1", Input: json.RawMessage(body)})
+		env.ExecuteWorkflow(Convert, runcontrol.Input{RunID: "run-1", Input: json.RawMessage(body)})
 
 		if err := env.GetWorkflowError(); err == nil {
 			t.Errorf("input %s was accepted", body)
@@ -148,37 +147,4 @@ func TestInputWithoutAFileIsRefused(t *testing.T) {
 			t.Errorf("input %s scheduled %v", body, seen.order)
 		}
 	}
-}
-
-func TestStem(t *testing.T) {
-	for name, want := range map[string]string{"week-03.mp4": "week-03", "a.b.wav": "a.b", "noext": "noext", "  ": "recording", ".hidden": ".hidden"} {
-		if got := stem(name); got != want {
-			t.Errorf("stem(%q) = %q, want %q", name, got, want)
-		}
-	}
-}
-
-func TestAudioProgressFillsTheBarInTwoHalves(t *testing.T) {
-	var p audioProgress
-
-	if fraction, _ := p.sample(0, 10); fraction >= 0 {
-		t.Errorf("unknown size reported %v", fraction)
-	}
-	if fraction, message := p.sample(100, 50); fraction != 0.25 || message != "Downloading the recording." {
-		t.Errorf("half downloaded = %v %q", fraction, message)
-	}
-
-	p.startEncode()
-	if fraction, message := p.sample(100, 100); fraction != 0.5 || message != "Writing the audio." {
-		t.Errorf("encode start = %v %q", fraction, message)
-	}
-
-	p.setEncode(audioextractProgress(0.5))
-	if fraction, _ := p.sample(100, 100); fraction != 0.75 {
-		t.Errorf("half encoded = %v", fraction)
-	}
-}
-
-func audioextractProgress(fraction float64) audioextract.Progress {
-	return audioextract.Progress{Fraction: fraction}
 }

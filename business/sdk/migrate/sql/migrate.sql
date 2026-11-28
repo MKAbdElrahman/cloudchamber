@@ -474,3 +474,7 @@ CREATE TRIGGER runs_announce
 -- Version: 1.24
 -- Description: Name the column for what it holds. A run is one execution of a workflow.
 ALTER TABLE runs RENAME COLUMN kind TO workflow;
+
+-- Version: 1.25
+-- Description: The workflow that converts a recording takes audio as well as video, so it is named media2doc.
+UPDATE runs SET workflow = 'media2doc' WHERE workflow = 'video-to-document';

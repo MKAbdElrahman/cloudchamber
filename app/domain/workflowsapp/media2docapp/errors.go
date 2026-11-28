@@ -1,8 +1,10 @@
-package videoworkflow
+package media2docapp
 
 import (
 	"context"
+	"errors"
 
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/workflowsbus/media2docbus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.temporal.io/sdk/activity"
@@ -30,6 +32,24 @@ func permanent(ctx context.Context, errType, message string, cause error) error 
 	return temporal.NewNonRetryableApplicationError(message, errType, cause)
 }
 
-func invalidInput(ctx context.Context, message string, cause error) error {
-	return permanent(ctx, errTypeInvalidInput, message, cause)
+// invalidInput is a permanent failure for an input the step cannot read.
+func invalidInput(ctx context.Context, err error) error {
+	return permanent(ctx, errTypeInvalidInput, err.Error(), err)
+}
+
+// sourceFailure decides whether a failure to use the recording can be retried.
+// A recording the run may not convert, or whose bytes are gone, will not get
+// better on another attempt. Anything else may be the store having a bad moment.
+func sourceFailure(ctx context.Context, err error) error {
+	for _, rule := range []error{
+		media2docbus.ErrSourceNotFound,
+		media2docbus.ErrSourceNotInProject,
+		media2docbus.ErrSourceNotReady,
+		media2docbus.ErrSourceMissing,
+	} {
+		if errors.Is(err, rule) {
+			return permanent(ctx, errTypeSourceNotFound, rule.Error(), err)
+		}
+	}
+	return err
 }

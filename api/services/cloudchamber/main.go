@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/MKAbdElrahman/cloudchamber/api/services/cloudchamber/build"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/sampleworkflow"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflowsapp/media2docapp"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflowsapp/sampleapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient/grpc"
 	http2 "github.com/MKAbdElrahman/cloudchamber/app/sdk/authclient/http"
@@ -44,6 +44,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/extensions/userotel"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/usercache"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/userbus/stores/userdb"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/workflowsbus/media2docbus/mediabus"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/delegate"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
@@ -323,11 +324,15 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	// The controller is the only writer of a run's status. It reads each
 	// run's spec, asks Temporal what is true, and acts on the difference.
+	// The API runs the media worker's source check when a run is submitted.
+	// It never extracts audio, so it needs no ffmpeg.
+	media2docMedia := mediabus.NewBusiness(media2docapp.NewFiles(artifactBus, objectStore, tracer), "")
+
 	// Every workflow this service can start is listed here, once. The
 	// controller, the run API and the client all read it from this registry.
 	registry := workflows.NewRegistry(
-		sampleworkflow.Definition(),
-		videoworkflow.Definition(artifactBus),
+		sampleapp.Definition(),
+		media2docapp.Definition(media2docMedia),
 	)
 	runController := runcontrol.New(runcontrol.Config{
 		Log:    log,

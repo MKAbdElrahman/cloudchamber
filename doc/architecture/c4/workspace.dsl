@@ -522,7 +522,7 @@ workspace "CloudChamber" "C4 model for the CloudChamber service platform (Ardan-
             title "Dynamic View: Convert a recording"
             description "A successful run of one recording. The API stores the run, the controller starts it, the workers run the steps and record them, and the controller records the result."
 
-            endUser -> cloudchamber.apiService "Starts a run of the video-to-document workflow for one file"
+            endUser -> cloudchamber.apiService "Starts a run of the media2doc workflow for one file"
             cloudchamber.apiService -> cloudchamber.authAPI "Authenticates the caller" "HTTPS/JSON"
             cloudchamber.apiService -> cloudchamber.authAPI "Authorizes the caller" "HTTPS/JSON"
             cloudchamber.apiService -> cloudchamber.postgres "Stores the run in the pending phase, with the file id as its input"

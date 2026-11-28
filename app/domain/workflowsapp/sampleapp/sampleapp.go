@@ -1,11 +1,11 @@
-// Package sampleworkflow is a small workflow with no product meaning. It
+// Package sampleapp is a small workflow with no product meaning. It
 // exists to exercise the run platform end to end: three steps, one of which
 // takes time, reports its place, and can be stopped and continued.
 //
 // It is also the shape a real workflow takes: the workflow function, its
 // activities, a definition for the platform, and a Register function for the worker.
 // Nothing in it knows how runs are stored, paused, or retried.
-package sampleworkflow
+package sampleapp
 
 import (
 	"context"

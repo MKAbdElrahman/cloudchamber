@@ -1,10 +1,10 @@
 import type { Run, RunStep } from '@/shared/runs'
 
-/** The input of the video-to-document workflow. */
-export type VideoInput = { fileId?: string }
+/** The input of the media2doc workflow. */
+export type ConversionInput = { fileId?: string }
 
-/** The result of the video-to-document workflow: the file each step produced. */
-export type VideoResult = {
+/** The result of the media2doc workflow: the file each step produced. */
+export type ConversionResult = {
   sourceFileId?: string
   audioFileId?: string
   transcriptFileId?: string
@@ -12,17 +12,17 @@ export type VideoResult = {
   documentFileId?: string
 }
 
-/** A run of the video-to-document workflow. */
-export type VideoRun = Run<VideoInput, VideoResult>
+/** A run of the media2doc workflow. */
+export type ConversionRun = Run<ConversionInput, ConversionResult>
 
 /**
- * One conversion, as the pages read it. It is a run of the video-to-document
+ * One conversion, as the pages read it. It is a run of the media2doc
  * workflow with the file names filled in. `run` is the run itself, for the parts of
  * a page that work on a run of any workflow.
  */
 export type Conversion = {
   id: string
-  run: VideoRun
+  run: ConversionRun
   ownerId?: string
   projectId?: string
   fileId?: string

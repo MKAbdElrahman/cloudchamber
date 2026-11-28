@@ -39,7 +39,7 @@ func Test_Run(t *testing.T) {
 	newRun := func(key string) runbus.NewRun {
 		return runbus.NewRun{
 			ID:                 uuid.New(),
-			Workflow:           workflowname.MustParse("video-to-document"),
+			Workflow:           workflowname.MustParse("media2doc"),
 			OwnerID:            user.ID,
 			ProjectID:          projectID,
 			IdempotencyKeyHash: key,

@@ -1,10 +1,10 @@
-// Package videoworkflow is the workflow that turns one recording into one document.
+// Package media2docapp is the workflow that turns one recording into one document.
 //
 // It is a workflow like any other: the workflow function, its activities, a
 // definition for the platform, and Register functions for the workers. It contains no
 // bookkeeping. The run platform records the steps, and starts, pauses, resumes,
 // cancels and retries the run.
-package videoworkflow
+package media2docapp
 
 import (
 	"context"
@@ -16,7 +16,9 @@ import (
 
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runcontrol"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/workflows"
-	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/workflowsbus/media2docbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/workflowsbus/media2docbus/framesbus"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/workflowsbus/media2docbus/mediabus"
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
@@ -26,10 +28,10 @@ import (
 
 const (
 	// Name is the workflow a caller asks for.
-	Name = "video-to-document"
+	Name = "media2doc"
 
 	// QueueWorkflow is the queue the workflow worker polls.
-	QueueWorkflow = "cloudchamber-video"
+	QueueWorkflow = "cloudchamber-media2doc"
 	// QueueMedia is the queue for reading the source and extracting audio.
 	QueueMedia = "cloudchamber-media"
 	// QueueASR is the queue for transcription.
@@ -39,14 +41,14 @@ const (
 	// QueueRender is the queue for composing the document.
 	QueueRender = "cloudchamber-render"
 
-	workflowType = "video.ToDocument"
+	workflowType = "media2doc.Convert"
 
 	// The activity type names are the step keys a client sees.
-	ActivityResolveSource    = "video.ResolveSource"
-	ActivityExtractAudio     = "video.ExtractAudio"
-	ActivityTranscribe       = "video.Transcribe"
-	ActivityExtractKeyFrames = "video.ExtractKeyFrames"
-	ActivityComposeDocument  = "video.ComposeDocument"
+	ActivityResolveSource    = "media2doc.ResolveSource"
+	ActivityExtractAudio     = "media2doc.ExtractAudio"
+	ActivityTranscribe       = "media2doc.Transcribe"
+	ActivityExtractKeyFrames = "media2doc.ExtractKeyFrames"
+	ActivityComposeDocument  = "media2doc.ComposeDocument"
 )
 
 // Input is what a caller sends as the run's input.
@@ -102,9 +104,9 @@ type ComposeInput struct {
 	KeyFramesFileID  string `json:"keyFramesFileId"`
 }
 
-// Definition describes the workflow to the platform. files is used to check,
+// Definition describes the workflow to the platform. media is used to check,
 // before a run is stored, that the recording is one the caller may convert.
-func Definition(files artifactbus.ExtBusiness) workflows.Workflow {
+func Definition(media *mediabus.Business) workflows.Workflow {
 	return workflows.Workflow{
 		Name:         Name,
 		Title:        "Recording to document",
@@ -125,15 +127,15 @@ func Definition(files artifactbus.ExtBusiness) workflows.Workflow {
 			}
 		}`),
 		Validate: func(ctx context.Context, req workflows.Request) error {
-			return validate(ctx, files, req)
+			return validate(ctx, media, req)
 		},
 	}
 }
 
 // validate refuses a recording the caller may not convert, before the run is
-// stored. ResolveSource makes the same check again when the run starts,
-// because the file can change in between.
-func validate(ctx context.Context, files artifactbus.ExtBusiness, req workflows.Request) error {
+// stored. It asks the media worker's business package, which ResolveSource asks
+// again when the run starts, because the file can change in between.
+func validate(ctx context.Context, media *mediabus.Business, req workflows.Request) error {
 	var input Input
 	if err := json.Unmarshal(req.Input, &input); err != nil {
 		return &workflows.InputError{Field: "input", Message: "input must be an object with a fileId"}
@@ -143,50 +145,48 @@ func validate(ctx context.Context, files artifactbus.ExtBusiness, req workflows.
 		return &workflows.InputError{Field: "fileId", Message: "fileId is required"}
 	}
 
-	art, err := files.QueryByFileID(ctx, fileID)
-	if err != nil {
-		if errors.Is(err, artifactbus.ErrNotFound) {
-			return &workflows.InputError{Field: "fileId", Message: "fileId must be a ready file in this project"}
-		}
-		return fmt.Errorf("load file: %w", err)
-	}
-
-	ready := art.Status.Equal(artifactbus.MustParseStatus(artifactbus.StatusReady))
-	if art.OwnerID != req.OwnerID || art.ProjectID != req.ProjectID || !ready {
+	_, err = media.CheckSource(ctx, req.OwnerID, req.ProjectID, fileID)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, media2docbus.ErrSourceNotFound),
+		errors.Is(err, media2docbus.ErrSourceNotInProject),
+		errors.Is(err, media2docbus.ErrSourceNotReady):
 		return &workflows.InputError{Field: "fileId", Message: "fileId must be a ready file in this project"}
+	default:
+		return fmt.Errorf("check file: %w", err)
 	}
-	return nil
 }
 
 // RegisterWorkflow adds the workflow to a worker on QueueWorkflow.
 func RegisterWorkflow(w worker.Worker) {
-	w.RegisterWorkflowWithOptions(ToDocument, workflow.RegisterOptions{Name: workflowType})
+	w.RegisterWorkflowWithOptions(Convert, workflow.RegisterOptions{Name: workflowType})
 }
 
 // RegisterMedia adds the source and audio activities to a worker on QueueMedia.
-func RegisterMedia(w worker.Worker, a *Activities) {
+func RegisterMedia(w worker.Worker, a *MediaActivities) {
 	w.RegisterActivityWithOptions(a.ResolveSource, activity.RegisterOptions{Name: ActivityResolveSource})
 	w.RegisterActivityWithOptions(a.ExtractAudio, activity.RegisterOptions{Name: ActivityExtractAudio})
 }
 
 // RegisterASR adds the transcription activity to a worker on QueueASR.
-func RegisterASR(w worker.Worker, a *Activities) {
+func RegisterASR(w worker.Worker, a *ASRActivities) {
 	w.RegisterActivityWithOptions(a.Transcribe, activity.RegisterOptions{Name: ActivityTranscribe})
 }
 
 // RegisterFrames adds the key-frame activity to a worker on QueueFrames.
-func RegisterFrames(w worker.Worker, a *Activities) {
+func RegisterFrames(w worker.Worker, a *FramesActivities) {
 	w.RegisterActivityWithOptions(a.ExtractKeyFrames, activity.RegisterOptions{Name: ActivityExtractKeyFrames})
 }
 
 // RegisterRender adds the composition activity to a worker on QueueRender.
-func RegisterRender(w worker.Worker, a *Activities) {
+func RegisterRender(w worker.Worker, a *RenderActivities) {
 	w.RegisterActivityWithOptions(a.ComposeDocument, activity.RegisterOptions{Name: ActivityComposeDocument})
 }
 
-// ToDocument is the workflow. It is deterministic: no I/O, and no clock or
+// Convert is the workflow. It is deterministic: no I/O, and no clock or
 // randomness outside the Temporal APIs.
-func ToDocument(ctx workflow.Context, in runcontrol.Input) (Result, error) {
+func Convert(ctx workflow.Context, in runcontrol.Input) (Result, error) {
 	var input Input
 	if err := json.Unmarshal(in.Input, &input); err != nil || strings.TrimSpace(input.FileID) == "" {
 		return Result{}, temporal.NewNonRetryableApplicationError("the input must name a recording as fileId", errTypeInvalidInput, err)
@@ -222,7 +222,7 @@ func ToDocument(ctx workflow.Context, in runcontrol.Input) (Result, error) {
 	// A recording with no picture has no frames. The step is not scheduled, so
 	// the run's history shows that it was skipped on purpose.
 	var keyFrames File
-	if !strings.HasPrefix(source.ContentType, "audio/") {
+	if framesbus.HasPicture(source.ContentType) {
 		if err := workflow.ExecuteActivity(frames, ActivityExtractKeyFrames, source).Get(ctx, &keyFrames); err != nil {
 			return Result{}, err
 		}

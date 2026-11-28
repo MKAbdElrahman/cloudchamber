@@ -1,9 +1,9 @@
 import { commandRun, createRun, getRun, listRuns, type RunCommand, type RunPhase } from '@/shared/runs'
 import { apiFetch } from '@/shared/api'
-import type { Conversion, VideoInput, VideoResult, VideoRun } from './types'
+import type { Conversion, ConversionInput, ConversionResult, ConversionRun } from './types'
 
 /** The workflow that turns one recording into one document. */
-export const VIDEO_WORKFLOW = 'video-to-document'
+export const MEDIA2DOC_WORKFLOW = 'media2doc'
 
 type NamedFile = { id: string; name: string }
 
@@ -26,7 +26,7 @@ function statusOf(phase: RunPhase): string {
 }
 
 /** A run as a conversion. `names` maps a file id to its name in the project. */
-export function jobFromRun(run: VideoRun, names: Map<string, string> = new Map()): Conversion {
+export function jobFromRun(run: ConversionRun, names: Map<string, string> = new Map()): Conversion {
   const result = run.status.result ?? undefined
   const fileId = run.spec.input?.fileId ?? result?.sourceFileId
   const documentFileId = result?.documentFileId
@@ -64,7 +64,7 @@ async function fileNames(token: string, projectId: string): Promise<Map<string, 
 }
 
 export async function createJob(token: string, projectId: string, fileId: string, idempotencyKey?: string): Promise<Conversion> {
-  const run = await createRun<VideoInput, VideoResult>(token, { workflow: VIDEO_WORKFLOW, projectId, input: { fileId }, idempotencyKey })
+  const run = await createRun<ConversionInput, ConversionResult>(token, { workflow: MEDIA2DOC_WORKFLOW, projectId, input: { fileId }, idempotencyKey })
   return jobFromRun(run)
 }
 
@@ -78,18 +78,18 @@ export function readFileURL(token: string, fileId: string) {
 /** The conversions in one project, newest first. */
 export async function listJobs(token: string, projectId: string): Promise<Conversion[]> {
   const [runs, names] = await Promise.all([
-    listRuns<VideoInput, VideoResult>(token, { projectId, workflow: VIDEO_WORKFLOW }),
+    listRuns<ConversionInput, ConversionResult>(token, { projectId, workflow: MEDIA2DOC_WORKFLOW }),
     fileNames(token, projectId),
   ])
   return runs.map((run) => jobFromRun(run, names))
 }
 
 export async function getJob(token: string, jobId: string): Promise<Conversion> {
-  const run = await getRun<VideoInput, VideoResult>(token, jobId)
+  const run = await getRun<ConversionInput, ConversionResult>(token, jobId)
   return jobFromRun(run, await fileNames(token, run.projectId))
 }
 
 /** Give a conversion a command. It is a run, so it takes the commands every run takes. */
 export async function commandJob(token: string, jobId: string, command: RunCommand): Promise<Conversion> {
-  return jobFromRun(await commandRun<VideoInput, VideoResult>(token, jobId, command))
+  return jobFromRun(await commandRun<ConversionInput, ConversionResult>(token, jobId, command))
 }

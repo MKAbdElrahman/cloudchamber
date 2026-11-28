@@ -15,11 +15,11 @@ function step(key: string, state: RunStep['state'], extra: Partial<RunStep> = {}
   }
 }
 
-const source = 'video.ResolveSource'
-const audio = 'video.ExtractAudio'
-const transcript = 'video.Transcribe'
-const keyFrames = 'video.ExtractKeyFrames'
-const document = 'video.ComposeDocument'
+const source = 'media2doc.ResolveSource'
+const audio = 'media2doc.ExtractAudio'
+const transcript = 'media2doc.Transcribe'
+const keyFrames = 'media2doc.ExtractKeyFrames'
+const document = 'media2doc.ComposeDocument'
 
 const workflow: Pick<Workflow, 'steps'> = {
   steps: [
@@ -148,9 +148,9 @@ describe('progressFromJob', () => {
   })
 
   it('shows a step the workflow does not name after the others, under its key', () => {
-    const result = progressFromJob({ status: 'running', steps: [step('video.NewStep', 'working')] })
+    const result = progressFromJob({ status: 'running', steps: [step('media2doc.NewStep', 'working')] })
     expect(result.stages).toHaveLength(6)
-    expect(result.stages[5]).toMatchObject({ key: 'video.NewStep', label: 'video.NewStep', state: 'current' })
+    expect(result.stages[5]).toMatchObject({ key: 'media2doc.NewStep', label: 'media2doc.NewStep', state: 'current' })
   })
 
   it('shows the reported steps under their keys until the workflow has loaded', () => {

@@ -12,8 +12,8 @@ import (
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/sampleworkflow"
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflowsapp/media2docapp"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflowsapp/sampleapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runworker"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
@@ -155,24 +155,24 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	defer c.Close()
 
-	// The workflow worker runs the workflow code of the video workflow. Workflow
+	// The workflow worker runs the workflow code of the media2doc workflow. Workflow
 	// code has no steps of its own to report, so that worker has no step interceptor.
-	w := worker.New(c, videoworkflow.QueueWorkflow, worker.Options{})
-	videoworkflow.RegisterWorkflow(w)
+	w := worker.New(c, media2docapp.QueueWorkflow, worker.Options{})
+	media2docapp.RegisterWorkflow(w)
 
 	// The sample workflow keeps its workflow code and its activities on one queue.
 	// The worker is handed only the step reporter, so it cannot write a run's spec or status.
 	var steps runbus.StepReporter = runbus.NewBusiness(log, rundb.NewStore(log, db))
-	sample := worker.New(c, sampleworkflow.TaskQueue, worker.Options{
+	sample := worker.New(c, sampleapp.TaskQueue, worker.Options{
 		Interceptors: []interceptor.WorkerInterceptor{runworker.NewStepInterceptor(log, steps)},
 	})
-	sampleworkflow.Register(sample)
+	sampleapp.Register(sample)
 	if err := sample.Start(); err != nil {
 		return fmt.Errorf("sample worker start: %w", err)
 	}
 	defer sample.Stop()
 
-	log.Info(ctx, "startup", "status", "worker started", "taskQueue", videoworkflow.QueueWorkflow, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
+	log.Info(ctx, "startup", "status", "worker started", "taskQueue", media2docapp.QueueWorkflow, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
 
 	if err := w.Run(worker.InterruptCh()); err != nil {
 		return fmt.Errorf("worker run: %w", err)

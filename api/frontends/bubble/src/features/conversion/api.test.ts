@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { jobFromRun } from './api'
-import type { VideoRun } from './types'
+import type { ConversionRun } from './types'
 
-function run(partial: Partial<VideoRun['status']>, spec: Partial<VideoRun['spec']> = {}): VideoRun {
+function run(partial: Partial<ConversionRun['status']>, spec: Partial<ConversionRun['spec']> = {}): ConversionRun {
   return {
     id: 'run-1',
-    workflow: 'video-to-document',
+    workflow: 'media2doc',
     ownerId: 'owner-1',
     projectId: 'project-1',
     generation: 1,

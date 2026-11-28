@@ -10,8 +10,8 @@ import { jobPhase, type JobPhase } from './jobStatus'
  */
 
 /** The step keys this workflow's page treats specially. They are the activity type names. */
-const KEY_FRAMES_STEP = 'video.ExtractKeyFrames'
-const DOCUMENT_STEP = 'video.ComposeDocument'
+const KEY_FRAMES_STEP = 'media2doc.ExtractKeyFrames'
+const DOCUMENT_STEP = 'media2doc.ComposeDocument'
 
 export type JobProgress = {
   phase: JobPhase
@@ -104,7 +104,7 @@ function documentFormat(job: JobProgressInput): string {
   return job.documentName?.trim().toLowerCase().endsWith('.pdf') ? 'PDF' : 'Markdown'
 }
 
-/** `workflow` is the video-to-document workflow. Until it has loaded, the steps the run reported are shown under their keys. */
+/** `workflow` is the media2doc workflow. Until it has loaded, the steps the run reported are shown under their keys. */
 export function progressFromJob(job: JobProgressInput, workflow?: Pick<Workflow, 'steps'>): JobProgress {
   const phase = jobPhase(job.status)
 

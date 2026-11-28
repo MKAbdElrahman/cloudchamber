@@ -12,7 +12,7 @@ import (
 	"go.temporal.io/sdk/interceptor"
 	"go.temporal.io/sdk/worker"
 
-	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflows/videoworkflow"
+	"github.com/MKAbdElrahman/cloudchamber/app/domain/workflowsapp/media2docapp"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/objectstore"
 	"github.com/MKAbdElrahman/cloudchamber/app/sdk/runworker"
 	temporalclient "github.com/MKAbdElrahman/cloudchamber/app/sdk/temporal"
@@ -21,6 +21,7 @@ import (
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/artifactbus/stores/artifactdb"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus"
 	"github.com/MKAbdElrahman/cloudchamber/business/domain/runbus/stores/rundb"
+	"github.com/MKAbdElrahman/cloudchamber/business/domain/workflowsbus/media2docbus/mediabus"
 	"github.com/MKAbdElrahman/cloudchamber/business/sdk/sqldb"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/logger"
 	"github.com/MKAbdElrahman/cloudchamber/foundation/otel"
@@ -175,7 +176,9 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// The worker is handed only the step reporter, so it cannot write a run's spec or status.
 	var steps runbus.StepReporter = runbus.NewBusiness(log, rundb.NewStore(log, db))
 
-	acts := videoworkflow.NewActivities(artifactBus, objects, tracer, cfg.FFmpeg.Path)
+	// The worker's rules live in its business package. The activities are its handlers.
+	files := media2docapp.NewFiles(artifactBus, objects, tracer)
+	acts := media2docapp.NewMediaActivities(mediabus.NewBusiness(files, cfg.FFmpeg.Path))
 
 	tracingInterceptor, err := temporalotel.NewTracingInterceptor(temporalotel.TracerOptions{
 		Tracer: tracer,
@@ -196,12 +199,12 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	// The client copies interceptors that implement WorkerInterceptor onto the
 	// worker. Passing the tracing interceptor here as well records every span twice.
-	w := worker.New(c, videoworkflow.QueueMedia, worker.Options{
+	w := worker.New(c, media2docapp.QueueMedia, worker.Options{
 		Interceptors: []interceptor.WorkerInterceptor{runworker.NewStepInterceptor(log, steps)},
 	})
-	videoworkflow.RegisterMedia(w, acts)
+	media2docapp.RegisterMedia(w, acts)
 
-	log.Info(ctx, "startup", "status", "worker started", "taskQueue", videoworkflow.QueueMedia, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
+	log.Info(ctx, "startup", "status", "worker started", "taskQueue", media2docapp.QueueMedia, "hostPort", cfg.Temporal.HostPort, "namespace", cfg.Temporal.Namespace)
 
 	if err := w.Run(worker.InterruptCh()); err != nil {
 		return fmt.Errorf("worker run: %w", err)

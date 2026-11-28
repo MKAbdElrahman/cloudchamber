@@ -9,7 +9,7 @@ import { EmptyState } from '@astryxdesign/core/EmptyState'
 import { Text } from '@astryxdesign/core/Text'
 import { List, ListItem } from '@astryxdesign/core/List'
 import { Timestamp } from '@astryxdesign/core/Timestamp'
-import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type PeekVideo, type PipelineJob } from '@/features/pipeline'
+import { JobOpenIcons, JobPeek, JobStatusLabel, jobPhase, visibleJobStatus, type PeekVideo, type Conversion } from '@/features/conversion'
 import { ProjectTrail, useProject, type ProjectFile } from '@/features/projects'
 import { faceFileName, filesFromJob, knownMediaName, mediaKindOf } from '@/features/outputs'
 import { PAGE_CONTENT_WIDTH, PageHeader, PendingLines, WorkspacePage, WORKSPACE_PATHS } from '@/shared/layout'
@@ -96,7 +96,7 @@ type LibraryEntry = {
   showStatus: boolean
 }
 
-function containersFor(projectId: string, jobs: PipelineJob[], files: ProjectFile[]): LibraryEntry[] {
+function containersFor(projectId: string, jobs: Conversion[], files: ProjectFile[]): LibraryEntry[] {
   const sources = files.filter((file) => file.kind === 'source')
   const sourceById = new Map(sources.map((file) => [file.id, file]))
   const used = new Set<string>()
@@ -319,7 +319,7 @@ export function ProjectHomePage({ token }: ProjectHomePageProps) {
         video={video}
         videoOpen={videoOpen}
         onVideoOpenChange={setVideoOpen}
-        pipelineJobId={pipeline?.id ?? null}
+        conversionId={pipeline?.id ?? null}
         pipelineName={pipeline?.name ?? 'Pipeline'}
         pipelineOpen={pipelineOpen}
         onPipelineOpenChange={setPipelineOpen}

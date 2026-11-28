@@ -14,7 +14,7 @@ import { JobStatusLabel } from './JobStatusLabel'
 import { conversionNotice } from './jobProgress'
 import { visibleJobStatus } from './jobStatus'
 import { useJobProgress } from './useJobProgress'
-import { usePipelineJob } from './usePipelineJob'
+import { useConversion } from './useConversion'
 
 export type PeekVideo = {
   name: string
@@ -26,7 +26,7 @@ type JobPeekProps = {
   video: PeekVideo | null
   videoOpen: boolean
   onVideoOpenChange: (isOpen: boolean) => void
-  pipelineJobId: string | null
+  conversionId: string | null
   pipelineName: string
   pipelineOpen: boolean
   onPipelineOpenChange: (isOpen: boolean) => void
@@ -38,14 +38,14 @@ export function JobPeek({
   video,
   videoOpen,
   onVideoOpenChange,
-  pipelineJobId,
+  conversionId,
   pipelineName,
   pipelineOpen,
   onPipelineOpenChange,
 }: JobPeekProps) {
-  const jobQuery = usePipelineJob(token, pipelineJobId)
+  const jobQuery = useConversion(token, conversionId)
   const job = jobQuery.data
-  const progress = useJobProgress(job)
+  const progress = useJobProgress(token, job)
   const notice = progress ? conversionNotice(progress.phase, progress.stages, progress.reason) : null
   const fileId = videoOpen ? video?.fileId : undefined
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -120,7 +120,7 @@ export function JobPeek({
           }}
         />
       ) : null}
-      {pipelineJobId ? (
+      {conversionId ? (
         <Drawer isOpen={pipelineOpen} onOpenChange={onPipelineOpenChange} label="Pipeline" width={PIPELINE_DRAWER_WIDTH}>
           <Layout
             header={
@@ -138,7 +138,7 @@ export function JobPeek({
                   {jobQuery.isError ? (
                     <Banner status="error" title="Could not load the job" description={(jobQuery.error as Error).message} />
                   ) : null}
-                  {job && progress ? <JobStages progress={progress} facts={job.facts} updates={job.progress} /> : null}
+                  {job && progress ? <JobStages progress={progress} /> : null}
                 </VStack>
               </LayoutContent>
             }

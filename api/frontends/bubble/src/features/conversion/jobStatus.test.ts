@@ -50,23 +50,15 @@ describe('jobStatusIntent', () => {
     expect(isTerminalJobStatus('uploading')).toBe(false)
   })
 
-  it('reads the badge from the stored row', () => {
-    expect(visibleJobStatus({ status: 'running', documentFileId: 'doc-1' })).toBe('running')
-    expect(visibleJobStatus({ status: 'failed', documentFileId: 'doc-1' })).toBe('failed')
-    expect(visibleJobStatus({
-      status: 'failed',
-      facts: [
-        { fact: 'runFailed', position: 1 },
-        { fact: 'runStarted', position: 2 },
-      ],
-    })).toBe('failed')
-    expect(visibleJobStatus({
-      status: 'running',
-      facts: [{ fact: 'documentPublished', position: 1 }],
-    })).toBe('running')
-    expect(visibleJobStatus({
-      status: 'completed',
-      facts: [{ fact: 'runStarted', position: 4 }],
-    })).toBe('completed')
+  it('reads the badge from the stored run', () => {
+    expect(visibleJobStatus({ status: 'running' })).toBe('running')
+    expect(visibleJobStatus({ status: 'failed' })).toBe('failed')
+  })
+
+  it('shows a paused run as open and neutral', () => {
+    expect(jobPhaseLabel('paused')).toBe('Paused')
+    expect(jobStatusIntent('paused')).toBe('neutral')
+    expect(isTerminalJobStatus('paused')).toBe(false)
+    expect(jobOutcomeBanner('paused')).toBeNull()
   })
 })

@@ -1,50 +1,18 @@
-import { useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
-import { factsCursor, followProjectFacts, listJobs, normalizeJobs, type PipelineJob } from '@/features/pipeline'
-import { applyProjectFacts, pageHasUpdates } from '@/features/pipeline/facts'
-import { delay } from '@/features/pipeline/wait'
+import { jobNeedsOpen, listJobs } from '@/features/conversion'
 
-/** Jobs that belong to one project. New facts arrive on the project stream. */
+/** How often a project with a moving job is read again. */
+const LIVE_PROJECT_INTERVAL_MS = 2000
+
+/** Jobs that belong to one project. While one is moving, the list is read again every two seconds. */
 export function useProjectJobs(token: string, projectId: string) {
-  const queryClient = useQueryClient()
-  const cursor = useRef(0)
-  const query = useQuery({
-    queryKey: ['pipeline-jobs', projectId],
-    queryFn: async (): Promise<PipelineJob[]> => {
-      const listed = await listJobs(token, projectId)
-      const next = factsCursor(listed)
-      cursor.current = Math.max(cursor.current, next)
-      return normalizeJobs(listed).filter((job) => job.projectId === projectId)
-    },
+  return useQuery({
+    queryKey: ['conversions', projectId],
+    queryFn: () => listJobs(token, projectId),
     enabled: Boolean(token) && Boolean(projectId),
-    staleTime: 30_000,
+    staleTime: 0,
     refetchOnMount: 'always',
+    refetchInterval: (query) => (query.state.data?.some(jobNeedsOpen) ? LIVE_PROJECT_INTERVAL_MS : false),
   })
-
-  useEffect(() => {
-    if (!token || !projectId || !query.isFetched) return
-    let stopped = false
-
-    const loop = async () => {
-      while (!stopped) {
-        try {
-          const page = await followProjectFacts(token, projectId, cursor.current)
-          if (stopped) return
-          cursor.current = Math.max(cursor.current, page.cursor)
-          if (!pageHasUpdates(page)) continue
-          const unknown = applyProjectFacts(queryClient, projectId, page)
-          if (unknown) void queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
-        } catch {
-          await delay(1000)
-        }
-      }
-    }
-    void loop()
-    return () => {
-      stopped = true
-    }
-  }, [query.isFetched, queryClient, projectId, token])
-
-  return query
 }

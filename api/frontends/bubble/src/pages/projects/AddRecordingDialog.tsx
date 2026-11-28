@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
 import { VStack } from '@astryxdesign/core/Layout'
-import { createJob, JobStatusLabel } from '@/features/pipeline'
+import { createJob, JobStatusLabel } from '@/features/conversion'
 import { UploadPanel } from '@/features/upload'
 import { ApiError } from '@/shared/api'
 import { RECORDING_DIALOG_WIDTH } from '@/shared/layout'
@@ -52,13 +52,13 @@ function AddRecordingForm({
       let notice: string | undefined
       if (startConversion) {
         try {
-          const job = await createJob(token, upload.fileId, `ui-${crypto.randomUUID()}`)
-          queryClient.setQueryData(['pipeline-job', job.id], job)
+          const job = await createJob(token, projectId, upload.fileId, `ui-${crypto.randomUUID()}`)
+          queryClient.setQueryData(['conversion', job.id], job)
         } catch (err) {
           notice = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Could not start the conversion.'
         }
       }
-      await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
+      await queryClient.invalidateQueries({ queryKey: ['conversions', projectId] })
       await queryClient.invalidateQueries({ queryKey: ['project-files', projectId] })
       onUploadingFile(null)
       onFinished(notice)

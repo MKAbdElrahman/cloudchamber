@@ -4,7 +4,7 @@ import type { TokenColor } from '@astryxdesign/core/Token'
 export type JobStatusIntent = 'success' | 'info' | 'warning' | 'error' | 'neutral'
 
 /** Where a job sits. The page stays the same; this is what changes on it. */
-export type JobPhase = 'waiting' | 'running' | 'finished' | 'failed' | 'canceled'
+export type JobPhase = 'waiting' | 'running' | 'paused' | 'finished' | 'failed' | 'canceled'
 
 const TOKEN_COLOR = {
   success: 'green',
@@ -20,6 +20,8 @@ export function jobPhase(status: string | undefined): JobPhase {
       return 'finished'
     case 'running':
       return 'running'
+    case 'paused':
+      return 'paused'
     case 'failed':
       return 'failed'
     case 'canceled':
@@ -43,6 +45,8 @@ export function jobPhaseLabel(status: string | undefined): string {
           return 'Waiting'
         case 'running':
           return 'Running'
+        case 'paused':
+          return 'Paused'
         case 'finished':
           return 'Finished'
         case 'failed':
@@ -64,6 +68,7 @@ export function jobStatusIntent(status: string | undefined): JobStatusIntent {
       return 'error'
     case 'canceled':
       return 'warning'
+    case 'paused':
     case 'waiting':
       return 'neutral'
   }
@@ -77,6 +82,7 @@ export function isTerminalJobStatus(status: string | undefined): boolean {
       return true
     case 'waiting':
     case 'running':
+    case 'paused':
       return false
   }
 }
@@ -102,28 +108,8 @@ export function jobStatusBannerStatus(status: string): 'success' | 'info' | 'war
   }
 }
 
-export type JobFactStatus = {
-  fact?: string
-  position: number
-}
-
-/**
- * Status the badge should read. That is the stored row, which is the fold of the whole log.
- * A fact list on the screen can be only the latest fact of each step, so it does not decide status.
- */
-export function visibleJobStatus(job: {
-  status: string
-  documentFileId?: string | null
-  facts?: JobFactStatus[] | null
-}): string {
-  return projectedStatus(job)
-}
-
-export function projectedStatus(job: {
-  status: string
-  documentFileId?: string | null
-  facts?: JobFactStatus[] | null
-}): string {
+/** Status the badge should read. It is the phase the platform last recorded for the run. */
+export function visibleJobStatus(job: { status: string }): string {
   return job.status
 }
 
@@ -136,6 +122,7 @@ export function jobOutcomeBanner(status: string): { status: 'warning' | 'error';
       return { status: 'warning', title: jobPhaseLabel(status) }
     case 'waiting':
     case 'running':
+    case 'paused':
     case 'finished':
       return null
   }

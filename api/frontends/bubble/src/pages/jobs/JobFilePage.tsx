@@ -10,7 +10,8 @@ import { Markdown } from '@astryxdesign/core/Markdown'
 import { createMarkdownHeadingLinks } from '@astryxdesign/core/Markdown/plugins'
 import { Outline, useOutlineFromMarkdown } from '@astryxdesign/core/Outline'
 import { faceFileName, filesFromJob, knownMediaName, loadDocumentBody, mediaKindOf } from '@/features/outputs'
-import { JobOpenIcons, JobPeek, JobStages, JobStatusLabel, cancelJob, createJob, isTerminalJobStatus, jobPhase, useJobProgress, usePipelineJob, visibleJobStatus } from '@/features/pipeline'
+import { JobOpenIcons, JobPeek, JobStages, JobStatusLabel, commandJob, createJob, jobPhase, useJobProgress, useConversion, visibleJobStatus } from '@/features/conversion'
+import { RunControls, pendingRequest, type RunCommand } from '@/shared/runs'
 import { ForeignProjectNotice, ProjectTrail, type ProjectFile } from '@/features/projects'
 import { ApiError } from '@/shared/api'
 import { PageHeader, PendingLines, SHELL_NARROW_QUERY, SIDE_PANEL_WIDTH, TEXT_CONTENT_WIDTH, WORKSPACE_PATHS, WorkspacePage } from '@/shared/layout'
@@ -57,9 +58,9 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const jobs = jobsQuery.data ?? []
   const matchedJob = sourceId ? jobs.find((item) => item.fileId === sourceId) : jobs.find((item) => item.id === jobIdParam)
   const resolvedJobId = jobIdParam || matchedJob?.id || null
-  const jobQuery = usePipelineJob(token, resolvedJobId)
+  const jobQuery = useConversion(token, resolvedJobId)
   const job = jobQuery.data ?? matchedJob
-  const progress = useJobProgress(job)
+  const progress = useJobProgress(token, job)
   const foreign = Boolean(job?.projectId && job.projectId !== projectId)
   const source = sourceFile(filesQuery.data ?? [], job?.fileId || sourceId)
   const fileName = job?.fileName || source?.name
@@ -94,33 +95,34 @@ export function JobFilePage({ token }: JobFilePageProps) {
   const create = useMutation({
     mutationFn: () => {
       if (!fileId) throw new Error('This file has no id.')
-      return createJob(token, fileId, `ui-${crypto.randomUUID()}`)
+      return createJob(token, projectId, fileId, `ui-${crypto.randomUUID()}`)
     },
     onSuccess: async (created) => {
-      queryClient.setQueryData(['pipeline-job', created.id], created)
-      await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs', projectId] })
+      queryClient.setQueryData(['conversion', created.id], created)
+      await queryClient.invalidateQueries({ queryKey: ['conversions', projectId] })
       await queryClient.invalidateQueries({ queryKey: ['project-files', projectId] })
       navigate(WORKSPACE_PATHS.job(projectId, created.id))
     },
   })
 
-  const canCancel = Boolean(job && !foreign && !isTerminalJobStatus(visibleJobStatus(job)))
-  const cancel = useMutation({
-    mutationFn: () => {
+  // A command changes what the run is asked to do. The platform then acts on it,
+  // and the page shows the request as underway until the run's state catches up.
+  const command = useMutation({
+    mutationFn: (name: RunCommand) => {
       if (!job) throw new Error('This run is not open.')
-      return cancelJob(token, job.id)
+      return commandJob(token, job.id, name)
     },
     onSuccess: async (updated) => {
-      await queryClient.invalidateQueries({ queryKey: ['pipeline-job', updated.id] })
-      await queryClient.invalidateQueries({ queryKey: ['pipeline-jobs'] })
+      await queryClient.invalidateQueries({ queryKey: ['conversion', updated.id] })
+      await queryClient.invalidateQueries({ queryKey: ['conversions'] })
     },
   })
-  const isCanceling = cancel.isPending || cancel.isSuccess
+  const isCanceling = Boolean(job && pendingRequest(job.run) === 'canceling')
 
   const asked = searchParams.get('open')
   const [videoOpen, setVideoOpen] = useState(asked === 'video')
   const [pipelineOpen, setPipelineOpen] = useState(asked === 'pipeline')
-  const [pipelineJobId, setPipelineJobId] = useState<string | null>(asked === 'pipeline' ? resolvedJobId : null)
+  const [conversionId, setConversionId] = useState<string | null>(asked === 'pipeline' ? resolvedJobId : null)
 
   useEffect(() => {
     if (asked !== 'video' && asked !== 'pipeline') return
@@ -180,7 +182,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
                   {fileId || job ? (
                     <JobOpenIcons
                       kind={kind}
-                      hasPipeline={Boolean(pipelineJobId ?? resolvedJobId)}
+                      hasPipeline={Boolean(conversionId ?? resolvedJobId)}
                       status={badgeStatus}
                       isCanceling={isCanceling}
                       size="md"
@@ -189,19 +191,19 @@ export function JobFilePage({ token }: JobFilePageProps) {
                           setVideoOpen(true)
                           return
                         }
-                        const jobId = pipelineJobId ?? resolvedJobId
+                        const jobId = conversionId ?? resolvedJobId
                         if (!jobId) return
-                        setPipelineJobId(jobId)
+                        setConversionId(jobId)
                         setPipelineOpen(true)
                       }}
                     />
                   ) : null}
-                  {canCancel ? (
-                    <Button
-                      label={isCanceling ? 'Canceling' : 'Cancel'}
-                      variant="secondary"
-                      onClick={() => cancel.mutate()}
-                      isDisabled={isCanceling}
+                  {job && !foreign ? (
+                    <RunControls
+                      run={job.run}
+                      onCommand={(name) => command.mutate(name)}
+                      isPending={command.isPending}
+                      hide={['restart']}
                     />
                   ) : null}
                   {badgeStatus && jobPhase(badgeStatus) !== 'finished' ? <JobStatusLabel status={badgeStatus} /> : null}
@@ -234,11 +236,11 @@ export function JobFilePage({ token }: JobFilePageProps) {
             description={create.error instanceof ApiError ? create.error.message : (create.error as Error).message}
           />
         ) : null}
-        {cancel.isError ? (
+        {command.isError ? (
           <Banner
             status="error"
-            title="Could not cancel the run"
-            description={cancel.error instanceof ApiError ? cancel.error.message : (cancel.error as Error).message}
+            title="Could not change the run"
+            description={command.error instanceof ApiError ? command.error.message : (command.error as Error).message}
           />
         ) : null}
         {jobQuery.isError ? (
@@ -248,7 +250,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
           <Banner status="error" title="Missing job" />
         ) : null}
 
-        {!foreign && !file && progress && !pending ? <JobStages progress={progress} facts={job?.facts} updates={job?.progress} /> : null}
+        {!foreign && !file && progress && !pending ? <JobStages progress={progress} /> : null}
 
         {!foreign && file ? (
           <VStack gap={WORKSPACE_GAP.group}>
@@ -268,7 +270,7 @@ export function JobFilePage({ token }: JobFilePageProps) {
           video={{ name: videoName, fileId }}
           videoOpen={videoOpen}
           onVideoOpenChange={setVideoOpen}
-          pipelineJobId={pipelineJobId ?? resolvedJobId}
+          conversionId={conversionId ?? resolvedJobId}
           pipelineName={title}
           pipelineOpen={pipelineOpen}
           onPipelineOpenChange={setPipelineOpen}
